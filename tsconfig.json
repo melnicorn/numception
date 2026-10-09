@@ -9,6 +9,7 @@
     { "path": "./packages/platform-native" },
     { "path": "./apps/client" },
     { "path": "./apps/client/tsconfig.node.json" },
+    { "path": "./prototypes/renderer-bakeoff/phaser" },
     { "path": "./tsconfig.tooling.json" }
   ]
 }

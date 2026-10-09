@@ -3,10 +3,28 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // Native shells load the built client from dist/ at base `/`. The `app.numception`
 // prefix is a placeholder until store ids are registered; flavour ids arrive with
 // build flavours (AD-18).
+//
+// BAKEOFF=phaser points the shells at the renderer bake-off build instead
+// (prototypes/renderer-bakeoff, ticket 8). Unset or empty ships the client.
+const bakeoffWebDirs: Record<string, string> = {
+  phaser: '../../prototypes/renderer-bakeoff/phaser/dist',
+};
+
+function webDir(): string {
+  const bakeoff = process.env.BAKEOFF ?? '';
+  if (bakeoff === '') return 'dist';
+  if (!Object.hasOwn(bakeoffWebDirs, bakeoff)) {
+    throw new Error(
+      `Unknown BAKEOFF="${bakeoff}". Expected one of: ${Object.keys(bakeoffWebDirs).join(', ')} (or unset for the client).`,
+    );
+  }
+  return bakeoffWebDirs[bakeoff]!;
+}
+
 const config: CapacitorConfig = {
   appId: 'app.numception.dev',
   appName: 'Numception',
-  webDir: 'dist',
+  webDir: webDir(),
 };
 
 export default config;
