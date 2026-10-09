@@ -18,6 +18,15 @@ The monorepo, CI, build flavours and playtest deploy exist, and the renderer bak
 
 The developer can push a change and see it tested and deployed to the offline playtest web build, on a renderer proven to hold 60 fps for the tier zoom; the signal is the bake-off's measured fps, gzipped size and cold start.
 
+## Requirements
+
+- R1: A pnpm workspace with the packages and boundaries of the Structural Seed builds, and CI runs typecheck and tests on every change. (architecture, Structural Seed, AD-19)
+- R2: Dependency direction and the banned list are enforced in CI. (architecture, AD-1; spec Constraints: no ads, no OTA code, self-hosted assets)
+- R3: dev, playtest and prod flavours build with separate bundle ids; the dev panel ships only in dev and playtest. (architecture, AD-18)
+- R4: The playtest web build deploys to a static host and runs offline, within the 5 MB gzipped budget. (architecture, Deployment; quality-bars NFR-1, NFR-2)
+- R5: Capacitor iOS and Android shells run the client on real phones. (architecture, Stack, Deployment)
+- R6: Phaser 4 or PixiJS v8 is chosen from measured fps, gzipped size and cold start for the tier-zoom scene on the reference devices. (spec Constraints: renderer gate; addendum A1; architecture Deferred)
+
 ## Done when
 
 1. The workspace packages (core, app, render, ui, platform-web, platform-native, apps/client) build, and CI runs typecheck, the dependency boundary and banned-list lint, and unit tests on every change.
@@ -41,3 +50,9 @@ The build substrate and the renderer decision. No game rules, no player-facing f
 
 - Assumption: CI on GitHub Actions and a static host such as Cloudflare Pages or GitHub Pages (architecture assumption, revisit at first deploy).
 - Assumption: stack versions are re-checked before scaffolding, since the addendum dates them stale after 2026-11-01.
+- Decision: 2026-10-09 — breakdown planned autonomously at the user's request after the epic set was approved.
+- Tracer bullet: entry 1 — workspace, CI and a bare static deploy of a value computed in core.
+- Sequencing: the renderer bake-off (8 and 9 in parallel, then 3) comes right after the phone shells because it is the least certain and gates epics 3 and 6; entry 4 runs beside the bake-off; 5 then 6 follow; 7 closes.
+- Assumption: the tracer reaches the static host on day one (entry 1 owns the host account step); offline PWA and the size budget stay in entry 6.
+- Assumption: epic-puzzle-generator's wait on CI includes the boundary lint, so its entries will wait on 1.1 and 1.4; epic-core-play-loop and epic-themes-and-feedback will wait on 1.3.
+

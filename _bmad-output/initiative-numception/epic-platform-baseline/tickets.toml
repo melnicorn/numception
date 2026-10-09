@@ -1,0 +1,106 @@
+# epic-platform-baseline — agreed children in build order. Table order is the build order; id is not.
+
+[[entry]]
+id = 1
+type = "story"
+title = "Workspace and CI tracer"
+description = "Stands up the pnpm workspace with every Structural Seed package, one value flowing core → app → ui into the client page, typecheck, Vitest and a Playwright WebKit run in CI, and a bare deploy of that page to the static host."
+verify = "A push turns CI green and the deployed URL shows a value computed in core."
+covers = ["R1", "R4"]
+after = []
+hitl = true
+risk = "medium"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#structural-seed", "_bmad-output/initiative-numception/architecture-numception/research-stack-versions.md"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Capacitor shells on real phones"
+description = "Wraps the client in Capacitor iOS and Android projects that install and run the tracer page on a Galaxy A35-class phone and an iPhone 13."
+verify = "The tracer page opens from an installed app on both reference phones."
+covers = ["R5"]
+after = [1]
+hitl = true
+risk = "medium"
+
+[[entry]]
+id = 8
+type = "story"
+title = "Bake-off scene in Phaser 4"
+description = "Builds the throwaway bake-off scene (neon lines, glow, 200 particles, tier zoom with a round collapse) in Phaser 4 under prototypes/renderer-bakeoff/phaser, which nothing in packages/ imports, runnable in the Capacitor shells."
+verify = "The scene runs its zoom and collapse loop in the installed app on one reference phone with an on-screen fps readout."
+covers = ["R6"]
+after = [2]
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/prd-numception/addendum.md#a1-technology-direction-for-architecture"]
+
+[[entry]]
+id = 9
+type = "story"
+title = "Bake-off scene in PixiJS v8"
+description = "Builds the same bake-off scene in PixiJS v8 with pixi-filters under prototypes/renderer-bakeoff/pixi, which nothing in packages/ imports, runnable in the Capacitor shells; filter resolution matches device pixel ratio."
+verify = "The scene runs its zoom and collapse loop in the installed app on one reference phone with an on-screen fps readout."
+covers = ["R6"]
+after = [2]
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/prd-numception/addendum.md#a1-technology-direction-for-architecture"]
+
+[[entry]]
+id = 3
+type = "spike"
+title = "Renderer decision: measure and record"
+description = "Measures both bake-off scenes for fps, gzipped size and cold start on the Galaxy A35-class phone and the iPhone 13 and picks the renderer by the addendum's tie-break rules; if neither holds 60 fps, effect density is cut first, and if the zoom itself cannot hold 60 fps the engine choice is reopened with the user."
+verify = "The measurements and the choice are recorded in the architecture spine, and its Stack table names one renderer."
+covers = ["R6"]
+after = [8, 9]
+hitl = true
+risk = "high"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#deferred"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Dependency boundaries and banned-list lint"
+description = "Adds dependency-cruiser rules to CI for the package import directions and the banned list (ad, attribution, third-party analytics and crash SDKs, live-update plugins, remote scripts and CDN URLs); prototypes/ is outside the package rules but may not be imported from packages/."
+verify = "A deliberate forbidden import and a banned package each fail CI, and the clean workspace passes."
+covers = ["R2"]
+after = [1]
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-1-dependencies-point-inward-banned-dependencies"]
+
+[[entry]]
+id = 5
+type = "story"
+title = "Build flavours and dev panel shell"
+description = "Adds dev, playtest and prod flavours with separate bundle ids on web and both native shells, and an empty dev panel present in dev and playtest and absent from the prod bundle."
+verify = "CI builds all three flavours with distinct bundle ids and the prod bundle contains no dev-panel code."
+covers = ["R3"]
+after = [3, 4]
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-18-build-flavours-and-the-release-envelope"]
+
+[[entry]]
+id = 6
+type = "story"
+title = "Offline playtest PWA and size budget"
+description = "Turns the playtest flavour's deploy into a PWA with service-worker precache and adds a CI budget that fails above 5 MB gzipped initial download."
+verify = "The deployed playtest URL still runs on a phone in airplane mode after first load, and a build pushed over the budget fails CI."
+covers = ["R4"]
+after = [5]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 7
+type = "story"
+title = "Refactor sweep"
+description = "Cleans up what the plans and reviews of this epic deferred; scope is set when it starts."
+verify = "CI stays green and every deferred cleanup item is closed or moved to a new story."
+covers = []
+after = [1, 2, 8, 9, 3, 4, 5, 6]
+hitl = false
+risk = "low"
