@@ -1,0 +1,316 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Numception Concept Pitch</title>
+<style>
+  :root {
+    --bg: #f7f5f0;
+    --surface: #ffffff;
+    --ink: #1c1d22;
+    --muted: #61636d;
+    --line: #d9d6cd;
+    --accent: #0f7f86;
+    --accent-soft: rgba(15, 127, 134, 0.12);
+    --glow: #0f7f86;
+    --pending: #9a9ca5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0d0e12;
+      --surface: #15171d;
+      --ink: #eceef3;
+      --muted: #9a9eab;
+      --line: #2a2d36;
+      --accent: #3fe0d0;
+      --accent-soft: rgba(63, 224, 208, 0.14);
+      --glow: #3fe0d0;
+      --pending: #6b6f7b;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d0e12;
+    --surface: #15171d;
+    --ink: #eceef3;
+    --muted: #9a9eab;
+    --line: #2a2d36;
+    --accent: #3fe0d0;
+    --accent-soft: rgba(63, 224, 208, 0.14);
+    --glow: #3fe0d0;
+    --pending: #6b6f7b;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    background: var(--bg);
+    color: var(--ink);
+    font: 14px/1.45 ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  .page {
+    max-width: 1160px;
+    margin: 0 auto;
+    padding: 28px 16px 32px;
+  }
+  header {
+    display: flex;
+    align-items: baseline;
+    flex-wrap: wrap;
+    gap: 6px 18px;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 14px;
+    margin-bottom: 18px;
+  }
+  .eyebrow {
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    width: 100%;
+  }
+  h1 {
+    margin: 0;
+    font-size: 34px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  h1 small {
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+    margin-left: 6px;
+  }
+  .hook {
+    margin: 0;
+    font-size: 17px;
+    color: var(--ink);
+    flex: 1 1 380px;
+    text-wrap: balance;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: minmax(260px, 330px) 1fr 1fr;
+    gap: 18px;
+  }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: 14px 16px;
+    min-width: 0;
+  }
+  h2 {
+    margin: 0 0 6px;
+    font-size: 12px;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--accent);
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  h2::before {
+    content: "";
+    width: 0; height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 8px solid currentColor;
+  }
+  p { margin: 0 0 6px; }
+  p:last-child { margin-bottom: 0; }
+  ul { margin: 0; padding-left: 16px; }
+  li { margin: 0 0 4px; }
+  li:last-child { margin-bottom: 0; }
+  .muted { color: var(--muted); }
+  .col { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .figure svg { width: 100%; height: auto; display: block; }
+  .figure figcaption { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .moods { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .mood {
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 13px;
+  }
+  .mood b { display: block; margin-bottom: 2px; font-size: 14px; }
+  .mood.zen { background: #f3efe4; color: #2b2a26; border-color: #e1dacb; }
+  .mood.zen b { color: #2b4a6b; }
+  .mood.normal { background: #0b0c10; color: #d8dbe3; border-color: #23262e; }
+  .mood.normal b { color: #3fe0d0; text-shadow: 0 0 8px rgba(63, 224, 208, 0.6); }
+  .diff { list-style: none; padding: 0; }
+  .diff li {
+    padding-left: 18px;
+    position: relative;
+    margin-bottom: 7px;
+  }
+  .diff li::before {
+    content: "";
+    position: absolute;
+    left: 0; top: 6px;
+    width: 8px; height: 8px;
+    border: 1.5px solid var(--accent);
+    transform: rotate(45deg);
+  }
+  .evidence {
+    background: var(--accent-soft);
+    border-color: transparent;
+  }
+  .evidence p { font-size: 13px; }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    padding: 1px 8px;
+    color: var(--muted);
+    margin-left: 4px;
+    white-space: nowrap;
+  }
+  footer {
+    margin-top: 14px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  /* SVG theming */
+  .t-outer { fill: none; stroke: var(--ink); stroke-width: 1.6; }
+  .t-sub { fill: none; stroke: var(--muted); stroke-width: 1; }
+  .t-solved { fill: var(--accent-soft); stroke: var(--glow); stroke-width: 1.4; }
+  .t-next { fill: none; stroke: var(--glow); stroke-width: 1.2; stroke-dasharray: 3 3; }
+  .n { font: 600 13px ui-sans-serif, system-ui, sans-serif; fill: var(--ink); text-anchor: middle; dominant-baseline: central; }
+  .n.dim { fill: var(--muted); font-weight: 500; }
+  .n.c { fill: var(--glow); }
+  .n.pending { fill: var(--pending); }
+  .n.next { font-size: 15px; fill: var(--glow); }
+  .mini { fill: none; stroke: var(--muted); stroke-width: 0.6; opacity: 0.8; }
+
+  @media (max-width: 980px) {
+    .grid { grid-template-columns: 1fr 1fr; }
+    .figure { grid-row: span 2; }
+  }
+  @media (max-width: 680px) {
+    .grid { grid-template-columns: 1fr; }
+    .figure { grid-row: auto; }
+    .figure svg { max-width: 320px; margin: 0 auto; }
+    .moods { grid-template-columns: 1fr; }
+    h1 { font-size: 28px; }
+    .hook { font-size: 16px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+  <header>
+    <div class="eyebrow">Game concept pitch</div>
+    <h1>Numception <small>working title</small></h1>
+    <p class="hook">Find the sum hidden in a shape, and your answer becomes one number in a bigger puzzle of the same shape. Then zoom out and keep going.</p>
+  </header>
+
+  <div class="grid">
+    <!-- Column 1: illustration + how a round plays -->
+    <div class="col">
+      <figure class="card figure" style="margin:0">
+        <h2>How a round plays</h2>
+        <svg viewBox="0 0 300 262" role="img" aria-label="A triangle puzzle whose three cells are themselves triangle puzzles. Two are solved and pass their answers, 13 and 7, into the centre triangle; the third is still open.">
+          <!-- top sub-puzzle: solved 4 + 9 = 13 -->
+          <polygon class="t-solved" points="150,15 82.5,132 217.5,132"/>
+          <!-- left sub-puzzle: solved 2 + 5 = 7 -->
+          <polygon class="t-solved" points="82.5,132 15,249 150,249"/>
+          <!-- right sub-puzzle: open -->
+          <polygon class="t-sub" points="217.5,132 150,249 285,249"/>
+          <!-- centre: the next puzzle, assembled from answers -->
+          <polygon class="t-next" points="82.5,132 217.5,132 150,249"/>
+          <polygon class="t-outer" points="150,15 15,249 285,249"/>
+
+          <!-- hint of deeper nesting inside the open puzzle -->
+          <polygon class="mini" points="217.5,190 200,220 235,220"/>
+
+          <!-- top numbers -->
+          <text class="n" x="150" y="56">4</text>
+          <text class="n" x="118" y="114">9</text>
+          <text class="n c" x="182" y="114">13</text>
+          <!-- left numbers -->
+          <text class="n" x="82.5" y="172">2</text>
+          <text class="n" x="50" y="230">5</text>
+          <text class="n c" x="115" y="230">7</text>
+          <!-- right numbers (open) -->
+          <text class="n dim" x="217.5" y="170">9</text>
+          <text class="n dim" x="185" y="232">3</text>
+          <text class="n dim" x="250" y="232">6</text>
+          <!-- next-tier cells -->
+          <text class="n next" x="150" y="146">13</text>
+          <text class="n next" x="128" y="186">7</text>
+          <text class="n pending" x="172" y="186">?</text>
+        </svg>
+        <figcaption>n = 3. Each corner triangle is a puzzle. Its answer becomes a cell of the centre triangle, the next puzzle of the same shape.</figcaption>
+      </figure>
+      <div class="card">
+        <ul>
+          <li>Numbers sit in a shape. Tap the three that make <b>a op b = c</b>.</li>
+          <li>When you solve it, the piece changes from unsolved to solved, and <b>c</b> becomes a cell of the next puzzle.</li>
+          <li>The <b>inception zoom</b>: the camera pulls out until the finished puzzle is a single cell, and the bigger puzzle builds itself from your answers.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Column 2: moods + long game -->
+    <div class="col">
+      <div class="card">
+        <h2>Two moods</h2>
+        <div class="moods">
+          <div class="mood zen">
+            <b>Zen</b>
+            Paper and one ink colour. No points: each solve adds a light to a lifetime constellation. A wrong tap sinks like a pebble, errors are never counted, and difficulty quietly eases.
+          </div>
+          <div class="mood normal">
+            <b>Normal</b>
+            Black with one neon. Speed points and a combo shown as glow. A wrong tap is a power cut that kills the combo but costs no points. Slow and steady beats fast and sloppy.
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <h2>The long game: an endless pyramid</h2>
+        <p>Puzzles stack into an endless tree. Home is that tree: zoom out to see how big it is, then glide to the next unsolved puzzle. Solving pushes territory out of the fog, and lifetime progress reads as altitude, from the Eiffel Tower to Everest to the Moon.</p>
+        <p class="muted">Tower rounds are the short version: a bounded 3-tier mini-pyramid (9 + 3 + 1 = 13 puzzles at n = 3) for one session.</p>
+      </div>
+      <div class="card">
+        <h2>What the POC proves</h2>
+        <ul>
+          <li>A classic round and a tower round, with the zoom and solve transition at the centre.</li>
+          <li>Both Zen and Normal.</li>
+          <li>A +/− puzzle generator that checks each puzzle has one answer.</li>
+          <li>Rating logs that will drive adaptive difficulty and surprise-at-mastery.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Column 3: differentiators, evidence, platforms -->
+    <div class="col">
+      <div class="card">
+        <h2>Why it's different</h2>
+        <ul class="diff">
+          <li><b>The core is one moment.</b> The solve transition and the zoom work the same at every scale, so a puzzle deep in the pyramid feels as good as the first.</li>
+          <li><b>Surprise at mastery, no unlock tree.</b> When you settle into a groove, a new operator turns up unannounced, with a glyph you haven't seen, and its first use is easy (3² = 9). Finding it is the unlock.</li>
+          <li><b>One-time $2–5.</b> No ads, no pay-to-win.</li>
+          <li><b>Minimal lines and shapes.</b> The geometry is the HUD. Numbers are the only text. Closer to Monument Valley than to Candy Crush.</li>
+        </ul>
+      </div>
+      <div class="card evidence">
+        <h2>Why this wins</h2>
+        <p><b>Players' biggest complaints in this category are about monetization.</b> They object to membership upsells, ads every round, and math that gates the game instead of being the game. Numception's math is the game, and the game is a one-time purchase. <span class="muted">(Retention research)</span></p>
+        <p><b>Leaderboards and expected rewards backfire for anxious kids.</b> Maths-anxious children disliked a leaderboard whatever their rank, which is why Zen has no points at all. <span class="muted">(Retention research)</span></p>
+      </div>
+      <div class="card">
+        <h2>Platforms</h2>
+        <p>Web-first in TypeScript, wrapped with Capacitor for iOS and Android. The generator, difficulty model and scoring live in an engine-agnostic package.<span class="tag">recommended, pending prototype</span></p>
+        <p class="muted">A 1–2 day glow and particle prototype on a mid-range Android phone and an older iPhone will settle the renderer before the architecture is locked.</p>
+      </div>
+    </div>
+  </div>
+
+  <footer>Sources: the brainstorm log (modes, stickiness, name) and the executive summaries of the retention and game-engine research. "Numception" is a working title; naming is deferred.</footer>
+</div>
+</body>
+</html>

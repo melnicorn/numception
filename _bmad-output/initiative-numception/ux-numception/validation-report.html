@@ -1,0 +1,1120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>UX Design Validation: Numception</title>
+<style>
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e7e5e4;
+    --text: #1c1917;
+    --muted: #78716c;
+
+    --verdict-strong: #16a34a;
+    --verdict-adequate: #65a30d;
+    --verdict-thin: #d97706;
+    --verdict-broken: #dc2626;
+
+    --sev-low: #64748b;
+    --sev-medium: #ca8a04;
+    --sev-high: #ea580c;
+    --sev-critical: #dc2626;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, system-ui, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.6;
+    font-size: 15px;
+  }
+  .container { max-width: 960px; margin: 0 auto; padding: 32px 24px 64px; }
+
+  header.report-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 24px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .title h1 { margin: 0; font-size: 22px; font-weight: 600; letter-spacing: -0.01em; }
+  .title .subtitle { color: var(--muted); font-size: 13px; margin-top: 4px; font-family: ui-monospace, "SF Mono", Menlo, monospace; }
+
+  .synthesis {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--muted);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin-bottom: 24px;
+    font-size: 15.5px;
+  }
+  .synthesis p { margin: 0 0 10px; }
+  .synthesis p:last-child { margin-bottom: 0; }
+
+  .dimension-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 10px;
+    margin-bottom: 24px;
+  }
+  .dim-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+  }
+  .dim-card .dim-name { font-size: 13px; color: var(--muted); margin-bottom: 6px; }
+  .dim-card .dim-verdict { font-size: 14px; font-weight: 600; }
+
+  section.dimension, section.reviewer-section { margin-bottom: 14px; }
+  section.dimension details, section.reviewer-section details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    overflow: hidden;
+  }
+  section summary {
+    padding: 14px 20px;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  section summary::-webkit-details-marker { display: none; }
+  section summary::before {
+    content: "▸";
+    display: inline-block;
+    color: var(--muted);
+    transition: transform 0.15s ease;
+  }
+  section details[open] summary::before { transform: rotate(90deg); }
+  section summary h2 {
+    display: inline;
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    letter-spacing: -0.005em;
+    flex: 1;
+  }
+  .verdict-pill {
+    font-size: 11px;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: white;
+  }
+  .verdict-strong { background: var(--verdict-strong); }
+  .verdict-adequate { background: var(--verdict-adequate); }
+  .verdict-thin { background: var(--verdict-thin); }
+  .verdict-broken { background: var(--verdict-broken); }
+
+  .dim-body { padding: 4px 20px 18px; }
+  .dim-judgment { color: var(--text); font-size: 14.5px; }
+  .dim-judgment p { margin: 0 0 10px; }
+
+  .findings-list { padding: 0 20px 4px; }
+  article.finding {
+    padding: 14px 0;
+    border-top: 1px solid var(--border);
+  }
+  article.finding:first-child { border-top: none; }
+  article.finding header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 6px;
+  }
+  .badge {
+    font-size: 10.5px;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    line-height: 1.4;
+  }
+  .badge-sev-low { background: rgba(100, 116, 139, 0.12); color: var(--sev-low); }
+  .badge-sev-medium { background: rgba(202, 138, 4, 0.14); color: var(--sev-medium); }
+  .badge-sev-high { background: rgba(234, 88, 12, 0.14); color: var(--sev-high); }
+  .badge-sev-critical { background: rgba(220, 38, 38, 0.14); color: var(--sev-critical); }
+  .finding-title { margin: 0; font-size: 15px; font-weight: 500; flex: 1; min-width: 200px; }
+  .finding-location { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 12.5px; color: var(--muted); }
+  .finding-note, .finding-fix { margin-top: 6px; font-size: 14px; }
+  .finding-fix strong { color: var(--muted); font-weight: 500; }
+
+  .reviewer-source {
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+
+  .mechanical {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 20px;
+    margin-top: 24px;
+    font-size: 14px;
+  }
+  .mechanical h3 { margin: 0 0 10px; font-size: 14px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.04em; }
+  .mechanical ul { margin: 0; padding-left: 20px; }
+  .mechanical li { margin-bottom: 4px; color: var(--text); }
+
+  footer.report-footer {
+    margin-top: 40px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    font-size: 12px;
+    color: var(--muted);
+    font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  }
+  footer .meta { display: flex; gap: 24px; flex-wrap: wrap; }
+  code { font-family: ui-monospace, "SF Mono", Menlo, monospace; font-size: 0.9em; background: rgba(120,113,108,0.10); padding: 0 4px; border-radius: 3px; }
+  .counts { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:24px; }
+  @media (max-width: 600px) { .container { padding: 24px 16px 48px; } }
+</style>
+</head>
+<body>
+  <div class="container">
+    <header class="report-header">
+      <div class="title">
+        <h1>Numception — UX Design Validation Report</h1>
+        <div class="subtitle">/Users/cmelnick/Development/Repos/kakooma/_bmad-output/initiative-numception/ux-numception/DESIGN.md<br>/Users/cmelnick/Development/Repos/kakooma/_bmad-output/initiative-numception/ux-numception/EXPERIENCE.md</div>
+      </div>
+    </header>
+    <div class="synthesis">
+      <p>The pair is a strong, decision-dense contract for the play view: every <code>{token}</code> reference resolves, component names line up across both spines, and memlog decisions are carried through with assumptions flagged rather than silently invented. The main risks for downstream consumers are token extraction and coverage gaps. The frontmatter holds one hybrid theme (Kiln + Vector Noir), so the other five themes exist only in prose tables. Normal themes have no <code>soft-miss</code> hex. The POC Tower round has no flow, and Normal-mode play has no flow either. Several POC surfaces (Normal unlock moment, Zen constellation, control surface) have no states and no component spec.</p>
+      <p>The two extra reviewers shift the picture from "coverage gaps" to "not shippable to an 8-year-old as specified". Accessibility finds that the first-run theme (Kiln) breaks the spine's own Accessibility Floor: cell boundaries at 1.12:1, a narration highlight identical to the numbers it highlights, a menu button below 3:1, and an unbounded red power-cut flash in Normal. Child safety finds the play loop itself unusually safe, but the protective layer around it unspecified: no stated default profile, a kid/adult toggle a child can flip, and a third-party SDK rule scoped per profile when store rules apply per app. All of it is fixable at token and spec level before PRD.</p>
+    </div>
+    <div class="counts"><span class="badge badge-sev-critical">7 critical</span><span class="badge badge-sev-high">21 high</span><span class="badge badge-sev-medium">28 medium</span><span class="badge badge-sev-low">23 low</span><span class="reviewer-source">79 findings across 3 reviewers (raw, not deduplicated)</span></div>
+    <div class="dimension-summary">
+      <div class="dim-card">
+        <div class="dim-name">Flow coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Token completeness</div>
+        <div class="dim-verdict" style="color: var(--verdict-thin)">thin</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Component coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">State coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-thin)">thin</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Visual reference coverage</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Bloat & overspecification</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Inheritance discipline</div>
+        <div class="dim-verdict" style="color: var(--verdict-adequate)">adequate</div>
+      </div>
+      <div class="dim-card">
+        <div class="dim-name">Shape fit</div>
+        <div class="dim-verdict" style="color: var(--verdict-strong)">strong</div>
+      </div>
+    </div>
+
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Flow coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Journeys extracted from the memlog (Miles, Don) and POC/v1 surfaces from the sources; no formal UJ IDs exist. Both memlog journeys are present with named protagonist, numbered steps, a Climax beat and a failure path. The gaps are POC surfaces with no flow at all.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Tower round absent from both spines</h3>
+              <span class="finding-location">EXPERIENCE.md → IA, Key Flows</span>
+            </header>
+            <div class="finding-note">The POC Tower round (3-tier mini-pyramid, n=3 → 13 puzzles; brainstorm l.51, feature-list l.27) has no IA row, no flow, and no zoom/depth behaviour beyond tier 2.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an IA row and a short flow, or record in Open Questions that it is descoped.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">No flow covers Normal-mode play</h3>
+              <span class="finding-location">EXPERIENCE.md → Key Flows</span>
+            </header>
+            <div class="finding-note">Power cut, combo heat, timer line, point stream and round-end flash are core POC, but Flow 2 mentions Normal only in passing and is phased Later.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add Flow 3 (Miles or an adult after the Normal unlock): unlock moment, combo build, power cut as failure path, round-end flash, transition.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">No returning-player / resume flow</h3>
+              <span class="finding-location">EXPERIENCE.md → Foundation</span>
+            </header>
+            <div class="finding-note">"Launch straight into next unsolved puzzle; save every tap" is a stated rhythm with no flow behind it.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a short flow covering cold open mid-round, including mid-tier-2 and mid-transition resume.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Flow 1 step 9 mixes POC and v1</h3>
+              <span class="finding-location">EXPERIENCE.md → Flow 1</span>
+            </header>
+            <div class="finding-note">Step 9 introduces × (v1 per feature-list) without a phase label.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Tag step 9 "v1".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Flow 1 failure path rests on an unconfirmed assumption</h3>
+              <span class="finding-location">EXPERIENCE.md → Flow 1</span>
+            </header>
+            <div class="finding-note">The failure path depends entirely on the soft-miss assumption (Open Question 2).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Use the guided wrong tap (step 4) as the confirmed failure path; keep soft miss secondary.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details open>
+        <summary>
+          <h2>Token completeness</h2>
+          <span class="verdict-pill verdict-thin">thin</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>All frontmatter tokens and all 53 distinct <code>{path}</code> references were checked; every reference resolves and Kiln / Vector Noir contrasts were recomputed. The problem is what is missing or not machine-readable, not what is broken.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title"><code>soft-miss</code> has no hex for any Normal theme</h3>
+              <span class="finding-location">DESIGN.md → Colors → Normal themes</span>
+            </header>
+            <div class="finding-note">Soft miss applies to − / ÷ in both modes and must "never be red", yet the Normal table has no <code>soft-miss</code> row. The grammar says every theme supplies a hex for each role.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a <code>soft-miss</code> row to the Normal table (and <code>number-sunk</code>, or mark it Zen-only in the grammar).</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Only one, hybrid, theme is machine-readable</h3>
+              <span class="finding-location">DESIGN.md frontmatter l.15–65; Colors; Typography</span>
+            </header>
+            <div class="finding-note">The frontmatter mixes Kiln (Zen roles) and Vector Noir (Normal-only roles) — not a shippable theme. The other five themes live only in prose tables, so code mirroring the frontmatter gets one hybrid palette.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Emit per-theme token sets (prefixed tokens or one block/file per theme); keep the grammar table as the role contract.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Menu button fails 3:1 on Kiln</h3>
+              <span class="finding-location">DESIGN.md frontmatter <code>menu-button</code></span>
+            </header>
+            <div class="finding-note"><code>{colors.operator}</code> on Kiln is ~2.6:1 on <code>surface</code> and 2.9:1 on tile — below the spine's own operator floor and WCAG non-text 3:1. It is the only visible control.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Give the menu button its own <code>control</code> role at ≥ 3:1, or base it on <code>number</code>.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Kiln <code>line</code> contradicts itself</h3>
+              <span class="finding-location">DESIGN.md l.20 vs l.202</span>
+            </header>
+            <div class="finding-note">Frontmatter gives <code>#A14E36</code>; the Zen table says "none (gaps between tiles)".</div>
+            <div class="finding-fix"><strong>Fix:</strong> Pick one value and state what transitions interpolate from when the role is "none".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title"><code>typography.guide</code> has no size</h3>
+              <span class="finding-location">DESIGN.md frontmatter l.62–65</span>
+            </header>
+            <div class="finding-note">The only word-bearing text for an 8-year-old is "not yet specified".</div>
+            <div class="finding-fix"><strong>Fix:</strong> Commit a size (≥ <code>number-floor</code>) per theme or shared.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">No contrast targets for load-bearing non-number pairs</h3>
+              <span class="finding-location">DESIGN.md → Colors</span>
+            </header>
+            <div class="finding-note"><code>timer-line</code>/<code>timer-track</code>, <code>error-number</code>/<code>error-fill</code>, locked vs unsolved (Kiln ~1.3:1). Power-cut <code>number-dimmed</code> listed as 2.9:1 for Obsidian Facet actually computes ~2.4:1 on facet.</div>
+            <div class="finding-fix"><strong>Fix:</strong> State targets for these pairs; decide whether dimmed numerals must stay ≥ 3:1.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Non-hex values in the Normal table</h3>
+              <span class="finding-location">DESIGN.md → Normal themes</span>
+            </header>
+            <div class="finding-note">"cell-unsolved: none" and "cell-active: current combo-glow step" are not hex or <code>{colors.…}</code> refs.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Write <code>cell-active: {colors.combo-glow-*}</code> and <code>cell-unsolved: transparent</code>.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Tier-2 operator opacity is a range</h3>
+              <span class="finding-location">DESIGN.md → Colors grammar; Components</span>
+            </header>
+            <div class="finding-note">"25–45%" rather than a committed value.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Commit a value per theme.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Component coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>DESIGN.md Components (15) against EXPERIENCE.md Component Patterns (14): every named component appears in both with real rules. Gaps are surfaces that never became components.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Surfaces with no component in either spine</h3>
+              <span class="finding-location">EXPERIENCE.md → IA</span>
+            </header>
+            <div class="finding-note">Zen constellation / garden (POC), Normal unlock moment (POC, Flow 1 step 8), and round overview / tier-2 collapse (Flow 1 climax) — only the cell's solved state is specified; collapse animation and zoom are not.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add rows to both spines, even if marked "not designed".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Three components lack kebab-case IDs</h3>
+              <span class="finding-location">DESIGN.md → Components</span>
+            </header>
+            <div class="finding-note"><code>Power cut</code>, <code>Sinking number</code>, <code>Theme transition</code> have no IDs or frontmatter entries.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add <code>power-cut</code>, <code>sinking-number</code>, <code>theme-transition</code> and use them in EXPERIENCE.md.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Soft-miss acknowledgement has no component</h3>
+              <span class="finding-location">EXPERIENCE.md → State Patterns</span>
+            </header>
+            <div class="finding-note">A state with a colour but no visual or behavioural spec: what moves, how long, whether it sounds.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a <code>soft-miss</code> row to both spines.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Several components are "not designed"</h3>
+              <span class="finding-location">Open Question 18</span>
+            </header>
+            <div class="finding-note"><code>control-surface</code>, <code>stats-panel</code>, <code>menu-button</code>, <code>point-stream</code> cannot be built yet.</div>
+            <div class="finding-fix"><strong>Fix:</strong> None now; keep tracked.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details open>
+        <summary>
+          <h2>State coverage</h2>
+          <span class="verdict-pill verdict-thin">thin</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Every POC IA surface checked against empty / cold-load / focus / error / offline / interrupted / reduced-motion. Core Normal outcomes and platform interruptions are missing.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Normal timer expiry has no state</h3>
+              <span class="finding-location">EXPERIENCE.md → Component Patterns "Timer line"; OQ21</span>
+            </header>
+            <div class="finding-note">A core POC Normal outcome is deferred to an open question.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Decide the expiry rule and add a state row.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Backgrounding / interruption not covered</h3>
+              <span class="finding-location">EXPERIENCE.md → State Patterns</span>
+            </header>
+            <div class="finding-note">Phone call, app switch, lock: does the Normal timer pause, what does resume show mid-transition?</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add an "Interrupted / backgrounded" row.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Input during theme transition ambiguous</h3>
+              <span class="finding-location">EXPERIENCE.md → Component Patterns "Theme transition"</span>
+            </header>
+            <div class="finding-note">"Never blocks the next tap longer than the transition itself" implies taps can be blocked.</div>
+            <div class="finding-fix"><strong>Fix:</strong> State whether taps queue, drop, or skip the transition.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">No desktop input or focus state</h3>
+              <span class="finding-location">EXPERIENCE.md → Interaction Primitives, Accessibility Floor</span>
+            </header>
+            <div class="finding-note">Web is the platform and the POC bed is a desktop browser, yet there is no keyboard/mouse/hover input and no focus treatment.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add a desktop input row (click = tap) and a focus treatment for the menu button.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Control surface, unlock moment, constellation have no states</h3>
+              <span class="finding-location">EXPERIENCE.md → State Patterns</span>
+            </header>
+            <div class="finding-note">Open, dismiss mid-Normal, first unlock, empty constellation.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add at least empty and first-show states.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Save failure / storage loss not covered</h3>
+              <span class="finding-location">EXPERIENCE.md → Foundation</span>
+            </header>
+            <div class="finding-note">"Save every tap" is a promise with no failure state.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add one row (silent retry; never block play).</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Visual reference coverage</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Files in <code>.working/</code> and <code>imports/</code> checked; no <code>mockups/</code> or <code>wireframes/</code> folders. All five renders and the brief are linked inline with what they illustrate; spines-win-on-conflict stated in both.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Visual links point into scratch <code>.working/</code></h3>
+              <span class="finding-location">DESIGN.md intro; EXPERIENCE.md intro</span>
+            </header>
+            <div class="finding-note">Links break or go stale once <code>.working/</code> is promoted or cleaned.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Promote renders to <code>mockups/</code> and update links before handoff.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Reconcile file not referenced</h3>
+              <span class="finding-location"><code>.working/sources-digest.md</code>, <code>reconcile-original-brief.md</code></span>
+            </header>
+            <div class="finding-note">The reconcile file lists dropped ideas a consumer should see.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Fold relevant items into Open Questions; leave the files unlinked.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">No screen-level references for menu, control surface, stats, round end</h3>
+              <span class="finding-location">Open Question 18</span>
+            </header>
+            <div class="finding-note">Acknowledged.</div>
+            <div class="finding-fix"><strong>Fix:</strong> None now.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Bloat &amp; overspecification</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>Mostly lean; one real restatement of source rules and some repetition.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Modes table restates source game rules</h3>
+              <span class="finding-location">EXPERIENCE.md → Modes</span>
+            </header>
+            <div class="finding-note">Intro says rules are "not restated here" but target success %, combo mechanics and wrong-tap economics are.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Keep experience-facing rows only; link the rest.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Soft miss described in four places</h3>
+              <span class="finding-location">State Patterns, Game-rule Notes, Flow 1, OQ2</span>
+            </header>
+            <div class="finding-note">Four copies of one rule.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Keep Game-rule Notes canonical and reference it.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Open Questions repeats inline [ASSUMPTION] tags</h3>
+              <span class="finding-location">EXPERIENCE.md → Open Questions</span>
+            </header>
+            <div class="finding-note">Items 1, 4, 5, 9 add nothing beyond the inline tag.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Optional trim.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Spacing scale defined but unused</h3>
+              <span class="finding-location">DESIGN.md frontmatter</span>
+            </header>
+            <div class="finding-note"><code>'1'</code>–<code>'6'</code> never referenced.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Drop it or use it in control-surface / stats specs.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Inheritance discipline</h2>
+          <span class="verdict-pill verdict-adequate">adequate</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>All six <code>sources</code> resolve; glossary and component names compared across spines, digest and memlog; EXPERIENCE token refs all resolve.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Reconcile-pass items dropped without reaching Open Questions</h3>
+              <span class="finding-location">reconcile-original-brief.md → Dropped qualitative ideas</span>
+            </header>
+            <div class="finding-note">Zen intensity cap on transitions, kid profile defaulting to Zen, Normal countdown replaced by outline line, operator mixing, Tower round.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add these to Open Questions.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">"Streak" is never defined</h3>
+              <span class="finding-location">EXPERIENCE.md l.111, l.181, l.210</span>
+            </header>
+            <div class="finding-note">"Streak", "streak/combo" and "combo" used interchangeably; sources also have a daily streak.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Say "combo" if that is meant, or define streak.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Combo steps drift from sources</h3>
+              <span class="finding-location">DESIGN.md → Colors; EXPERIENCE.md → Modes</span>
+            </header>
+            <div class="finding-note">Sources: 1x → 1.2x … → 2x in steps; spines: three glow stops (1x / 1.6x / 2x) with no mapping.</div>
+            <div class="finding-fix"><strong>Fix:</strong> State how intermediate steps interpolate between the stops.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Round-end flash name drifts</h3>
+              <span class="finding-location">IA; Components; OQ10</span>
+            </header>
+            <div class="finding-note">End-of-round flash / Round-end flash / Normal end-of-round flash.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Use "Round-end flash" everywhere.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Spine-introduced assumptions to confirm</h3>
+              <span class="finding-location">Open Questions</span>
+            </header>
+            <div class="finding-note">Default Normal theme, 4.5:1 floor, menu pauses timer, unskippable narration, <code>rounded.full</code> menu, incoming-pack transitions — all tagged.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Confirm with the user.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">EXPERIENCE.md frontmatter has no <code>description</code></h3>
+              <span class="finding-location">EXPERIENCE.md frontmatter</span>
+            </header>
+            <div class="finding-note">DESIGN.md has one.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Add one line.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="dimension">
+      <details>
+        <summary>
+          <h2>Shape fit</h2>
+          <span class="verdict-pill verdict-strong">strong</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p>DESIGN.md sections in canonical order; EXPERIENCE.md has all eight required defaults plus triggered Inspiration and Responsive sections. Invented game sections each carry decisions a game consumer needs.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Seeds section is thin</h3>
+              <span class="finding-location">EXPERIENCE.md → Seeds</span>
+            </header>
+            <div class="finding-note">Mostly Later-phase and repeats an assumption.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Fold into Game-rule Notes.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Theme-pack unlock behaviour sits in DESIGN</h3>
+              <span class="finding-location">DESIGN.md → Colors → Theme packs</span>
+            </header>
+            <div class="finding-note">Collection/unlock is behaviour.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Keep visual pack anatomy in DESIGN; move unlock to EXPERIENCE → Theme &amp; Transition System.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Accessibility review</h2>
+          <span class="reviewer-source">review-accessibility.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><strong>Verdict: not shippable as specified.</strong> The spines have a good Accessibility Floor, but the theme tables break it. Kiln is the first-run theme and the only screen Miles sees on day one: cell boundaries at 1.12:1, a narration highlight in the same hex as the numbers it highlights, and a single control that fails 3:1. In Normal, a wrong tap fires a red pulse and a flicker with no frequency limit while the next tap is accepted at once — a child mashing the screen sets off repeated red flashes. It dims every numeral to 2.4–2.9:1 in two of three themes and shrinks the timer to 1.5:1 while the timer keeps running. Motion safety hangs on an OS setting almost no child's device has on, while zoom is the core way of moving around. The play view is canvas-only with no screen-reader plan, so even the menu holding the motion setting may be unreachable. Most of this is fixable at token and spec level before any code exists. Fix it now.</p>
+            <p>Severity counts (reviewer): 3 critical, 8 high, 8 medium, 4 low. Method: WCAG relative luminance from DESIGN.md hex; Machado 2009 full-severity protan/deutan simulation.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Power-cut flashing has no frequency limit, and children mash buttons</h3>
+              <span class="finding-location">DESIGN.md → Components → Power cut; EXPERIENCE.md → Power cut, State Patterns → Error</span>
+            </header>
+            <div class="finding-note">A wrong tap gives a red <code>{colors.error}</code> pulse and "lines flicker dark"; next tap accepted immediately. No flicker rate, pulse count or cooldown. A frustrated 8-year-old tapping 4–6×/s sets off 4–6 red flashes a second over a large share of the screen — exactly what WCAG 2.3.1 treats as a red flash, at its most dangerous.</div>
+            <div class="finding-fix"><strong>Fix:</strong> One luminance flip per cut; ≤3 flashes in any 1 s across all sources; coalesce wrong taps within 600–800 ms; replace flicker with a monotonic fade; red on cell edge only; design rule: nothing alternates luminance &gt;3×/s.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Kiln, the first-run theme, has no visible cell boundaries</h3>
+              <span class="finding-location">DESIGN.md → Zen themes, Kiln <code>line</code></span>
+            </header>
+            <div class="finding-note">Tile vs sand is 1.12:1 plus an unvalued "soft warm shadow"; locked vs open 1.47:1. WCAG 1.4.11 needs 3:1 — and for Miles, which shapes are cells <em>is</em> the content. This is the first screen he ever sees.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Give Kiln a real <code>line</code> ≥3:1 against tile and surface, or darken the surface; tokenise and check the shadow; locked tiles get a non-colour cue.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Narration highlight is the same colour as the numbers</h3>
+              <span class="finding-location">DESIGN.md → <code>equation-narration.highlight</code>; EXPERIENCE.md Flow 1 step 3</span>
+            </header>
+            <div class="finding-note">Kiln <code>accent</code> = <code>number</code> = #A14E36; Washi <code>accent</code> = <code>number</code> = #283A6B. The only teaching mechanism changes nothing visible on the first-run theme. It fails every player, not just disabled ones.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Non-colour highlight (scale 1.25×, lift, fill, underline); add voice-over; grammar rule: a highlight differs by ≥3:1 or changes shape/size.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Power cut makes the board unreadable while play continues</h3>
+              <span class="finding-location">DESIGN.md → Normal themes <code>number-dimmed</code></span>
+            </header>
+            <div class="finding-note">Numerals drop to 2.91:1 (Overdrive) or 2.38:1 (Obsidian on facet — the spine's 2.9:1 is measured against bare surface and understates the miss). "Play never stops", so the player chooses the next answer from numbers they can't read; reboot has no duration.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Dim glow and lines, not numerals — or <code>number-dimmed</code> ≥4.5:1 everywhere; cap dim at ≤500 ms; correct the contrast table.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Normal timer vanishes on power cut, has no expiry rule, isn't adjustable</h3>
+              <span class="finding-location">DESIGN.md <code>timer-line-dimmed</code>; EXPERIENCE.md OQ21, Menu button [ASSUMPTION]</span>
+            </header>
+            <div class="finding-note">Dimmed timer 1.52 / 1.50 / 2.93:1 against track — time information disappears exactly under maximum stress. Pause is an assumption; no extend option, so WCAG 2.2.1 rests on "Zen exists" — arguable for adults, not for an 8-year-old Normal auto-unlocks for.</div>
+            <div class="finding-fix"><strong>Fix:</strong> <code>timer-line-dimmed</code> ≥3:1; non-punitive expiry; menu pause as decision; relaxed-timer setting (1.5×, 2×, off), default relaxed for kids.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Soft miss is colour-only and looks like a wrong tap</h3>
+              <span class="finding-location">DESIGN.md <code>soft-miss</code>; EXPERIENCE.md → State Patterns</span>
+            </header>
+            <div class="finding-note">Kiln soft-miss vs number 1.74:1, vs <code>number-sunk</code> ~1.4:1. The cue meant to teach "valid relation, tap the result" can't be told from "wrong". Breaks 1.4.1, and the pedagogy goes with it.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Own non-colour behaviour: single in-place pulse plus a ghost arrow to the result; say "Tap the answer" once; mock it before PRD.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Vestibular risk rests on one OS switch</h3>
+              <span class="finding-location">EXPERIENCE.md → Accessibility Floor, Zoom; DESIGN.md → Zoom-hide, Ripple, Crystal fracture</span>
+            </header>
+            <div class="finding-note">Zoom is navigation, firing every 10–30 s; accelerating dive-ins and full-screen displacement are textbook vestibular triggers. Almost no child's device has Reduce Motion on.</div>
+            <div class="finding-fix"><strong>Fix:</strong> In-app motion setting (Full / Calm / Minimal), shown at onboarding, kid default Calm; cap zoom velocity, never accelerate; static mini-map under reduced motion.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Canvas-only UI shuts out screen readers, Switch Control and keyboard</h3>
+              <span class="finding-location">EXPERIENCE.md → Foundation; OQ22; DESIGN.md → control surface</span>
+            </header>
+            <div class="finding-note">VoiceOver/TalkBack users can't reach the mode switch, motion toggle or kid/adult toggle — the settings that fix the other problems. Web build fails 2.1.1 and 4.1.2.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Control surface, stats, onboarding as DOM/native over canvas; parallel accessible tree for cells; aria-live narration; arrow keys + Enter on web.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Onboarding copy doesn't explain the game to an 8-year-old</h3>
+              <span class="finding-location">EXPERIENCE.md → Voice and Tone; Flow 1; OQ16</span>
+            </header>
+            <div class="finding-note">"Pick the only solution" assumes he knows an equation is hidden; "solution" and "only" are abstract. The mechanic is explained only after the fact — via a narration invisible in Kiln.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Year 3 reading level ("Two numbers make another. Tap the answer."); test with 7–9-year-olds; optional spoken lines; ghost-finger demo on round 1.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">The one visible control fails non-text contrast</h3>
+              <span class="finding-location">DESIGN.md → <code>menu-button.color</code></span>
+            </header>
+            <div class="finding-note">Kiln operator on sand is 2.60:1; glyph and position undesigned, so no shape compensates.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Draw it in <code>{colors.number}</code> (4.52:1); ≥44×44pt visible hit area; conventional ≡ or ⋯ glyph.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Hairline numerals in Vector Noir</h3>
+              <span class="finding-location">DESIGN.md → Typography</span>
+            </header>
+            <div class="finding-note">Avenir Next Ultra Light 200 under bloom: the 19.9:1 figure is meaningless at ~1 px strokes; at the 20 px floor 1/7 and 3/8 blur together.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Min numeral weight ≥400 below 32 px, ≥300 at hero; no glow on numerals; legibility-check 1/7, 3/8, 6/9 at 20 px.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Operator contrast treated as decorative-plus</h3>
+              <span class="finding-location">DESIGN.md → Number contrast floor</span>
+            </header>
+            <div class="finding-note">Kiln 2.92:1 on tile, 2.60:1 on sand; Washi 3.28, Moonwater 3.41. Mixing up × and + is a correctness failure, not cosmetic.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Hold operators to 4.5:1; derive Kiln operator from accent at ≥90%.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Colour-vision collisions in Normal</h3>
+              <span class="finding-location">DESIGN.md → Normal themes; combo ramps</span>
+            </header>
+            <div class="finding-note">Overdrive error vs magenta solved: 1.05:1 deutan. Obsidian error and lime both read yellow. Combo ramps collapse under protan (1.05–1.06:1); "width and bloom" have no values.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Persistent non-colour error mark; combo widths/bloom as tokens; CVD check as grammar requirement.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Solved and locked rely on low-contrast fills</h3>
+              <span class="finding-location">State Patterns; DESIGN.md theme tables</span>
+            </header>
+            <div class="finding-note">Solved 1.12–1.90; locked 1.10–1.47 everywhere; locked has no fallback in Kiln or Moonwater, and tapping it does nothing.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Locked = texture + ≥3:1 edge; gentle acknowledgement on locked tap.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Large-area luminance swings and busy transitions</h3>
+              <span class="finding-location">DESIGN.md → Transition looks; EXPERIENCE.md → Reduced motion</span>
+            </header>
+            <div class="finding-note">Reduced motion turns dark→light theme changes into a 200 ms full-screen switch — harsher than full motion. Crystal fracture spins 100–150 high-contrast edges.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Crossfade ≥400 ms or via mid-luminance frame; avoid dark/light back-to-back; cap shards; run a flash analyser.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Tap-target spec under-defined and too small</h3>
+              <span class="finding-location">DESIGN.md <code>tap-min: 44px [ASSUMPTION]</code></span>
+            </header>
+            <div class="finding-note">44 is iOS; Android wants 48dp, kids research ~57pt. Zero-inset themes have no dead zone — a fat-finger boundary tap triggers a power cut. Tier-2 miniatures shrink to ~25pt.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Inscribed circle ≥48pt (≥56pt kid); edge-ambiguous taps are no-ops; miniatures display-only.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Normal's punishment and timer placement fight the anti-anxiety stance</h3>
+              <span class="finding-location">EXPERIENCE.md → Modes; State Patterns → Error; Sound &amp; Haptics</span>
+            </header>
+            <div class="finding-note">Red, a bass thud, heavy haptic, every light dying, the words "power cut" — and the timer <em>is</em> the outline. Normal "arrives" for Miles after ~10 rounds with no opt-in.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Normal opt-in only; softer non-red kid cue, no thud; optional separate timer ring; flashes for personal bests only.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Guide text has no size, may sit on failing backgrounds, leaves on a timer</h3>
+              <span class="finding-location">DESIGN.md <code>typography.guide</code>; EXPERIENCE.md → Guide text</span>
+            </header>
+            <div class="finding-note">Kiln passes by 0.02; on <code>surface-deep</code> 3.69:1. A slow reader loses the line before finishing (2.2.1).</div>
+            <div class="finding-fix"><strong>Fix:</strong> ≥20pt (≥24pt kid) on guaranteed 4.5:1; replace only after interaction or ≥8 s; tap to replay.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Numeral orientation in radial shapes unspecified</h3>
+              <span class="finding-location">DESIGN.md → Shapes</span>
+            </header>
+            <div class="finding-note">Rotated numerals swap 6 and 9 for a child.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Always upright; faces where 6/9/1/7 are distinct, or underline 6 and 9.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Tier-2 operator near-invisible before unlock</h3>
+              <span class="finding-location">DESIGN.md → Operator cell</span>
+            </header>
+            <div class="finding-note">~1.2:1 at 25% — foreshadowing the player is meant to notice.</div>
+            <div class="finding-fix"><strong>Fix:</strong> ≥2:1 with fog texture, or hide and reveal as an event.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">One-handed reach and orientation</h3>
+              <span class="finding-location">Layout; OQ22</span>
+            </header>
+            <div class="finding-note">Menu at top is out of thumb reach; web must not lock orientation (1.3.4).</div>
+            <div class="finding-fix"><strong>Fix:</strong> Menu at bottom or mirrored; support landscape on web.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">No text scaling for words</h3>
+              <span class="finding-location">Voice and Tone; control surface, stats</span>
+            </header>
+            <div class="finding-note">Custom-drawn UI ignores Dynamic Type / font scale (1.4.4).</div>
+            <div class="finding-fix"><strong>Fix:</strong> DOM/native surfaces respect OS text size to 200%.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Speed signals leak into calm modes</h3>
+              <span class="finding-location">EXPERIENCE.md OQ23; IA → Daily Seed</span>
+            </header>
+            <div class="finding-note">Speed-coloured result card is colour-only and invites comparison; hidden Zen timing contradicts "no time pressure".</div>
+            <div class="finding-fix"><strong>Fix:</strong> No Zen speed scoring ever; shape/label plus colour; no kid speed comparisons.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <section class="reviewer-section">
+      <details>
+        <summary>
+          <h2>Child-safety &amp; privacy review</h2>
+          <span class="reviewer-source">review-child-safety.md</span>
+        </summary>
+        <div class="dim-body">
+          <div class="dim-judgment">
+            <p><strong>Verdict: the play is child-safe; the wrapper isn't yet.</strong> No ads, no chat, no usernames, no loot boxes, no red or penalties in Zen, positive-only kid stats. But the single kid/adult toggle is the only gate in front of every adult feature, no default profile is stated, and nothing stops a child flipping it. Leaderboards, the Daily Seed share card and receiving a challenge link escape the "social entries absent in kid profile" rule because nobody labelled them social. The spine scopes third-party SDK limits per profile when Kids Category and Families rules apply to the whole binary. None of this needs the core design to change — it needs explicit kid-first defaults, on-device data, a gating rule covering every outward-facing surface, a parent gate in front of purchases and links, and the legal research already flagged.</p>
+            <p>Reviewer counts: 3 critical, 6 high, 5 medium, 4 low. UX-level lens; not legal advice. A legal/policy research list (COPPA, GDPR-K/AADC, App Store Kids Category, Play Families, deep links, push to minors, web cookies, schools, parent-gate design) is in the reviewer file.</p>
+          </div>
+        </div>
+        <div class="findings-list">
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">No default profile is stated, and first run cannot ask</h3>
+              <span class="finding-location">EXPERIENCE → Foundation; State Patterns "First run"; Profiles</span>
+            </header>
+            <div class="finding-note">First run opens straight into play, so whatever the toggle defaults to is what every child gets. AADC and COPPA both point to a protective default.</div>
+            <div class="finding-fix"><strong>Fix:</strong> App starts in kid profile until an adult switches behind a gate; "unverified" = kid everywhere; add a State Patterns row.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">A child can flip the kid/adult toggle</h3>
+              <span class="finding-location">EXPERIENCE → <code>control-surface</code>; Profiles</span>
+            </header>
+            <div class="finding-note">It sits one tap from play beside effects and theme settings. An 8-year-old will find it. "Verified adult" means nothing more than this toggle.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Parent gate on kid → adult (not birth year, not arithmetic — maths is literally this child's skill); never gate adult → kid; define "verified adult".</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-critical">critical</span>
+              <h3 class="finding-title">Third-party SDK rule scoped per profile</h3>
+              <span class="finding-location">EXPERIENCE → Profiles</span>
+            </header>
+            <div class="finding-note">Kids Category / Families restrictions apply to the app, not a runtime profile. One analytics or crash SDK sending adult-session data exposes the whole app; same for web scripts.</div>
+            <div class="finding-fix"><strong>Fix:</strong> "No third-party analytics, advertising or tracking SDKs in the app, all platforms"; first-party, on-device, aggregate telemetry only; record listing decision.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Leaderboards not covered by the kid-profile rule</h3>
+              <span class="finding-location">EXPERIENCE → Responsive &amp; Platform; State Patterns</span>
+            </header>
+            <div class="finding-note">Aliases, avatars and platform friend links: a contact vector the app doesn't control, and a comparison surface contradicting "no comparisons for kids".</div>
+            <div class="finding-fix"><strong>Fix:</strong> Leaderboards and platform sign-in adult-only; never prompt sign-in for kids; classify as social.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Daily Seed share card not profile-gated</h3>
+              <span class="finding-location">EXPERIENCE → IA "Daily Seed card"</span>
+            </header>
+            <div class="finding-note">Share sheet to Messages/WhatsApp is app-originated outbound contact, possibly carrying time, score or identity.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Kid profile: no share, or image-only card with no link, name, identifier or attribution token; add a State Patterns row.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Receiving a challenge or seed link unspecified</h3>
+              <span class="finding-location">EXPERIENCE → Flow 2; Seeds; OQ7</span>
+            </header>
+            <div class="finding-note">Rules cover only sending. Anyone can send a child a link; what they see and whether a result goes back decides whether it's a contact channel.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Links carry puzzle content only — no sender, free text, return address or tracking; kid profile opens as solo play with no reply affordance.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Result notification implies accounts and a contact graph</h3>
+              <span class="finding-location">EXPERIENCE → OQ7b; memlog</span>
+            </header>
+            <div class="finding-note">Telling Don "Chris played" means storing a relationship between two people's devices, plus a push token.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Default to manual share-back; push adult-only, off by default, no push token in kid profile.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">No parent gate before purchase</h3>
+              <span class="finding-location">EXPERIENCE → Inspiration &amp; Anti-patterns; DESIGN → Theme packs</span>
+            </header>
+            <div class="finding-note">Purchase entry point unplaced. Kids Category requires a parental gate before purchases and external links, including rate-this-app and support.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Every purchase, external link and review prompt behind the parent gate in kid profile; never in play or transitions.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-high">high</span>
+              <h3 class="finding-title">Shared family device</h3>
+              <span class="finding-location">EXPERIENCE → Foundation; Profiles</span>
+            </header>
+            <div class="finding-note">One device, one global toggle. Don leaves it in adult mode; Miles gets challenges, leaderboards and share with no cue. Stats merge — Miles's "You solved 42" includes Dad's solves.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Multiple local profiles behind the menu, or adult auto-reverts to kid after backgrounding; persistent adult-mode cue; per-profile stats.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Stats captured identically for kids and adults</h3>
+              <span class="finding-location">memlog; EXPERIENCE → <code>stats-panel</code></span>
+            </header>
+            <div class="finding-note">Errors, accuracy, response times and difficulty state form a learning profile of a child; storage location unstated.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Stats stay on-device; keep only what views and difficulty need; adaptive difficulty on-device, never exported.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Engagement mechanics read as streak pressure for kids</h3>
+              <span class="finding-location">EXPERIENCE → <code>combo-glow</code>; Soft miss; IA Daily Seed; Pack collection</span>
+            </header>
+            <div class="finding-note">Daily seeds, visible empty paid slots and infinite play with no stopping point are AADC nudge patterns — stronger at age 8.</div>
+            <div class="finding-fix"><strong>Fix:</strong> No missed-seed state, no daily streaks, no teasing locked slots for kids; a non-blocking "nice place to stop" beat; streak = in-round combo only.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Normal unlock for kids</h3>
+              <span class="finding-location">EXPERIENCE → IA; Modes</span>
+            </header>
+            <div class="finding-note">After ~10 rounds a timed mode with red and a thud becomes available; automatic switch unstated.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Unlock is an offer; Zen stays kid default; consider softening <code>error</code> and the thud.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">Web build has no consent or storage story</h3>
+              <span class="finding-location">EXPERIENCE → Foundation</span>
+            </header>
+            <div class="finding-note">No OS age signals, shared local storage, CDN logs capture IPs.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Strictly necessary cookies only, no analytics scripts, self-hosted fonts; kid-first default.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-medium">medium</span>
+              <h3 class="finding-title">No transparency or controls surface for parents</h3>
+              <span class="finding-location">EXPERIENCE → Control surface</span>
+            </header>
+            <div class="finding-note">AADC and COPPA expect clear privacy info and a way to delete data.</div>
+            <div class="finding-fix"><strong>Fix:</strong> "For grown-ups" entry behind the parent gate with storage info and delete-all; kid-readable one-liner.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Location, camera, mic, contacts not stated as off</h3>
+              <span class="finding-location">all docs</span>
+            </header>
+            <div class="finding-note">Unstated.</div>
+            <div class="finding-fix"><strong>Fix:</strong> One line: no location, contacts, camera, mic or ATT permission; Daily Seed uses device clock only.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">No rule against free text or usernames</h3>
+              <span class="finding-location">EXPERIENCE → Profiles</span>
+            </header>
+            <div class="finding-note">Nothing prevents a later name field reaching share cards.</div>
+            <div class="finding-fix"><strong>Fix:</strong> No free text that can leave the device; local profile names never in shares, links or leaderboards.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Teacher / smart-board mode</h3>
+              <span class="finding-location">EXPERIENCE → Responsive &amp; Platform</span>
+            </header>
+            <div class="finding-note">School use brings school-consent and FERPA-style obligations.</div>
+            <div class="finding-fix"><strong>Fix:</strong> Offline, accountless, no rosters until reviewed.</div>
+          </article>
+          <article class="finding">
+            <header>
+              <span class="badge badge-sev-low">low</span>
+              <h3 class="finding-title">Kid stats guard negatives but not decline-over-time</h3>
+              <span class="finding-location">EXPERIENCE → Voice and Tone</span>
+            </header>
+            <div class="finding-note">"Slower than last week" could discourage.</div>
+            <div class="finding-fix"><strong>Fix:</strong> "Growth only, never decline", including speed.</div>
+          </article>
+        </div>
+      </details>
+    </section>
+    <div class="mechanical">
+      <h3>Mechanical notes</h3>
+      <ul>
+        <li>All 53 distinct <code>{colors|typography|spacing|rounded}</code> references in both spines resolve. No broken references.</li>
+        <li>All six <code>sources</code> paths resolve; <code>ux-numception.md</code> links both spines.</li>
+        <li>Component IDs consistent across DESIGN frontmatter, DESIGN prose and EXPERIENCE Component Patterns — except <code>power-cut</code>, <code>sinking-number</code>, <code>theme-transition</code> (no IDs).</li>
+        <li>Name drift: End-of-round flash / Round-end flash; streak / combo.</li>
+        <li>Value conflict: Kiln <code>line</code> is <code>#A14E36</code> in frontmatter, "none" in the table.</li>
+        <li>Recomputed contrasts: Kiln <code>operator</code> on <code>surface</code> 2.6:1 (menu button); Obsidian Facet <code>number-dimmed</code> on facet ~2.4:1 (listed 2.9:1); Kiln <code>number</code> on <code>surface</code> 4.52:1.</li>
+        <li>No Mermaid diagrams. EXPERIENCE.md frontmatter has no <code>description</code>.</li>
+      </ul>
+    </div>
+
+    <footer class="report-footer">
+      <div class="meta">
+        <span>Rubric: /Users/cmelnick/Development/Repos/kakooma/_bmad-output/initiative-numception/ux-numception/review-rubric.md</span>
+        <span>Reviewers: review-accessibility.md, review-child-safety.md</span>
+        <span>Generated: 2026-10-09T11:50:51Z</span>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

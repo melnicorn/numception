@@ -1,0 +1,119 @@
+# The epics of initiative-numception in build order. Table order is the build order; id is not.
+
+[[epic]]
+id = 1
+slug = "epic-platform-baseline"
+title = "Platform baseline and renderer decision"
+covers = []
+
+[[epic]]
+id = 2
+slug = "epic-puzzle-generator"
+title = "Unique, deterministic, tunable puzzle generation"
+covers = ["CAP-1", "CAP-2", "CAP-9"]
+after = [{ epic = 1, needs = "workspace, core package and CI" }]
+
+[[epic]]
+id = 3
+slug = "epic-core-play-loop"
+title = "Tap, solve, collapse and resume: Classic and Tower rounds"
+covers = ["CAP-3", "CAP-4", "CAP-5"]
+after = [{ epic = 1, needs = "the renderer decision" }, { epic = 2, needs = "round planning and realisation API" }]
+
+[[epic]]
+id = 4
+slug = "epic-zen-normal-onboarding"
+title = "Zen, Normal and guided first rounds"
+covers = ["CAP-6", "CAP-7", "CAP-10"]
+after = [{ epic = 3, needs = "the play loop and presentation timeline" }]
+
+[[epic]]
+id = 5
+slug = "epic-adaptive-difficulty"
+title = "Difficulty prior, ratings, level pin and event logging"
+covers = ["CAP-8", "CAP-19"]
+after = [{ epic = 2, needs = "bucket features and tuning schema" }, { epic = 3, needs = "answered-puzzle events from the play loop" }]
+
+[[epic]]
+id = 6
+slug = "epic-themes-and-feedback"
+title = "Themes, transitions, motion levels, sound and haptics"
+covers = ["CAP-11", "CAP-17"]
+after = [{ epic = 1, needs = "the renderer decision" }, { epic = 3, needs = "solve and collapse events and the presentation timeline" }]
+
+[[epic]]
+id = 7
+slug = "epic-profiles-and-controls"
+title = "Profiles, parent gate, stats and control surface"
+covers = ["CAP-14", "CAP-15", "CAP-16"]
+after = [{ epic = 3, needs = "state root and persistence" }, { epic = 4, needs = "mode settings and round-end data for stats" }, { epic = 5, needs = "level pin, ratings and response log" }, { epic = 6, needs = "motion, sound and theme settings" }]
+
+[[epic]]
+id = 8
+slug = "epic-poc-playtest"
+title = "POC playtest and go/no-go for v1"
+covers = []
+after = [{ epic = 3, needs = "playable rounds" }, { epic = 4, needs = "modes and onboarding" }, { epic = 5, needs = "log export" }, { epic = 6, needs = "themes and feedback" }, { epic = 7, needs = "profiles and controls" }]
+
+[[epic]]
+id = 9
+slug = "epic-operators-and-mastery"
+title = "All four operators, fractions and surprise-at-mastery"
+covers = ["CAP-1", "CAP-8", "CAP-10"]
+after = [{ epic = 8, needs = "go/no-go and refit tuning" }]
+
+[[epic]]
+id = 10
+slug = "epic-pyramid-home"
+title = "Endless Pyramid as the home tree"
+covers = ["CAP-5"]
+after = [{ epic = 8, needs = "go/no-go" }, { epic = 2, needs = "generator interface open for upward growth" }]
+
+[[epic]]
+id = 11
+slug = "epic-daily-habit"
+title = "Forgiving streaks, assists and theme pack collection"
+covers = ["CAP-11", "CAP-12"]
+after = [{ epic = 10, needs = "home tree to show the streak light" }]
+
+[[epic]]
+id = 12
+slug = "epic-normal-extras-and-rapid-fire"
+title = "Overdrive, graded cooling, clean bonus and Rapid Fire"
+covers = ["CAP-5", "CAP-7"]
+after = [{ epic = 8, needs = "go/no-go" }]
+
+[[epic]]
+id = 13
+slug = "epic-daily-seed"
+title = "Seeded rounds, the Daily Seed and share card"
+covers = ["CAP-2", "CAP-13"]
+after = [{ epic = 8, needs = "go/no-go" }, { epic = 11, needs = "streak to count Daily Seed solves" }]
+
+[[epic]]
+id = 14
+slug = "epic-native-apps"
+title = "Native iOS and Android apps, leaderboards and notifications"
+covers = ["CAP-14", "CAP-18"]
+after = [{ epic = 8, needs = "go/no-go" }, { epic = 10, needs = "Pyramid height for the bragging-rights board" }, { epic = 11, needs = "streak for Grown-up reminders" }]
+
+[[epic]]
+id = 15
+slug = "epic-one-time-unlock"
+title = "One-time unlock"
+covers = ["CAP-20"]
+after = [{ epic = 14, needs = "native store builds and purchase port" }]
+
+[[epic]]
+id = 16
+slug = "epic-telemetry-and-remote-tuning"
+title = "Telemetry upload and remote tuning"
+covers = ["CAP-9", "CAP-19"]
+after = [{ epic = 8, needs = "go/no-go" }]
+
+[[epic]]
+id = 17
+slug = "epic-launch-readiness"
+title = "Legal, name and store-listing readiness"
+covers = []
+after = [{ epic = 8, needs = "go/no-go" }]

@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key screen: stats</title>
+<style>
+/*
+  KEY SCREEN — Stats, kid view vs adult view
+  Governing spine sections:
+    EXPERIENCE.md → Information Architecture: Stats (kid / adult view), reached from Control surface
+    EXPERIENCE.md → Component Patterns: stats-panel (kid: positive only, growth never decline; adult: fuller detail; on-device)
+    EXPERIENCE.md → Voice and Tone: Kid stats row ("You solved 42 puzzles"; no error counts, accuracy %, decline, comparisons)
+    EXPERIENCE.md → State Patterns: Empty stats / constellation; Kid profile; Adult profile
+    EXPERIENCE.md → Profiles & Child Safety: Stats row (on-device, minimal fields, never exported); shared device (per-profile stats)
+    EXPERIENCE.md → Modes: Combo definition ("streak" is not used)
+    DESIGN.md → Components: stats-panel, zen-constellation (not designed — placeholder only); Colors: Kiln + Vector Noir tables; Typography
+  The spines win on any conflict with this mock.
+*/
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#232323;color:#d8d8d8;font:14px/1.4 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;padding:32px 16px 48px}
+h1{font-size:18px;font-weight:600;color:#f0f0f0;margin:0 auto 4px;max-width:830px}
+.lede{max-width:830px;margin:0 auto 28px;color:#a8a8a8}
+.row{display:flex;flex-wrap:wrap;gap:48px;justify-content:center}
+figure{width:375px}
+figcaption{margin-top:12px;color:#b4b4b4;font-size:13px}
+figcaption b{color:#ececec;font-weight:600}
+.phone{position:relative;width:375px;height:667px;border-radius:28px;overflow:hidden;outline:1px solid #4a4a4a;padding:16px;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;justify-content:space-between;height:48px}
+.close{width:48px;height:48px;display:flex;align-items:center;justify-content:center}
+
+/* ---------- Kiln (kid) ---------- */
+.kiln{background:#ECE3D7;font-family:Futura,"Century Gothic",sans-serif;color:#A14E36;font-weight:500}
+.kiln .title{font-size:20px;color:#89422E}
+.kiln .hero{text-align:center;margin:20px 0 22px}
+.kiln .hero p{font-size:20px}
+.kiln .hero .n{font-size:58px;line-height:1.05;font-variant-numeric:tabular-nums}
+.kiln .tile{background:#F6F0E8;border:1px solid #AC644E;box-shadow:0 2px 3px #C9B7A1;padding:14px 16px;margin-bottom:12px}
+.kiln .tile p{font-size:18px}
+.kiln .tile .n{font-size:32px;font-variant-numeric:tabular-nums;margin-right:6px}
+.kiln .ops{display:flex;gap:10px;margin-top:10px}
+.kiln .op{width:52px;height:52px;display:flex;align-items:center;justify-content:center;font-size:32px;border:1px solid #AC644E;color:#A14E36;background:#F6F0E8}
+.kiln .op.new{background:#A14E36;color:#F6F0E8;border-color:#A14E36}
+.kiln .newlbl{font-size:15px;color:#89422E;align-self:center;margin-left:4px}
+
+/* ---------- Vector Noir (adult) ---------- */
+.vn{background:#000;font-family:"Avenir Next","Avenir",ui-sans-serif,sans-serif;color:#E8FDFF;letter-spacing:.02em}
+.vn .title{font-size:17px;color:#E8FDFF;font-weight:500}
+.vn .lbl{font-size:12px;color:#728588;font-weight:400;letter-spacing:.04em}
+.vn .seg{display:flex;gap:8px;margin:8px 0 14px}
+.vn .seg span{flex:1;height:40px;display:flex;align-items:center;justify-content:center;border:1px solid #266E7A;color:#728588;font-size:14px}
+.vn .seg span.on{border:1.5px solid #4FE0FA;background:#071416;color:#E8FDFF;box-shadow:0 0 6px rgba(79,224,250,.5)}
+.vn .num{font-weight:300;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.vn .pair{display:grid;grid-template-columns:1fr 1fr;gap:8px 16px;padding-bottom:12px;border-bottom:1px solid #0A2831}
+.vn .pair .num{font-size:40px;line-height:1.1}
+.vn .quad{display:grid;grid-template-columns:1fr 1fr 1fr;gap:4px 12px;padding:12px 0;border-bottom:1px solid #0A2831}
+.vn .quad .num{font-size:24px;font-weight:400;line-height:1.2}
+.vn table{width:100%;border-collapse:collapse;margin:6px 0 10px}
+.vn th{font-weight:400;text-align:right;font-size:12px;color:#728588;padding:2px 0 4px}
+.vn th:first-child{text-align:left}
+.vn td{padding:4px 0;font-variant-numeric:tabular-nums;font-size:16px;text-align:right;font-weight:400}
+.vn td.op{text-align:left;font-size:22px;color:#47CAE1;width:34px}
+.vn td.bar{text-align:left;padding-left:8px}
+.vn .foot{margin-top:auto;font-size:12px;color:#728588}
+</style>
+</head>
+<body>
+<h1>Stats — kid view and adult view</h1>
+<p class="lede">Same data captured for both profiles, on this device only. The kid view shows only what has grown; the adult view shows full detail.</p>
+
+<div class="row">
+
+<!-- ================= KID · KILN ================= -->
+<figure>
+<div class="phone kiln">
+  <div class="top">
+    <span class="title">Stats</span>
+    <div class="close" aria-label="Back to menu"><svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><path d="M15 15 L29 29 M29 15 L15 29" stroke="#89422E" stroke-width="2.25" stroke-linecap="round"/></svg></div>
+  </div>
+
+  <div class="hero">
+    <p>You solved</p>
+    <div class="n">58</div>
+    <p>puzzles</p>
+  </div>
+
+  <div class="tile">
+    <!-- zen-constellation is not designed; a minimal dot-and-line placeholder stands in for it -->
+    <svg width="309" height="74" viewBox="0 0 309 74" aria-hidden="true" style="display:block;margin-bottom:6px">
+      <g stroke="#AC644E" stroke-width="1" fill="none"><path d="M18 52 L58 30 L96 44 L132 18 L176 34 L214 14 L250 40 L292 26"/><path d="M96 44 L110 64 L150 60"/><path d="M214 14 L232 60"/></g>
+      <g fill="#A14E36"><circle cx="18" cy="52" r="3"/><circle cx="58" cy="30" r="3.5"/><circle cx="96" cy="44" r="3"/><circle cx="132" cy="18" r="4"/><circle cx="176" cy="34" r="3"/><circle cx="214" cy="14" r="3.5"/><circle cx="250" cy="40" r="3"/><circle cx="292" cy="26" r="4"/><circle cx="110" cy="64" r="2.5"/><circle cx="150" cy="60" r="3"/><circle cx="232" cy="60" r="2.5"/></g>
+    </svg>
+    <p><span class="n">51</span>lights in your sky</p>
+  </div>
+
+  <div class="tile">
+    <p><span class="n">2</span>layers found</p>
+  </div>
+
+  <div class="tile">
+    <p>You can do</p>
+    <div class="ops"><span class="op">+</span><span class="op">−</span><span class="op new">×</span><span class="newlbl">New: ×</span></div>
+  </div>
+</div>
+<figcaption><b>Kid · Kiln.</b> "You solved 58 puzzles" leads. Counts only grow: lights, layers found, operators learned (newest one filled). No times, accuracy, error counts, ranks or comparisons. The constellation is a placeholder; that component is not designed yet.</figcaption>
+</figure>
+
+<!-- ================= ADULT · VECTOR NOIR ================= -->
+<figure>
+<div class="phone vn">
+  <div class="top">
+    <span class="title">Stats</span>
+    <div class="close" aria-label="Back to menu"><svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="none" stroke="#47CAE1" stroke-width="1.5"/><path d="M15 15 L29 29 M29 15 L15 29" stroke="#47CAE1" stroke-width="1.75" stroke-linecap="round"/></svg></div>
+  </div>
+
+  <div class="seg"><span>7 days</span><span class="on">30 days</span><span>All</span></div>
+
+  <div class="pair">
+    <div><div class="lbl">Best round</div><div class="num">1:12</div></div>
+    <div><div class="lbl">Average round</div><div class="num">1:38</div></div>
+  </div>
+
+  <div class="quad">
+    <div><div class="lbl">Accuracy</div><div class="num">94%</div></div>
+    <div><div class="lbl">Best combo</div><div class="num" style="color:#7CFFF2">2.0×</div></div>
+    <div><div class="lbl">Clean rounds</div><div class="num">31</div></div>
+    <div><div class="lbl">Puzzles</div><div class="num">1 284</div></div>
+    <div><div class="lbl">Rounds</div><div class="num">97</div></div>
+    <div><div class="lbl">Avg points</div><div class="num">3 120</div></div>
+  </div>
+
+  <table>
+    <tr><th>Operator</th><th style="text-align:left;padding-left:8px">Accuracy</th><th>Median solve</th></tr>
+    <tr><td class="op">+</td><td class="bar"><svg width="120" height="8" aria-hidden="true"><rect y="3" width="120" height="2" fill="#091B1E"/><rect y="2.5" width="118" height="3" fill="#4FE0FA"/></svg> 98%</td><td>1.4 s</td></tr>
+    <tr><td class="op">−</td><td class="bar"><svg width="120" height="8" aria-hidden="true"><rect y="3" width="120" height="2" fill="#091B1E"/><rect y="2.5" width="113" height="3" fill="#4FE0FA"/></svg> 94%</td><td>2.1 s</td></tr>
+    <tr><td class="op">×</td><td class="bar"><svg width="120" height="8" aria-hidden="true"><rect y="3" width="120" height="2" fill="#091B1E"/><rect y="2.5" width="109" height="3" fill="#4FE0FA"/></svg> 91%</td><td>2.6 s</td></tr>
+    <tr><td class="op">÷</td><td class="bar"><svg width="120" height="8" aria-hidden="true"><rect y="3" width="120" height="2" fill="#091B1E"/><rect y="2.5" width="101" height="3" fill="#4FE0FA"/></svg> 84%</td><td>3.4 s</td></tr>
+  </table>
+
+  <div class="lbl">Average round time, 30 days</div>
+  <svg width="343" height="70" viewBox="0 0 343 70" aria-label="Average round time fell from 1:52 to 1:38 over 30 days" style="display:block;margin-top:4px">
+    <line x1="0" y1="62" x2="343" y2="62" stroke="#0A2831" stroke-width="1"/>
+    <polyline fill="none" stroke="#4FE0FA" stroke-width="1.5" stroke-linejoin="round" points="0,14 24,18 48,12 72,22 96,20 120,26 144,24 168,30 192,28 216,36 240,34 264,40 288,38 312,44 332,46"/>
+    <circle cx="332" cy="46" r="3" fill="#E8FDFF"/>
+    <text x="0" y="8" fill="#728588" font-size="11" font-family="Avenir Next,sans-serif">1:52</text>
+    <text x="343" y="40" fill="#E8FDFF" font-size="12" text-anchor="end" font-family="Avenir Next,sans-serif">1:38</text>
+  </svg>
+
+  <p class="foot">Stored on this device only.</p>
+</div>
+<figcaption><b>Adult · Vector Noir.</b> Period selector, best and average round time, accuracy, best combo, clean rounds, totals; per-operator accuracy and median solve time; a 30-day round-time trend. "Combo" is used; "streak" is not.</figcaption>
+</figure>
+
+</div>
+</body>
+</html>

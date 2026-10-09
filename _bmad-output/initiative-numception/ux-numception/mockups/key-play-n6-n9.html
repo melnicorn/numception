@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Numception key screen · Play view n=6 and n=9</title>
+<style>
+/*
+Governing spine sections (spine wins on any conflict):
+ DESIGN.md  Colors > Zen themes (Moonwater), Normal themes (Obsidian Facet); Typography (Moonwater 44/34 w300; OF DIN 700, shrunk to 40 at n=9, floor 20);
+            Layout & Spacing (tap-min 48, tap-min-kid 56 [ASSUMPTION], whole polygon is the target, edge taps are no-ops);
+            Elevation & Depth (Moonwater halo s3.5, OF facets + rim s1.4 + scanlines); Shapes > Per-n (6A honeycomb flower, 9B nonagon wedges, carved void);
+            Components: puzzle-cell, operator-cell, timer-line, combo-glow, menu-button.
+ EXPERIENCE.md  Accessibility Floor > Tap targets (verify n=7-9 on small phones); Component Patterns: puzzle-cell, timer-line, combo-glow, menu-button;
+            State Patterns: Combo 1x, Adult profile ring cue; Open Questions 14, 15.
+ Geometry: .working/shape-system-1.html 6A (c) scale 1.8742 about (187.5,330); 9B (c) scale 1.7415, offset y+3.02, void circumradius 44 (unit).
+ Operators: the shape mock used - at n=6; this render uses + so the puzzle has exactly one valid reading (no soft-miss ambiguity on the hero).
+ Tap figures: largest inscribed circle of the full cell polygon (not the visual inset), grid-searched; 320 column scales the shape to 320-32 px;
+ the verdict columns subtract an assumed 4 px no-op band on each side (EXPERIENCE: 'a few px').
+*/
+
+:root{--page:#1b1b1d;--card:#242427;--ink:#ececec;--mute:#a7a7ad;--rule:#3a3a3e;--ok:#8fd694;--warn:#ffb86b}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--page:#f4f4f2;--card:#ffffff;--ink:#1d1d1f;--mute:#5d5d63;--rule:#d9d9dc;--ok:#1f7a2e;--warn:#9a4d00}}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:24px 16px 56px;overflow-x:hidden}
+header,main{max-width:1240px;margin:0 auto}
+h1{font-size:22px;font-weight:600;margin:0 0 6px}
+header p{margin:0 0 20px;color:var(--mute);font-size:14px;line-height:1.5;max-width:80ch}
+h2{font-size:15px;font-weight:600;margin:28px 0 12px;color:var(--mute);text-transform:uppercase;letter-spacing:.06em}
+.row{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:16px;min-width:0;max-width:100%}
+figure{margin:0;max-width:100%}
+figcaption{font-size:13px;line-height:1.45;margin:0 0 10px;max-width:375px}
+figcaption b{display:block;font-size:15px;margin-bottom:2px}
+svg.phone{display:block;width:375px;max-width:100%;height:auto;border-radius:28px;box-shadow:0 0 0 1px #ffffff1a,0 10px 30px #0006}
+ul.notes{margin:10px 0 0;padding-left:18px;font-size:12.5px;line-height:1.5;color:var(--mute);max-width:375px}
+svg text{text-anchor:middle;dominant-baseline:central;font-variant-numeric:tabular-nums lining-nums}
+
+
+.mw{font-family:ui-rounded,"SF Pro Rounded","Avenir Next","Avenir",sans-serif;font-weight:300;letter-spacing:.02em}
+.mw.num{font-size:44px;fill:#B1D4CC} .mw.op{font-size:34px;fill:#87A4A1}
+.of{font-family:"DIN Alternate","DIN Condensed","Bahnschrift","Roboto Condensed",sans-serif;font-weight:700;letter-spacing:0}
+.of.num{font-size:40px;fill:#F1FFE4} .of.op{font-size:36px;fill:#A9FF55}
+.pair{display:flex;flex-wrap:wrap;gap:20px;align-items:flex-start}
+aside.ann{flex:1 1 300px;min-width:0;max-width:440px;font-size:13px;line-height:1.5}
+aside.ann h3{font-size:14px;margin:0 0 8px}
+aside.ann p{margin:8px 0;color:var(--mute)}
+table.tap{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums;font-size:12.5px;margin:8px 0}
+table.tap th,table.tap td{border-bottom:1px solid var(--rule);padding:5px 6px;text-align:left}
+table.tap td.ok{color:var(--ok);font-weight:600} table.tap td.bad{color:var(--warn);font-weight:700}
+.key{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mute)}
+.key i{display:inline-block;width:18px;border-top:1.5px solid;vertical-align:middle;margin-right:4px}
+
+</style></head><body>
+<header><h1>Numception key screen · Play view n=6 and n=9</h1><p>Phone portrait 375×667 at 1:1. Honeycomb flower (6A) in Moonwater and nonagon wedges (9B) in Obsidian Facet, with tap-target measurements beside each frame. Every puzzle has exactly one valid triple.</p></header>
+<main>
+
+<h2>n=6 · Honeycomb flower (6A) · Moonwater (Zen)</h2>
+<div class="pair">
+<figure class="card"><figcaption><b>Zen · Moonwater · n=6</b>Tier-1 puzzle in play; no timer, no score. Kid profile. 6 + 9 = 15.</figcaption>
+<svg class="phone" viewBox="0 0 375 667" width="375" height="667" role="img" aria-label="Moonwater n=6 honeycomb play view"><defs><clipPath id="mwclip"><rect width="375" height="667" rx="28"/></clipPath><linearGradient id="mbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#16242C"/><stop offset="1" stop-color="#223943"/></linearGradient>
+<radialGradient id="mpool" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#223943"/><stop offset="1" stop-color="#16242C" stop-opacity="0"/></radialGradient>
+<filter id="mhalo" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="3.5" result="a"/><feMerge><feMergeNode in="a"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g clip-path="url(#mwclip)"><rect width="375" height="667" fill="url(#mbg)"/><circle cx="187.5" cy="330" r="200" fill="url(#mpool)"/><g filter="url(#mhalo)"><polygon points="246.9,211.2 217.2,262.6 157.8,262.6 128.1,211.2 157.8,159.8 217.2,159.8" fill="none" stroke="#738D8C" stroke-width="2.5" stroke-linejoin="round"/><polygon points="349.8,270.6 320.1,322.0 260.7,322.0 231.0,270.6 260.7,219.2 320.1,219.2" fill="none" stroke="#738D8C" stroke-width="2.5" stroke-linejoin="round"/><polygon points="349.8,389.4 320.1,440.8 260.7,440.8 231.0,389.4 260.7,338.0 320.1,338.0" fill="none" stroke="#738D8C" stroke-width="2.5" stroke-linejoin="round"/><polygon points="246.9,448.8 217.2,500.2 157.8,500.2 128.1,448.8 157.8,397.4 217.2,397.4" fill="none" stroke="#738D8C" stroke-width="2.5" stroke-linejoin="round"/><polygon points="144.0,389.4 114.3,440.8 54.9,440.8 25.2,389.4 54.9,338.0 114.3,338.0" fill="none" stroke="#738D8C" stroke-width="2.5" stroke-linejoin="round"/><polygon points="144.0,270.6 114.3,322.0 54.9,322.0 25.2,270.6 54.9,219.2 114.3,219.2" fill="none" stroke="#738D8C" stroke-width="2.5" stroke-linejoin="round"/><polygon points="246.9,330.0 217.2,381.4 157.8,381.4 128.1,330.0 157.8,278.6 217.2,278.6" fill="none" stroke="#738D8C" stroke-width="2.5" stroke-linejoin="round"/></g><text x="187.5" y="211.2" class="mw num">6</text><text x="290.4" y="270.6" class="mw num">15</text><text x="290.4" y="389.4" class="mw num">23</text><text x="187.5" y="448.8" class="mw num">4</text><text x="84.6" y="389.4" class="mw num">9</text><text x="84.6" y="270.6" class="mw num">31</text><text x="187.5" y="330" class="mw op">+</text><g aria-label="menu button"><circle cx="337" cy="52" r="22" fill="#87A4A1" fill-opacity=".12"/><line x1="328" y1="46" x2="346" y2="46" stroke="#87A4A1" stroke-width="2" stroke-linecap="round"/><line x1="328" y1="52" x2="346" y2="52" stroke="#87A4A1" stroke-width="2" stroke-linecap="round"/><line x1="328" y1="58" x2="346" y2="58" stroke="#87A4A1" stroke-width="2" stroke-linecap="round"/></g></g></svg>
+<ul class="notes"><li>Soft 2.5 px round strokes in <code>line</code> #738D8C with σ 3.5 halo (= <code>cell-active</code>); cells inset 8 px (<code>inset-md</code>); moonlight pool behind.</li><li>Numerals #B1D4CC 44 px w300 (7.6:1 on deep); operator #87A4A1 34 px in the centre hexagon (peer cell, display only).</li></ul></figure>
+<aside class="ann card"><h3>Tap targets · n=6</h3>
+<table class="tap"><thead><tr><th>Target</th><th>Ø at 375</th><th>Ø at 320</th><th>≥ 48 (worst)</th><th>≥ 56 kid (worst)</th></tr></thead><tbody><tr><td>Hex cell (6 around centre)</td><td>119</td><td>100</td><td class="ok">pass</td><td class="ok">pass</td></tr><tr><td>Menu button (touch area)</td><td>48</td><td>48</td><td class="ok">pass</td><td class="bad">FAIL</td></tr></tbody></table>
+<div class="key"><span><i style="color:currentColor;border-top-style:dashed"></i>inscribed circle</span><span><i style="color:var(--ok)"></i>48 pt</span><span><i style="color:var(--warn)"></i>56 pt kid</span></div>
+<svg viewBox="114.9 147.8 145.2 126.8" width="145" height="127" style="max-width:100%;height:auto;display:block" role="img" aria-label="one cell at 1:1 with its inscribed circle"><polygon points="256.1,211.2 221.8,270.6 153.2,270.6 118.9,211.2 153.2,151.8 221.8,151.8" fill="none" stroke="#738D8C" stroke-width="1.5"/><circle cx="187.4" cy="211.3" r="59.3" fill="none" stroke="currentColor" stroke-dasharray="4 3"/><circle cx="187.4" cy="211.3" r="28" fill="none" stroke="var(--warn)" stroke-width="1"/><circle cx="187.4" cy="211.3" r="24" fill="none" stroke="var(--ok)" stroke-width="1"/></svg>
+<p>One hex cell at 1:1 (R 68.6 px, apothem 59.4). Inscribed Ø 119 pt: more than twice the kid target. Two-digit numerals at 44 px fit with room.</p>
+<p>Menu: 48 pt touch is exactly <code>tap-min</code>; it passes adult, and is <b>below 56 pt kid</b> if the kid target applies to controls too (spine sets kid 56 for cells only). Flagged.</p>
+</aside>
+</div>
+
+<h2>n=9 · Nonagon wedges (9B) · Obsidian Facet (Normal)</h2>
+<div class="pair">
+<figure class="card"><figcaption><b>Normal · Obsidian Facet · n=9</b>Tier-1 puzzle in play, combo 1x (fresh), chain window 85% left. Adult profile. 5 × 2 = 10.</figcaption>
+<svg class="phone" viewBox="0 0 375 667" width="375" height="667" role="img" aria-label="Obsidian Facet n=9 nonagon wedge play view"><defs><clipPath id="ofclip"><rect width="375" height="667" rx="28"/></clipPath><linearGradient id="obg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#11171A"/><stop offset="1" stop-color="#040506"/></linearGradient>
+<pattern id="oscan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#FFFFFF" fill-opacity=".03"/></pattern>
+<filter id="orim" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="1.4" result="a"/><feMerge><feMergeNode in="a"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><g clip-path="url(#ofclip)"><rect width="375" height="667" fill="url(#obg)"/><rect width="375" height="667" fill="url(#oscan)"/><polygon points="193.5,169.7 289.3,204.6 227.8,224.5" fill="#20292C"/><polygon points="289.3,204.6 234.9,269.5 227.8,224.5" fill="#11171A"/><polygon points="234.9,269.5 193.5,254.4 227.8,224.5" fill="#11171A"/><polygon points="193.5,254.4 193.5,169.7 227.8,224.5" fill="#20292C"/><polygon points="298.5,212.3 349.5,300.6 289.5,276.3" fill="#182023"/><polygon points="349.5,300.6 266.1,315.3 289.5,276.3" fill="#11171A"/><polygon points="266.1,315.3 244.1,277.2 289.5,276.3" fill="#182023"/><polygon points="244.1,277.2 298.5,212.3 289.5,276.3" fill="#20292C"/><polygon points="351.6,312.4 333.9,412.9 303.5,355.7" fill="#141A1C"/><polygon points="333.9,412.9 260.5,370.5 303.5,355.7" fill="#11171A"/><polygon points="260.5,370.5 268.1,327.1 303.5,355.7" fill="#1C2427"/><polygon points="268.1,327.1 351.6,312.4 303.5,355.7" fill="#20292C"/><polygon points="327.9,423.2 249.8,488.8 263.2,425.5" fill="#11171A"/><polygon points="249.8,488.8 220.8,409.2 263.2,425.5" fill="#141A1C"/><polygon points="220.8,409.2 254.5,380.9 263.2,425.5" fill="#20292C"/><polygon points="254.5,380.9 327.9,423.2 263.2,425.5" fill="#1C2427"/><polygon points="238.5,492.9 136.5,492.9 187.5,453.1" fill="#11171A"/><polygon points="136.5,492.9 165.5,413.3 187.5,453.1" fill="#1C2427"/><polygon points="165.5,413.3 209.5,413.3 187.5,453.1" fill="#20292C"/><polygon points="209.5,413.3 238.5,492.9 187.5,453.1" fill="#141A1C"/><polygon points="125.2,488.8 47.1,423.2 111.8,425.5" fill="#141A1C"/><polygon points="47.1,423.2 120.5,380.9 111.8,425.5" fill="#20292C"/><polygon points="120.5,380.9 154.2,409.2 111.8,425.5" fill="#1C2427"/><polygon points="154.2,409.2 125.2,488.8 111.8,425.5" fill="#11171A"/><polygon points="41.1,412.9 23.4,312.4 71.5,355.7" fill="#1C2427"/><polygon points="23.4,312.4 106.9,327.1 71.5,355.7" fill="#20292C"/><polygon points="106.9,327.1 114.5,370.5 71.5,355.7" fill="#141A1C"/><polygon points="114.5,370.5 41.1,412.9 71.5,355.7" fill="#11171A"/><polygon points="25.5,300.6 76.5,212.3 85.5,276.3" fill="#20292C"/><polygon points="76.5,212.3 130.9,277.2 85.5,276.3" fill="#1C2427"/><polygon points="130.9,277.2 108.9,315.3 85.5,276.3" fill="#11171A"/><polygon points="108.9,315.3 25.5,300.6 85.5,276.3" fill="#141A1C"/><polygon points="85.7,204.6 181.5,169.7 147.2,224.5" fill="#20292C"/><polygon points="181.5,169.7 181.5,254.4 147.2,224.5" fill="#182023"/><polygon points="181.5,254.4 140.1,269.5 147.2,224.5" fill="#11171A"/><polygon points="140.1,269.5 85.7,204.6 147.2,224.5" fill="#182023"/><g filter="url(#orim)"><polygon points="193.5,169.7 289.3,204.6 234.9,269.5 193.5,254.4" fill="none" stroke="#2BFF88" stroke-width="2" stroke-linejoin="miter"/><polygon points="298.5,212.3 349.5,300.6 266.1,315.3 244.1,277.2" fill="none" stroke="#2BFF88" stroke-width="2" stroke-linejoin="miter"/><polygon points="351.6,312.4 333.9,412.9 260.5,370.5 268.1,327.1" fill="none" stroke="#2BFF88" stroke-width="2" stroke-linejoin="miter"/><polygon points="327.9,423.2 249.8,488.8 220.8,409.2 254.5,380.9" fill="none" stroke="#2BFF88" stroke-width="2" stroke-linejoin="miter"/><polygon points="238.5,492.9 136.5,492.9 165.5,413.3 209.5,413.3" fill="none" stroke="#2BFF88" stroke-width="2" stroke-linejoin="miter"/><polygon points="125.2,488.8 47.1,423.2 120.5,380.9 154.2,409.2" fill="none" stroke="#2BFF88" stroke-width="2" stroke-linejoin="miter"/><polygon points="41.1,412.9 23.4,312.4 106.9,327.1 114.5,370.5" fill="none" stroke="#2BFF88" stroke-width="2" stroke-linejoin="miter"/><polygon points="25.5,300.6 76.5,212.3 130.9,277.2 108.9,315.3" fill="none" stroke="#2BFF88" stroke-width="2" stroke-linejoin="miter"/><polygon points="85.7,204.6 181.5,169.7 181.5,254.4 140.1,269.5" fill="none" stroke="#2BFF88" stroke-width="2" stroke-linejoin="miter"/></g><text x="229.2" y="220.7" class="of num">15</text><text x="293.1" y="274.3" class="of num">5</text><text x="307.6" y="356.4" class="of num">2</text><text x="265.9" y="428.7" class="of num">10</text><text x="187.5" y="457.2" class="of num">38</text><text x="109.1" y="428.7" class="of num">36</text><text x="67.4" y="356.4" class="of num">8</text><text x="81.9" y="274.3" class="of num">32</text><text x="145.8" y="220.7" class="of num">31</text><text x="187.5" y="335.3" class="of op">×</text><path d="M187.5,161.1 L299.4,201.9 L359.0,305.0 L338.3,422.3 L247.1,498.9 L127.9,498.9 L36.7,422.3 L16.0,305.0 L75.6,201.9 L187.5,161.1" fill="none" stroke="#1F2528" stroke-width="3"/><path d="M187.5,161.1 L299.4,201.9 L359.0,305.0 L338.3,422.3 L247.1,498.9 L127.9,498.9 L36.7,422.3 L16.0,305.0 L75.6,201.9 L187.5,161.1" fill="none" stroke="#A9FF55" stroke-width="3" stroke-linecap="round" stroke-dasharray="911 3000" filter="url(#orim)"/><g aria-label="menu button"><circle cx="337" cy="52" r="22" fill="#A9FF55" fill-opacity=".12"/><circle cx="337" cy="52" r="21" fill="none" stroke="#A9FF55" stroke-width="1.5"/><line x1="328" y1="46" x2="346" y2="46" stroke="#A9FF55" stroke-width="2" stroke-linecap="round"/><line x1="328" y1="52" x2="346" y2="52" stroke="#A9FF55" stroke-width="2" stroke-linecap="round"/><line x1="328" y1="58" x2="346" y2="58" stroke="#A9FF55" stroke-width="2" stroke-linecap="round"/></g></g></svg>
+<ul class="notes"><li>Each wedge is a shallow faceted pyramid (4 facets, lit from top-left) inset 6 px (<code>inset-sm</code>); rim light in <code>combo-glow-1x</code> #2BFF88, 2 px miter, σ 1.4.</li><li>Numerals DIN 700 shrunk 48 → 40 px to fit (floor 20), upright; × in the carved void in <code>operator</code> #A9FF55.</li><li>Chain window: 3 px <code>timer-line</code> #A9FF55 on <code>timer-track</code> #1F2528, clockwise from the top vertex.</li></ul></figure>
+<aside class="ann card"><h3>Tap targets · n=9</h3>
+<table class="tap"><thead><tr><th>Target</th><th>Ø at 375</th><th>Ø at 320</th><th>≥ 48 (worst)</th><th>≥ 56 kid (worst)</th></tr></thead><tbody><tr><td>Wedge cell (carved void)</td><td>83</td><td>70</td><td class="ok">pass</td><td class="ok">pass</td></tr><tr><td>Menu button (touch area)</td><td>48</td><td>48</td><td class="ok">pass</td><td class="bad">FAIL</td></tr></tbody></table>
+<div class="key"><span><i style="color:currentColor;border-top-style:dashed"></i>inscribed circle</span><span><i style="color:var(--ok)"></i>48 pt</span><span><i style="color:var(--warn)"></i>56 pt kid</span></div>
+<svg viewBox="183.5 157.1 119.9 123.5" width="120" height="123" style="max-width:100%;height:auto;display:block" role="img" aria-label="one cell at 1:1 with its inscribed circle"><polygon points="187.5,161.1 299.4,201.9 236.8,276.6 187.5,258.6" fill="none" stroke="#2BFF88" stroke-width="1.5"/><circle cx="229.2" cy="220.6" r="41.6" fill="none" stroke="currentColor" stroke-dasharray="4 3"/><circle cx="229.2" cy="220.6" r="28" fill="none" stroke="var(--warn)" stroke-width="1"/><circle cx="229.2" cy="220.6" r="24" fill="none" stroke="var(--ok)" stroke-width="1"/></svg>
+<p>One wedge at 1:1. The largest inscribed circle sits 122 px out from the centre, bounded by both radial sides and the outer edge. Inscribed Ø 83 pt: passes 48 and 56 at 375 and at 320 wide.</p>
+<p>The binding constraint at n=9 is not the target but numeral fit: the wedge chord at the numeral is ~89 px, so 40 px two-digit numerals are near the edge; three-digit products (e.g. 144) would need ~32 px.</p>
+<p>Menu: same flag as n=6 (48 pt touch, below 56 kid if applied to controls).</p>
+</aside>
+</div>
+
+</main></body></html>

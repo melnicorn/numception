@@ -1,0 +1,332 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Numception Theme Transitions</title>
+<style>
+/* Numception theme transitions 1
+   Theme tokens lifted from directions-1.html (Vector Noir, Overdrive Bloom, Obsidian Facet; Washi Ink, Moonwater, Kiln). */
+:root{--page:#1b1b1d;--card:#242427;--ink:#ececec;--mute:#a3a3a8;--rule:#38383c;--acc:#7cc4ff}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:20px 16px 48px;overflow-x:hidden}
+header{max-width:1100px;margin:0 auto 18px}
+h1{font-size:21px;font-weight:600;margin:0 0 6px}
+header p{margin:0;color:var(--mute);font-size:14px;line-height:1.5;max-width:80ch}
+main{max-width:1100px;margin:0 auto;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.stage{flex:0 0 auto;width:min(375px,100%)}
+.phone{position:relative;width:100%;aspect-ratio:375/667;border-radius:28px;overflow:hidden;background:#000;box-shadow:0 0 0 1px #ffffff1a,0 10px 30px #0006;isolation:isolate}
+.phone svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+#old{z-index:1}#new{z-index:2;opacity:0}#ring{z-index:3;pointer-events:none}#hit{z-index:4}
+#hit polygon{fill:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ans-t{transform-box:fill-box;transform-origin:center}
+text{text-anchor:middle;dominant-baseline:central;font-variant-numeric:tabular-nums lining-nums}
+.panel{flex:1 1 320px;min-width:0;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:16px}
+.grp h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600;margin:0 0 8px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+button{font:inherit;font-size:13px;color:var(--ink);background:#2e2e32;border:1px solid var(--rule);border-radius:8px;padding:7px 11px;cursor:pointer;min-height:36px}
+button:hover{border-color:#5a5a60}
+button[aria-pressed="true"]{background:#16324a;border-color:var(--acc);color:#fff}
+button.primary{background:var(--acc);color:#0b1a26;border-color:var(--acc);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+.desc{font-size:13px;line-height:1.5;color:#d4d4d8;margin:8px 0 0}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+input[type=range]{flex:1 1 160px;min-width:0;accent-color:var(--acc)}
+.mono{font-variant-numeric:tabular-nums;font-size:13px;color:var(--mute)}
+.next{font-size:13px;color:#d4d4d8}
+.note{font-size:13px;line-height:1.45;background:#3a2f12;border:1px solid #6b5520;border-radius:8px;padding:8px 10px;color:#f3e3b5}
+.note label{display:flex;gap:6px;align-items:center;margin-top:6px}
+.readout{background:#1c1c1f;border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-size:12px}
+.bar{height:6px;border-radius:3px;background:#333;overflow:hidden;margin:6px 0 8px}
+.bar i{display:block;height:100%;width:0;background:var(--acc)}
+.rgrid{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-variant-numeric:tabular-nums}
+.rgrid dt{color:var(--mute)}.rgrid dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.sw{display:inline-block;width:10px;height:10px;border-radius:2px;border:1px solid #ffffff40;vertical-align:-1px;margin-right:4px}
+.dim{opacity:.45}
+.sub{margin-top:8px}
+</style></head><body>
+<header><h1>Numception: theme-to-theme transitions, round 1</h1>
+<p>An n=3 round (8 + 5 = 13). Tap 13 in the phone, or press Play: a short solve beat plays, then the next round (4 + 7 = 11) arrives in a new theme. Choose one of four transition approaches and a theme pair. After each transition the pair reverses, so you can replay it.</p></header>
+<main>
+  <div class="stage">
+    <div class="phone" id="phone">
+      <svg id="old" viewBox="0 0 375 667" aria-hidden="true"></svg>
+      <svg id="new" viewBox="0 0 375 667" aria-hidden="true"></svg>
+      <svg id="ring" viewBox="0 0 375 667" aria-hidden="true"></svg>
+      <svg id="hit" viewBox="0 0 375 667" role="group" aria-label="puzzle cells"></svg>
+    </div>
+  </div>
+  <section class="panel">
+    <div class="grp"><h2>Approach</h2>
+      <div class="seg" id="appr">
+        <button data-a="1">1 · Fade / blur</button>
+        <button data-a="2">2 · Zoom-hide</button>
+        <button data-a="3">3 · Radiate</button>
+        <button data-a="4">4 · Token interpolation</button>
+      </div>
+      <div class="seg sub" id="diveRow"><button data-d="in">Dive in</button><button data-d="out">Pull out</button></div>
+      <p class="desc" id="adesc"></p>
+    </div>
+    <div class="grp"><h2>Theme pair</h2>
+      <div class="seg" id="pairs"></div>
+      <p class="next" id="next"></p>
+    </div>
+    <div class="grp"><h2>Duration</h2>
+      <div class="row"><input type="range" id="dur" min="300" max="2000" step="50" value="1000" aria-label="Transition duration"><span class="mono" id="durv">1000 ms</span></div>
+    </div>
+    <div class="row"><button class="primary" id="play">Play</button><button id="tap">Tap 13</button></div>
+    <div class="note" id="rmnote" hidden>Reduced motion is on, so every approach plays as a quick 200 ms crossfade.
+      <label><input type="checkbox" id="rmover"> Preview the full motion anyway</label></div>
+    <div class="readout" aria-live="off">
+      <div class="row" style="justify-content:space-between"><strong id="phase">Idle</strong><span class="mono" id="pct">0%</span></div>
+      <div class="bar"><i id="barI"></i></div>
+      <dl class="rgrid" id="tokRead"></dl>
+    </div>
+  </section>
+</main>
+<script>
+"use strict";
+/* ---------- geometry: n=3 split triangle ---------- */
+const S=320, AY=195, H=S*Math.sqrt(3)/2, CX=187.5;
+const P={A:[CX,AY],BL:[CX-S/2,AY+H],BR:[CX+S/2,AY+H],Lm:[CX-S/4,AY+H/2],Rm:[CX+S/4,AY+H/2],Bm:[CX,AY+H]};
+const CELLS={top:[P.A,P.Lm,P.Rm],left:[P.Lm,P.BL,P.Bm],right:[P.Rm,P.Bm,P.BR],centre:[P.Lm,P.Rm,P.Bm]};
+const cen=pts=>[(pts[0][0]+pts[1][0]+pts[2][0])/3,(pts[0][1]+pts[1][1]+pts[2][1])/3];
+const CEN={};for(const k in CELLS)CEN[k]=cen(CELLS[k]);
+const WHOLE_C=[CX,AY+2*H/3];
+const INR=(S/2)/(2*Math.sqrt(3));
+const inset=(pts,e)=>{const c=cen(pts),f=Math.max(0,(INR-e)/INR);return pts.map(p=>[c[0]+(p[0]-c[0])*f,c[1]+(p[1]-c[1])*f])};
+const ps=pts=>pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+
+/* ---------- rounds (verified unique below) ---------- */
+const ROUNDS=[{v:{top:8,left:5,right:13},ans:"right"},{v:{top:4,left:11,right:7},ans:"left"}];
+function solutions(v){const c=["top","left","right"];return c.filter(x=>{const o=c.filter(y=>y!==x);return v[o[0]]+v[o[1]]===v[x]})}
+ROUNDS.forEach((r,i)=>{const s=solutions(r.v);console.assert(s.length===1&&s[0]===r.ans,"round "+i+" not unique",s)});
+
+/* ---------- themes (hex, weights, glow from directions-1) ---------- */
+const AV="'Avenir Next','Avenir',ui-sans-serif,sans-serif", FU="'Futura','Century Gothic','Trebuchet MS',sans-serif",
+      DIN="'DIN Alternate','DIN Condensed','Bahnschrift','Roboto Condensed',sans-serif", RND="ui-rounded,'SF Pro Rounded','Avenir Next','Avenir',sans-serif";
+const THEMES={
+ vn:{name:"Vector Noir",bgTop:"#000000",bgBot:"#000000",bgGlow:"#0A1A1F",bgGlowO:0,line:"#4FE0FA",lineO:1,lineW:1.5,glow:7,glowK:1,inset:0,
+     fill:"#4FE0FA",fillO:0,centre:"#4FE0FA",centreO:0,num:"#E8FDFF",numO:1,op:"#4FE0FA",opO:.9,size:46,opSize:34,ls:.06,
+     solved:"#4FE0FA",solvedO:.09,solvedTxt:"#E8FDFF",font:AV,weight:200,opWeight:200,material:"lines",join:"miter",texture:"floor"},
+ ob:{name:"Overdrive Bloom",bgTop:"#05020A",bgBot:"#05020A",bgGlow:"#1D0B33",bgGlowO:1,line:"#D646EC",lineO:1,lineW:5,glow:16,glowK:2,inset:10,
+     fill:"#D646EC",fillO:0,centre:"#D646EC",centreO:0,num:"#FFE9FB",numO:1,op:"#D646EC",opO:1,size:50,opSize:40,ls:-.03,
+     solved:"#D646EC",solvedO:1,solvedTxt:"#05020A",font:FU,weight:700,opWeight:700,material:"tubes",join:"round",texture:"none"},
+ of:{name:"Obsidian Facet",bgTop:"#11171A",bgBot:"#040506",bgGlow:"#11171A",bgGlowO:0,line:"#A9FF55",lineO:1,lineW:2,glow:1.4,glowK:1,inset:6,
+     fill:"#20292C",fillO:1,centre:"#0C1012",centreO:1,num:"#F1FFE4",numO:1,op:"#A9FF55",opO:1,size:48,opSize:36,ls:0,
+     solved:"#3D5A20",solvedO:1,solvedTxt:"#F1FFE4",font:DIN,weight:700,opWeight:700,material:"facets",join:"miter",texture:"scan"},
+ wa:{name:"Washi Ink",bgTop:"#F2EDE3",bgBot:"#F2EDE3",bgGlow:"#F2EDE3",bgGlowO:0,line:"#283A6B",lineO:.9,lineW:1.2,glow:0,glowK:0,inset:0,
+     fill:"#283A6B",fillO:0,centre:"#283A6B",centreO:0,num:"#283A6B",numO:1,op:"#283A6B",opO:.6,size:42,opSize:30,ls:.03,
+     solved:"#283A6B",solvedO:.13,solvedTxt:"#283A6B",font:AV,weight:400,opWeight:300,material:"brush",join:"round",texture:"fibre"},
+ mw:{name:"Moonwater",bgTop:"#16242C",bgBot:"#223943",bgGlow:"#BFE3DA",bgGlowO:0,line:"#BFE3DA",lineO:.55,lineW:2.5,glow:3.5,glowK:1,inset:8,
+     fill:"#BFE3DA",fillO:0,centre:"#BFE3DA",centreO:0,num:"#BFE3DA",numO:.92,op:"#BFE3DA",opO:.55,size:44,opSize:34,ls:.02,
+     solved:"#BFE3DA",solvedO:.2,solvedTxt:"#BFE3DA",font:RND,weight:300,opWeight:300,material:"lines",join:"round",texture:"moon"},
+ kn:{name:"Kiln",bgTop:"#ECE3D7",bgBot:"#DCCDBB",bgGlow:"#ECE3D7",bgGlowO:0,line:"#A14E36",lineO:0,lineW:0,glow:0,glowK:0,inset:10,
+     fill:"#F6F0E8",fillO:1,centre:"#A14E36",centreO:.12,num:"#A14E36",numO:1,op:"#A14E36",opO:.7,size:44,opSize:32,ls:0,
+     solved:"#A14E36",solvedO:1,solvedTxt:"#F6F0E8",font:FU,weight:500,opWeight:500,material:"tiles",join:"round",texture:"none"}
+};
+const NUMK=["bgGlowO","lineO","lineW","glow","glowK","inset","fillO","centreO","numO","opO","size","opSize","ls","solvedO"];
+const COLK={bgTop:null,bgBot:null,bgGlow:"bgGlowO",line:"lineO",fill:"fillO",centre:"centreO",num:"numO",op:"opO",solved:"solvedO",solvedTxt:null};
+const DISCK=["name","font","weight","opWeight","material","join","texture"];
+const PAIRS=[["vn","ob"],["vn","of"],["wa","mw"],["mw","kn"]];
+
+/* ---------- OKLCH colour interpolation ---------- */
+const hex2rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);
+const toLin=c=>c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4);
+const toSrgb=c=>c<=.0031308?12.92*c:1.055*Math.pow(c,1/2.4)-.055;
+function rgb2oklch(rgb){const[r,g,b]=rgb.map(toLin);
+ const l=Math.cbrt(.4122214708*r+.5363325363*g+.0514459929*b),m=Math.cbrt(.2119034982*r+.6806995451*g+.1073969566*b),s=Math.cbrt(.0883024619*r+.2817188376*g+.6299787005*b);
+ const L=.2104542553*l+.793617785*m-.0040720468*s,A=1.9779984951*l-2.428592205*m+.4505937099*s,B=.0259040371*l+.7827717662*m-.808675766*s;
+ return[L,Math.hypot(A,B),Math.atan2(B,A)]}
+function oklch2hex([L,C,h]){const A=C*Math.cos(h),B=C*Math.sin(h);
+ const l=(L+.3963377774*A+.2158037573*B)**3,m=(L-.1055613458*A-.0638541728*B)**3,s=(L-.0894841775*A-1.291485548*B)**3;
+ const rgb=[4.0767416621*l-3.3077115913*m+.2309699292*s,-1.2684380046*l+2.6097574011*m-.3413193965*s,-.0041960863*l-.7034186147*m+1.707614701*s];
+ return"#"+rgb.map(c=>Math.round(Math.max(0,Math.min(1,toSrgb(Math.max(0,c))))*255).toString(16).padStart(2,"0")).join("")}
+function mixC(a,b,t){if(t<=0)return a;if(t>=1)return b;const A=rgb2oklch(hex2rgb(a)),B=rgb2oklch(hex2rgb(b));
+ let ha=A[2],hb=B[2];if(A[1]<.02)ha=hb;if(B[1]<.02)hb=ha;let dh=hb-ha;if(dh>Math.PI)dh-=2*Math.PI;if(dh<-Math.PI)dh+=2*Math.PI;
+ return oklch2hex([A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t,ha+dh*t])}
+const lerp=(a,b,t)=>a+(b-a)*t;
+function lerpTokens(A,B,t){const o={};NUMK.forEach(k=>o[k]=lerp(A[k],B[k],t));
+ for(const k in COLK){const ok=COLK[k];let ca=A[k],cb=B[k];
+  if(ok){if(A[ok]<.01)ca=cb;if(B[ok]<.01)cb=ca;}o[k]=mixC(ca,cb,t)}
+ return o}
+
+/* ---------- scene renderer ---------- */
+const shade=(c,k)=>mixC(c,"#000000",k);
+function render(T,rd,o){
+ const p=o.p,R=ROUNDS[rd],sk=o.solvedK??0;
+ const glowOn=T.glow>.05&&T.lineO>.005&&T.lineW>.02;
+ let d=`<defs><clipPath id="${p}clip"><rect width="375" height="667" rx="28"/></clipPath>
+ <linearGradient id="${p}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.bgTop}"/><stop offset="1" stop-color="${T.bgBot}"/></linearGradient>
+ <radialGradient id="${p}rg" cx=".5" cy=".42" r=".75"><stop offset="0" stop-color="${T.bgGlow}" stop-opacity="${T.bgGlowO.toFixed(3)}"/><stop offset=".55" stop-color="${T.bgGlow}" stop-opacity="${(T.bgGlowO*.4).toFixed(3)}"/><stop offset="1" stop-color="${T.bgGlow}" stop-opacity="0"/></radialGradient>`;
+ if(glowOn)d+=`<filter id="${p}glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceGraphic" stdDeviation="${(T.glow*.34).toFixed(2)}" result="a"/><feGaussianBlur in="SourceGraphic" stdDeviation="${T.glow.toFixed(2)}" result="b"/><feComponentTransfer in="b" result="b2"><feFuncA type="linear" slope="${T.glowK.toFixed(3)}"/></feComponentTransfer><feMerge><feMergeNode in="b2"/><feMergeNode in="a"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+ if(T.texture==="floor")d+=`<linearGradient id="${p}floor" gradientUnits="userSpaceOnUse" x1="0" y1="505" x2="0" y2="667"><stop offset="0" stop-color="${T.line}" stop-opacity="0"/><stop offset="1" stop-color="${T.line}" stop-opacity=".16"/></linearGradient>`;
+ if(T.texture==="scan")d+=`<pattern id="${p}scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#FFFFFF" fill-opacity=".025"/></pattern>`;
+ if(T.texture==="fibre")d+=`<filter id="${p}fibre" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9 .06" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .55  0 0 0 0 .5  0 0 0 0 .42  0 0 0 .09 0"/></filter>`;
+ if(T.texture==="moon")d+=`<radialGradient id="${p}moon" gradientUnits="userSpaceOnUse" cx="120" cy="560" r="300"><stop offset="0" stop-color="${T.line}" stop-opacity=".2"/><stop offset="1" stop-color="${T.line}" stop-opacity="0"/></radialGradient>`;
+ if(T.material==="brush")d+=`<filter id="${p}brush" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="7" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="2.2"/></filter>`;
+ if(T.material==="tiles")d+=`<filter id="${p}lift" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#A14E36" flood-opacity=".18"/></filter>`;
+ d+="</defs>";
+ // background + texture
+ let bg=`<rect width="375" height="667" fill="url(#${p}bg)"/><rect width="375" height="667" fill="url(#${p}rg)"/>`;
+ if(T.texture==="floor"){let g=`<g stroke="url(#${p}floor)" stroke-width=".75">`;for(let x=-442.5;x<=818;x+=70)g+=`<line x1="187.5" y1="505" x2="${x}" y2="667"/>`;
+  for(let i=1;i<=6;i++){const y=505+162*(i/6)**2;g+=`<line x1="0" y1="${y.toFixed(1)}" x2="375" y2="${y.toFixed(1)}"/>`}bg+=g+"</g>"}
+ if(T.texture==="scan")bg+=`<rect width="375" height="667" fill="url(#${p}scan)"/>`;
+ if(T.texture==="fibre")bg+=`<rect width="375" height="667" filter="url(#${p}fibre)"/>`;
+ if(T.texture==="moon")bg+=`<rect width="375" height="667" fill="url(#${p}moon)"/><g fill="none" stroke="${T.line}"><ellipse cx="187.5" cy="575" rx="150" ry="16" stroke-opacity=".06"/><ellipse cx="187.5" cy="575" rx="95" ry="10" stroke-opacity=".09"/><ellipse cx="187.5" cy="575" rx="45" ry="5" stroke-opacity=".12"/></g>`;
+ // cells
+ const e=T.inset/2, rc=(k,c="")=>`class="rc${c?" "+c:""}" data-x="${CEN[k][0].toFixed(1)}" data-y="${CEN[k][1].toFixed(1)}"`;
+ let fills="";
+ for(const k of ["top","left","right","centre"]){
+  const pts=inset(CELLS[k],e),isC=k==="centre",isA=k===R.ans;
+  const col=isC?T.centre:T.fill, op=isC?T.centreO:T.fillO;
+  if(T.material==="facets"){const c=cen(pts);const f=(cc,oo,cls)=>[[0,1,.0],[1,2,.4],[2,0,.22]].map(([a,b,s])=>`<polygon ${cls} points="${ps([pts[a],pts[b],c])}" fill="${shade(cc,s)}" fill-opacity="${oo.toFixed(3)}"/>`).join("");
+   if(op>.005)fills+=`<g ${rc(k)}>${f(col,op,"")}</g>`;
+   if(isA&&sk>0)fills+=`<g ${rc(k,"ans-fill")}>${f(T.solved,T.solvedO*sk,"")}</g>`;
+  }else{
+   const filt=(T.material==="tiles"&&!isC)?` filter="url(#${p}lift)"`:"";
+   if(op>.005)fills+=`<g${filt}><polygon ${rc(k)} points="${ps(pts)}" fill="${col}" fill-opacity="${op.toFixed(3)}"/></g>`;
+   if(isA&&sk>0)fills+=`<polygon ${rc(k,"ans-fill")} points="${ps(pts)}" fill="${T.solved}" fill-opacity="${(T.solvedO*sk).toFixed(3)}"/>`;
+  }
+ }
+ let strokes="";
+ if(T.lineW>.02&&T.lineO>.005){
+  let s="";for(const k of ["top","left","right","centre"]){const isC=k==="centre",w=T.lineW*(isC?.85:1);
+   s+=`<polygon ${rc(k)} data-w="${w.toFixed(2)}" points="${ps(inset(CELLS[k],e))}" fill="none" stroke="${T.line}" stroke-opacity="${(T.lineO*(isC?.8:1)).toFixed(3)}" stroke-width="${w.toFixed(2)}" stroke-linejoin="${T.join}" stroke-linecap="round"/>`}
+  if(glowOn)s=`<g filter="url(#${p}glow)">${s}</g>`;
+  if(T.material==="brush")s=`<g filter="url(#${p}brush)">${s}</g>`;
+  strokes=s;
+ }
+ const ff=`font-family="${T.font}" letter-spacing="${T.ls.toFixed(3)}em"`;
+ let txt="";
+ for(const k of ["top","left","right"]){const isA=k===R.ans,col=isA&&sk>0?mixC(T.num,T.solvedTxt,sk):T.num;
+  txt+=`<text ${rc(k,isA?"ans-t":"")} x="${CEN[k][0].toFixed(1)}" y="${CEN[k][1].toFixed(1)}" ${ff} font-weight="${T.weight}" font-size="${T.size.toFixed(1)}" fill="${col}" fill-opacity="${T.numO.toFixed(3)}">${R.v[k]}</text>`}
+ txt+=`<text ${rc("centre")} x="${CEN.centre[0].toFixed(1)}" y="${CEN.centre[1].toFixed(1)}" ${ff} font-weight="${T.opWeight}" font-size="${T.opSize.toFixed(1)}" fill="${T.op}" fill-opacity="${T.opO.toFixed(3)}">+</text>`;
+ return `${d}<g clip-path="url(#${p}clip)"><g class="cam"><g class="bg">${bg}</g><g class="pz">${fills}${strokes}${txt}</g></g></g>`;
+}
+
+/* ---------- DOM + state ---------- */
+const $=id=>document.getElementById(id);
+const oldS=$("old"),newS=$("new"),ringS=$("ring"),hitS=$("hit"),phone=$("phone");
+const mq=matchMedia("(prefers-reduced-motion: reduce)");
+const DESC={
+ 1:"The old theme dissolves (opacity + blur) while the new round resolves on top of it from a blur. The new layer is opaque before the old one fades, so light themes never dip through black.",
+ 2:"Camera move hides the swap. Dive in: the camera accelerates into the solved cell until only its interior fills the screen, then the next round rises from depth already in the new theme. Pull out: the old puzzle recedes and the new one arrives from in front of the camera.",
+ 3:"The new theme spreads outward from the tap point as a growing circle over the old layer. A ring marks the front, and each cell's lines and numbers re-light as the front passes over them.",
+ 4:"Interpolatable tokens (colours in OKLCH, line width, glow radius and strength, cell inset, fills, background, type size and tracking) tween continuously. Font family and weight, material (lines, tubes, facets, brush, tiles) and texture crossfade around the halfway point. The numbers swap at the same moment."};
+let st={appr:1,dive:"in",pair:0,from:"vn",to:"ob",rd:0,dur:1000,busy:false};
+
+function hitRender(){hitS.innerHTML=["top","left","right","centre"].map(k=>`<polygon data-cell="${k}" points="${ps(CELLS[k])}" aria-label="${k==="centre"?"operator plus":"cell "+ROUNDS[st.rd].v[k]}"/>`).join("")}
+function show(){oldS.innerHTML=render(THEMES[st.from],st.rd,{p:"o"});hitRender();ui()}
+function ui(){
+ document.querySelectorAll("#appr button").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.a===st.appr)));
+ document.querySelectorAll("#diveRow button").forEach(b=>b.setAttribute("aria-pressed",String(b.dataset.d===st.dive)));
+ $("diveRow").hidden=st.appr!==2;
+ document.querySelectorAll("#pairs button").forEach((b,i)=>b.setAttribute("aria-pressed",String(i===st.pair)));
+ $("adesc").textContent=DESC[st.appr];
+ const r0=ROUNDS[st.rd],r1=ROUNDS[1-st.rd],a=r0.v[r0.ans];
+ const eq=r=>{const o=["top","left","right"].filter(k=>k!==r.ans).map(k=>r.v[k]);return `${o[0]} + ${o[1]} = ${r.v[r.ans]}`};
+ $("next").textContent=`Next: ${THEMES[st.from].name} → ${THEMES[st.to].name} · round ${eq(r0)} → ${eq(r1)}`;
+ $("tap").textContent=`Tap ${a}`;
+ $("rmnote").hidden=!mq.matches;
+ ["play","tap"].forEach(id=>$(id).disabled=st.busy);
+ document.querySelectorAll("#pairs button,#appr button,#diveRow button").forEach(b=>b.disabled=st.busy);
+}
+const reduce=()=>mq.matches&&!$("rmover").checked;
+const cl=x=>Math.max(0,Math.min(1,x)),sm=x=>{x=cl(x);return x*x*(3-2*x)},eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,eo=x=>1-Math.pow(1-cl(x),3);
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+function tween(ms,fn){return new Promise(res=>{const t0=performance.now();const step=now=>{const t=cl((now-t0)/ms);fn(t);if(t<1)requestAnimationFrame(step);else res()};requestAnimationFrame(step)})}
+const camT=(x,y,s)=>`translate(${x} ${y}) scale(${s}) translate(${-x} ${-y})`;
+
+/* ---------- readout (outside the frame) ---------- */
+function readout(phase,t,tok,mix,A,B){
+ $("phase").textContent=phase;$("pct").textContent=Math.round(t*100)+"%";$("barI").style.width=(t*100)+"%";
+ const rd=$("tokRead");
+ if(!tok){rd.className="rgrid dim";rd.innerHTML=`<dt>tokens</dt><dd>${st.appr===4?"waiting":"live token readout runs in approach 4"}</dd>`;return}
+ rd.className="rgrid";
+ const sw=c=>`<span class="sw" style="background:${c}"></span>${c}`;
+ rd.innerHTML=`<dt>eased t</dt><dd>${tok.k.toFixed(3)}</dd>
+ <dt>bg</dt><dd>${sw(tok.bgTop)} → ${sw(tok.bgBot)}</dd>
+ <dt>line</dt><dd>${sw(tok.line)} @ ${tok.lineO.toFixed(2)}</dd>
+ <dt>line width</dt><dd>${tok.lineW.toFixed(2)} px</dd>
+ <dt>glow</dt><dd>σ ${tok.glow.toFixed(2)} · ×${tok.glowK.toFixed(2)}</dd>
+ <dt>cell fill</dt><dd>${sw(tok.fill)} @ ${tok.fillO.toFixed(2)} · inset ${tok.inset.toFixed(1)}</dd>
+ <dt>numerals</dt><dd>${sw(tok.num)} · ${tok.size.toFixed(1)} px · ${tok.ls.toFixed(3)} em</dd>
+ <dt>crossfade</dt><dd>${Math.round((1-mix)*100)}% ${A.name} / ${Math.round(mix*100)}% ${B.name}</dd>
+ <dt>discrete</dt><dd>${A.material}, ${A.texture}, w${A.weight} ⇢ ${B.material}, ${B.texture}, w${B.weight}</dd>`;
+}
+
+/* ---------- transitions ---------- */
+async function play(tap){
+ if(st.busy)return;st.busy=true;ui();
+ const A=THEMES[st.from],B=THEMES[st.to],r0=st.rd,r1=1-st.rd,R=ROUNDS[r0];
+ const tp=tap||CEN[R.ans];const red=reduce();const D=st.dur;
+ // solve beat
+ readout("Solve beat",0,null);
+ oldS.innerHTML=render(A,r0,{p:"o",solvedK:1});
+ if(!red){const t=oldS.querySelector(".ans-t");t&&t.animate([{transform:"scale(1)"},{transform:"scale(1.2)"},{transform:"scale(1)"}],{duration:380,easing:"ease-out"});
+  oldS.querySelectorAll(".ans-fill").forEach(f=>f.animate([{opacity:0},{opacity:1}],{duration:220,easing:"ease-out"}))}
+ await wait(red?150:420);
+ const reset=s=>{s.style.opacity="";s.style.filter="";s.style.clipPath="";s.style.zIndex=""};
+ newS.innerHTML=render(B,r1,{p:"n"});reset(newS);
+ const k=phone.clientWidth/375;
+ const phase="Transition";
+ if(red){
+  await tween(200,t=>{newS.style.opacity=t;readout(phase+" (reduced)",t,null)});
+ }else if(st.appr===1){
+  await tween(D,t=>{newS.style.opacity=sm(t/.65);newS.style.filter=`blur(${(14*(1-eo((t-.1)/.9))*k).toFixed(2)}px)`;
+   oldS.style.opacity=1-sm((t-.45)/.55);oldS.style.filter=`blur(${(14*Math.pow(cl(t/.8),2)*k).toFixed(2)}px)`;readout(phase,t,null)});
+ }else if(st.appr===2){
+  newS.style.zIndex=0;newS.style.opacity=1;
+  const oc=oldS.querySelector(".cam"),opz=oldS.querySelector(".pz"),npz=newS.querySelector(".pz"),at=oldS.querySelector(".ans-t");
+  const [ox,oy]=CEN[R.ans],[nx,ny]=WHOLE_C;
+  if(st.dive==="in"){
+   await tween(D,t=>{const p=cl(t/.62);oc.setAttribute("transform",camT(ox,oy,1+13*Math.pow(p,2.4)));
+    if(at)at.style.opacity=1-cl(p*2.2);
+    oldS.style.filter=`blur(${(cl((p-.4)/.6)*6*k).toFixed(2)}px)`;oldS.style.opacity=1-sm((t-.5)/.17);
+    const q=cl((t-.48)/.52);npz.setAttribute("transform",camT(nx,ny,.18+.82*eo(q)));npz.style.opacity=sm(q/.4);
+    newS.style.filter=`blur(${((1-eo(q))*5*k).toFixed(2)}px)`;readout(phase,t,null)});
+  }else{
+   await tween(D,t=>{const p=cl(t/.6);opz.setAttribute("transform",camT(ox,oy,1-.85*p*p*p));
+    oldS.style.filter=`blur(${(p*3*k).toFixed(2)}px)`;oldS.style.opacity=1-sm((t-.25)/.35);
+    const q=cl((t-.3)/.7);npz.setAttribute("transform",camT(nx,ny,2.8-1.8*eo(q)));npz.style.opacity=sm(q/.5);
+    newS.style.filter=`blur(${((1-eo(q))*6*k).toFixed(2)}px)`;readout(phase,t,null)});
+  }
+ }else if(st.appr===3){
+  const [x,y]=tp,maxR=Math.max(...[[0,0],[375,0],[0,667],[375,667]].map(c=>Math.hypot(c[0]-x,c[1]-y)))+12;
+  const els=[...newS.querySelectorAll(".rc")].map(el=>({el,d:Math.hypot(+el.dataset.x-x,+el.dataset.y-y),w:el.dataset.w?+el.dataset.w:0}));
+  const rc=B.lineO>.05?B.line:B.num;
+  ringS.innerHTML=`<defs><filter id="rglow" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4" result="a"/><feMerge><feMergeNode in="a"/><feMergeNode in="SourceGraphic"/></feMerge></filter></defs><circle id="rcirc" cx="${x}" cy="${y}" r="0" fill="none" stroke="${rc}" stroke-width="2.5" filter="url(#rglow)"/>`;
+  const circ=ringS.querySelector("circle");newS.style.opacity=1;
+  await tween(D,t=>{const r=maxR*eio(t);newS.style.clipPath=`circle(${(r*k).toFixed(1)}px at ${(x*k).toFixed(1)}px ${(y*k).toFixed(1)}px)`;
+   circ.setAttribute("r",r.toFixed(1));circ.setAttribute("stroke-opacity",(1-Math.pow(t,3)).toFixed(3));
+   els.forEach(o=>{const lit=cl((r-(o.d-70))/110);o.el.style.opacity=(.18+.82*lit).toFixed(3);
+    if(o.w)o.el.setAttribute("stroke-width",(o.w*(1+1.3*Math.sin(Math.PI*lit))).toFixed(2))});readout(phase,t,null)});
+  ringS.innerHTML="";
+ }else{
+  await tween(D,t=>{const e=eio(t),tok=lerpTokens(A,B,e),m=sm((t-.38)/.24);
+   const TA=Object.assign({},A,tok),TB=Object.assign({},B,tok);
+   TA.solvedTxt=mixC(A.solvedTxt,tok.num,e);TA.solved=A.solved;TA.solvedO=A.solvedO;
+   oldS.innerHTML=render(TA,r0,{p:"o",solvedK:1-e});newS.innerHTML=render(TB,r1,{p:"n"});newS.style.opacity=m;
+   tok.k=e;readout(phase,t,tok,m,A,B)});
+ }
+ // finalize: the new round becomes the base layer, the pair reverses
+ st.from=Object.keys(THEMES).find(k=>THEMES[k]===B);st.to=Object.keys(THEMES).find(k=>THEMES[k]===A);st.rd=r1;
+ oldS.innerHTML=render(B,r1,{p:"o"});reset(oldS);newS.innerHTML="";reset(newS);
+ st.busy=false;show();
+ if(st.appr===4){const tok=lerpTokens(A,B,1);tok.k=1;readout("Done",1,tok,1,A,B)}else readout("Done",1,null);
+}
+
+/* ---------- wiring ---------- */
+PAIRS.forEach((p,i)=>{const b=document.createElement("button");b.textContent=`${THEMES[p[0]].name} ↔ ${THEMES[p[1]].name}`;
+ b.onclick=()=>{if(st.busy)return;st.pair=i;st.from=p[0];st.to=p[1];st.rd=0;show();readout("Idle",0,null)};$("pairs").appendChild(b)});
+document.querySelectorAll("#appr button").forEach(b=>b.onclick=()=>{if(st.busy)return;st.appr=+b.dataset.a;ui();readout("Idle",0,null)});
+document.querySelectorAll("#diveRow button").forEach(b=>b.onclick=()=>{st.dive=b.dataset.d;ui()});
+$("dur").oninput=e=>{st.dur=+e.target.value;$("durv").textContent=st.dur+" ms"};
+$("play").onclick=()=>play(null);
+$("tap").onclick=()=>play(null);
+$("rmover").onchange=ui;mq.addEventListener?.("change",ui);
+hitS.addEventListener("click",e=>{const c=e.target.dataset&&e.target.dataset.cell;if(!c||st.busy)return;
+ const R=ROUNDS[st.rd];if(c!==R.ans)return;
+ const r=hitS.getBoundingClientRect(),k=r.width/375;play([(e.clientX-r.left)/k,(e.clientY-r.top)/k])});
+if(mq.matches){$("dur").value=st.dur=700;$("durv").textContent="700 ms"}
+show();readout("Idle",0,null);
+</script>
+</body></html>

@@ -1,0 +1,181 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key screen: control surface</title>
+<style>
+/*
+  KEY SCREEN — Control surface (menu open over hidden board)
+  Governing spine sections:
+    EXPERIENCE.md → Information Architecture (Control surface, For grown-ups)
+    EXPERIENCE.md → Component Patterns: menu-button, control-surface
+    EXPERIENCE.md → State Patterns: Menu open (timers paused, board hidden/blurred), Kid profile, Adult profile
+    EXPERIENCE.md → Accessibility Floor: Motion setting (Full / Calm / Minimal), Time (chain window Standard / Relaxed / Off), Sound / haptics
+    EXPERIENCE.md → Sound & Haptics (effects on, music off by default)
+    EXPERIENCE.md → Profiles & Child Safety (parent gate fronts kid→adult and For grown-ups; adult→kid ungated; one kid-readable line outside the gate)
+    EXPERIENCE.md → Theme & Transition System: Selection (randomize / playlist)
+    DESIGN.md → Components: control-surface, menu-button, focus-ring; Colors: Vector Noir + Kiln role tables; Typography (theme face, min weights)
+  The spines win on any conflict with this mock.
+*/
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#232323;color:#d8d8d8;font:14px/1.4 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;padding:32px 16px 48px}
+h1{font-size:18px;font-weight:600;color:#f0f0f0;margin:0 auto 4px;max-width:830px}
+.lede{max-width:830px;margin:0 auto 28px;color:#a8a8a8}
+.row{display:flex;flex-wrap:wrap;gap:48px;justify-content:center}
+figure{width:375px}
+figcaption{margin-top:12px;color:#b4b4b4;font-size:13px}
+figcaption b{color:#ececec;font-weight:600}
+.phone{position:relative;width:375px;height:667px;border-radius:28px;overflow:hidden;outline:1px solid #4a4a4a}
+.board{position:absolute;inset:0;filter:blur(18px);transform:scale(1.06)}
+.scrim{position:absolute;inset:0}
+.panel{position:absolute;inset:0;padding:16px;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;justify-content:space-between;height:48px;margin-bottom:14px}
+.sec{margin-bottom:9px}
+.lbl{display:block;font-size:13px;margin:0 0 6px 2px}
+.seg{display:flex;gap:8px}
+.seg span{flex:1;display:flex;align-items:center;justify-content:center;height:48px}
+.link{display:flex;align-items:center;justify-content:space-between;height:52px}
+.close{width:48px;height:48px;display:flex;align-items:center;justify-content:center}
+
+/* ---------- Vector Noir (adult) ---------- */
+.vn{background:#000000;font-family:"Avenir Next","Avenir",ui-sans-serif,sans-serif;letter-spacing:.02em}
+.vn .scrim{background:rgba(0,0,0,.72)}
+.vn .lbl{color:#47CAE1;font-weight:400}                 /* control */
+.vn .seg span{border:1px solid #266E7A;color:#728588;font-size:16px;font-weight:400}  /* line-dimmed edge, number-dimmed text */
+.vn .seg span.on{border:1.5px solid #4FE0FA;background:#071416;color:#E8FDFF;box-shadow:0 0 6px rgba(79,224,250,.55)} /* line + cell-solved wash */
+.vn .link{border-top:1px solid #0A2831;color:#E8FDFF;font-size:17px;font-weight:400}
+.vn .link small{color:#728588;font-size:13px}
+.vn .who{display:flex;align-items:center;gap:10px;color:#E8FDFF;font-size:15px}
+
+/* ---------- Kiln (kid) ---------- */
+.kiln{background:#ECE3D7;font-family:Futura,"Century Gothic",sans-serif}
+.kiln .scrim{background:rgba(236,227,215,.74)}
+.kiln .lbl{color:#89422E;font-size:15px;font-weight:500}                 /* control */
+.kiln .seg span{height:56px;background:#F6F0E8;border:1px solid #AC644E;color:#A14E36;font-size:18px;font-weight:500;box-shadow:0 2px 3px #C9B7A1}  /* tile, line, number; tap-min-kid */
+.kiln .seg span.on{background:#A14E36;color:#F6F0E8;border-color:#A14E36;box-shadow:none;transform:translateY(1px)} /* fired tile */
+.kiln .sec{margin-bottom:10px}
+.kiln .link{height:56px;border-top:1px solid #DCCDBB;color:#A14E36;font-size:19px;font-weight:500}
+.kiln .link small{display:block;color:#89422E;font-size:15px;font-weight:500}
+.kiln .who{display:flex;align-items:center;gap:10px;color:#A14E36;font-size:18px;font-weight:500}
+</style>
+</head>
+<body>
+<h1>Control surface — menu open, board hidden</h1>
+<p class="lede">One tap on the menu button. Both timers pause and the board is blurred so the pause can't be used to study it. Closing returns to the exact puzzle state.</p>
+
+<div class="row">
+
+<!-- ================= ADULT · VECTOR NOIR ================= -->
+<figure>
+<div class="phone vn">
+  <svg class="board" viewBox="0 0 375 667" width="375" height="667" aria-hidden="true">
+    <rect width="375" height="667" fill="#000"/>
+    <g stroke="#4FE0FA" stroke-opacity=".14" stroke-width=".75">
+      <line x1="187.5" y1="430" x2="-162.5" y2="667"/><line x1="187.5" y1="430" x2="47.5" y2="667"/><line x1="187.5" y1="430" x2="187.5" y2="667"/><line x1="187.5" y1="430" x2="327.5" y2="667"/><line x1="187.5" y1="430" x2="537.5" y2="667"/>
+      <line x1="0" y1="481.6" x2="375" y2="481.6"/><line x1="0" y1="559.3" x2="375" y2="559.3"/>
+    </g>
+    <g fill="none" stroke="#00A3FF" stroke-width="2">
+      <polygon points="187.5,92 37.5,351.8 337.5,351.8"/><polygon points="112.5,221.9 262.5,221.9 187.5,351.8"/>
+    </g>
+    <g fill="#E8FDFF" font-family="Avenir Next,sans-serif" font-weight="300" font-size="46" text-anchor="middle">
+      <text x="187.5" y="196">8</text><text x="112.5" y="326">5</text><text x="262.5" y="326">13</text>
+      <text x="187.5" y="278" fill="#47CAE1" font-size="34">+</text>
+    </g>
+  </svg>
+  <div class="scrim"></div>
+
+  <div class="panel">
+    <div class="top">
+      <div class="who">
+        <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="#47CAE1" stroke-width="1.5"/></svg>
+        Grown-up
+      </div>
+      <!-- menu button, open state: ≡ becomes ×; adult-mode ring cue persists -->
+      <div class="close" aria-label="Close menu">
+        <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="20" fill="none" stroke="#47CAE1" stroke-width="1.5"/><path d="M15 15 L29 29 M29 15 L15 29" stroke="#47CAE1" stroke-width="1.75" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+
+    <div class="sec"><span class="lbl">Mode</span>
+      <div class="seg"><span>Zen</span><span class="on">Normal</span></div></div>
+
+    <div class="sec"><span class="lbl">Motion</span>
+      <div class="seg"><span class="on">Full</span><span>Calm</span><span>Minimal</span></div></div>
+
+    <div class="sec"><span class="lbl">Chain window</span>
+      <div class="seg"><span class="on">Standard</span><span>Relaxed</span><span>Off</span></div></div>
+
+    <div class="sec"><span class="lbl">Sound</span>
+      <div class="seg"><span class="on">Effects</span><span>Music</span><span class="on">Haptics</span></div></div>
+
+    <div class="sec"><span class="lbl">Themes</span>
+      <div class="seg"><span class="on">Randomize</span><span>Playlist</span></div></div>
+
+    <div style="margin-top:auto">
+      <div class="link">Stats <svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2 L8 8 L2 14" fill="none" stroke="#47CAE1" stroke-width="1.5"/></svg></div>
+      <div class="link">For grown-ups
+        <svg width="16" height="18" viewBox="0 0 16 18" aria-hidden="true"><rect x="1.5" y="7.5" width="13" height="9" fill="none" stroke="#47CAE1" stroke-width="1.5"/><path d="M4.5 7.5 V5 a3.5 3.5 0 0 1 7 0 V7.5" fill="none" stroke="#47CAE1" stroke-width="1.5"/></svg></div>
+      <div class="link">Switch to kid <small>no gate</small></div>
+    </div>
+  </div>
+</div>
+<figcaption><b>Adult · Vector Noir · Normal.</b> Chain window shows because Normal is selected. Ring on the profile mark and the menu button is the adult-mode cue. Switching to kid is never gated; For grown-ups is behind the parent gate (lock).</figcaption>
+</figure>
+
+<!-- ================= KID · KILN ================= -->
+<figure>
+<div class="phone kiln">
+  <svg class="board" viewBox="0 0 375 667" width="375" height="667" aria-hidden="true">
+    <rect width="375" height="667" fill="#ECE3D7"/>
+    <g fill="#F6F0E8" stroke="#AC644E" stroke-width="1.5">
+      <polygon points="187.5,104 120,221 255,221"/><polygon points="112.5,233 45,350 180,350"/><polygon points="262.5,233 195,350 330,350"/>
+    </g>
+    <g fill="#A14E36" font-family="Futura,sans-serif" font-weight="500" font-size="44" text-anchor="middle">
+      <text x="187.5" y="200">3</text><text x="112.5" y="330">5</text><text x="262.5" y="330">8</text>
+      <text x="187.5" y="276" font-size="32">+</text>
+    </g>
+  </svg>
+  <div class="scrim"></div>
+
+  <div class="panel">
+    <div class="top">
+      <div class="who">
+        <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="5" fill="#A14E36"/></svg>
+        Kid
+      </div>
+      <!-- no adult ring in kid profile -->
+      <div class="close" aria-label="Close menu">
+        <svg width="44" height="44" viewBox="0 0 44 44" aria-hidden="true"><path d="M15 15 L29 29 M29 15 L15 29" stroke="#89422E" stroke-width="2.25" stroke-linecap="round"/></svg>
+      </div>
+    </div>
+
+    <div class="sec"><span class="lbl">Mode</span>
+      <div class="seg"><span class="on">Zen</span><span>Normal</span></div></div>
+
+    <div class="sec"><span class="lbl">Motion</span>
+      <div class="seg"><span>Full</span><span class="on">Calm</span><span>Minimal</span></div></div>
+
+    <div class="sec"><span class="lbl">Sound</span>
+      <div class="seg"><span class="on">Effects</span><span>Music</span><span class="on">Haptics</span></div></div>
+
+    <div class="sec"><span class="lbl">Themes</span>
+      <div class="seg"><span class="on">Randomize</span><span>Playlist</span></div></div>
+
+    <div style="margin-top:auto">
+      <div class="link">Stats <svg width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2 L8 8 L2 14" fill="none" stroke="#89422E" stroke-width="2"/></svg></div>
+      <div class="link" style="height:76px">
+        <div>For grown-ups<small>Ask a grown-up to open this.</small></div>
+        <svg width="16" height="18" viewBox="0 0 16 18" aria-hidden="true"><rect x="1.5" y="7.5" width="13" height="9" fill="none" stroke="#89422E" stroke-width="1.75"/><path d="M4.5 7.5 V5 a3.5 3.5 0 0 1 7 0 V7.5" fill="none" stroke="#89422E" stroke-width="1.75"/></svg>
+      </div>
+      <div class="link">Grown-up
+        <svg width="16" height="18" viewBox="0 0 16 18" aria-hidden="true"><rect x="1.5" y="7.5" width="13" height="9" fill="none" stroke="#89422E" stroke-width="1.75"/><path d="M4.5 7.5 V5 a3.5 3.5 0 0 1 7 0 V7.5" fill="none" stroke="#89422E" stroke-width="1.75"/></svg></div>
+    </div>
+  </div>
+</div>
+<figcaption><b>Kid · Kiln · Zen.</b> Kid defaults: Zen, Calm motion. No chain window in Zen. Switching to grown-up and For grown-ups both sit behind the parent gate (lock), with one kid-readable line outside it. Leaderboards, challenges and sign-in are absent, not disabled (v1/Later in adult). Controls are 56 px tall.</figcaption>
+</figure>
+
+</div>
+</body>
+</html>

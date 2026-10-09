@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Key screen: round-end flash</title>
+<style>
+/*
+  KEY SCREEN — Normal round-end flash over the completed tier-2 puzzle
+  Governing spine sections:
+    EXPERIENCE.md → Component Patterns: round-end-flash (round time and score briefly; play continues without input), round-collapse, theme-transition, menu-button
+    EXPERIENCE.md → Modes: Score (points only during transition; round-end flash), Timing in Normal (round time shown in the flash), Combo definition
+    EXPERIENCE.md → State Patterns: Round complete (round-collapse → round-end flash → theme transition)
+    EXPERIENCE.md → Interaction Primitives: Player causality (on-tap transitions originate at the tap point); Banned (end screens)
+    EXPERIENCE.md → Theme & Transition System: Radiate (intense, on tap; Normal at Full motion); transition drawn from the incoming theme's pack [ASSUMPTION]
+    EXPERIENCE.md → Key Flows: Flow 3 step 5
+    DESIGN.md → Components: round-end-flash ({typography.number} in number), combo-glow (2x stop, stroke + bloom scale), menu-button (adult ring cue)
+    DESIGN.md → Colors: Vector Noir, Overdrive Bloom (incoming); Elevation & Depth → Transition looks (Radiate)
+    DESIGN.md → Do's and Don'ts: combo as line heat, not a multiplier number; no badges
+  The spines win on any conflict with this mock.
+*/
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#232323;color:#d8d8d8;font:14px/1.4 -apple-system,BlinkMacSystemFont,"Helvetica Neue",sans-serif;padding:32px 16px 48px}
+h1{font-size:18px;font-weight:600;color:#f0f0f0;margin:0 auto 4px;max-width:420px}
+.lede{max-width:420px;margin:0 auto 28px;color:#a8a8a8}
+.row{display:flex;justify-content:center}
+figure{width:375px}
+figcaption{margin-top:12px;color:#b4b4b4;font-size:13px}
+figcaption b{color:#ececec;font-weight:600}
+.phone{width:375px;height:667px;border-radius:28px;overflow:hidden;outline:1px solid #4a4a4a;display:block}
+.vn text{font-family:"Avenir Next","Avenir",ui-sans-serif,sans-serif;letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.ob text{font-family:Futura,"Century Gothic",sans-serif;font-weight:700;letter-spacing:-.03em}
+</style>
+</head>
+<body>
+<h1>Round-end flash — Normal</h1>
+<p class="lede">The last tier-2 answer is tapped and the round collapses. The flash sits on the floor below the board for a moment; the next round is already arriving from the tap point. No input needed.</p>
+
+<div class="row">
+<figure>
+<svg class="phone vn" viewBox="0 0 375 667" width="375" height="667" role="img" aria-label="Round complete. Round time 1:24. 3 480 points. Best combo reached full heat. Clean round.">
+  <defs>
+    <filter id="g" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="2.4" result="a"/><feGaussianBlur in="SourceGraphic" stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="a"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="g2" filterUnits="userSpaceOnUse" x="130" y="490" width="115" height="76"><feGaussianBlur stdDeviation="4.8" result="a"/><feGaussianBlur in="SourceGraphic" stdDeviation="14" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="a"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="bloom" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="5" result="a"/><feGaussianBlur in="SourceGraphic" stdDeviation="16" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="a"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <linearGradient id="floor" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4FE0FA" stop-opacity="0"/><stop offset="1" stop-color="#4FE0FA" stop-opacity=".14"/></linearGradient>
+    <radialGradient id="obcore" cx=".5" cy=".5" r=".6"><stop offset="0" stop-color="#1D0B33"/><stop offset="1" stop-color="#05020A"/></radialGradient>
+    <clipPath id="ring"><circle cx="262.5" cy="296" r="70"/></clipPath>
+  </defs>
+
+  <!-- ===== outgoing round: Vector Noir, completed tier-2 ===== -->
+  <rect width="375" height="667" fill="#000"/>
+  <g stroke="url(#floor)" stroke-width=".75">
+    <line x1="187.5" y1="430" x2="-302.5" y2="667"/><line x1="187.5" y1="430" x2="-162.5" y2="667"/><line x1="187.5" y1="430" x2="-22.5" y2="667"/><line x1="187.5" y1="430" x2="117.5" y2="667"/><line x1="187.5" y1="430" x2="257.5" y2="667"/><line x1="187.5" y1="430" x2="397.5" y2="667"/><line x1="187.5" y1="430" x2="537.5" y2="667"/><line x1="187.5" y1="430" x2="677.5" y2="667"/>
+    <line x1="0" y1="437.1" x2="375" y2="437.1"/><line x1="0" y1="454.9" x2="375" y2="454.9"/><line x1="0" y1="481.6" x2="375" y2="481.6"/><line x1="0" y1="516.6" x2="375" y2="516.6"/><line x1="0" y1="559.3" x2="375" y2="559.3"/><line x1="0" y1="609.6" x2="375" y2="609.6"/>
+  </g>
+
+  <!-- tier-2 split triangle: all three outer cells solved (9% wash), lines at 2x heat -->
+  <g fill="#071416"><polygon points="187.5,92 112.5,221.9 262.5,221.9"/><polygon points="112.5,221.9 37.5,351.8 187.5,351.8"/><polygon points="262.5,221.9 187.5,351.8 337.5,351.8"/></g>
+  <g filter="url(#g)" fill="none" stroke="#7CFFF2" stroke-width="2.7" stroke-linejoin="miter">
+    <polygon points="187.5,92 37.5,351.8 337.5,351.8"/><polygon points="112.5,221.9 262.5,221.9 187.5,351.8"/>
+  </g>
+  <g fill="#E8FDFF" text-anchor="middle">
+    <text x="187.5" y="196" font-size="46" font-weight="300">7</text>
+    <text x="112.5" y="326" font-size="46" font-weight="300">4</text>
+    <text x="187.5" y="278" font-size="34" font-weight="300" fill="#47CAE1">+</text>
+  </g>
+
+  <!-- ===== incoming round: Overdrive Bloom, Radiate from the tap point (the 11) ===== -->
+  <g clip-path="url(#ring)" class="ob">
+    <rect width="375" height="667" fill="url(#obcore)"/>
+    <g filter="url(#bloom)" fill="none" stroke="#D646EC" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+      <polygon points="187.5,92 37.5,351.8 337.5,351.8"/><polygon points="112.5,221.9 262.5,221.9 187.5,351.8"/>
+    </g>
+    <polygon points="262.5,221.9 187.5,351.8 337.5,351.8" fill="#D646EC" opacity=".9"/>
+    <text x="262.5" y="330" text-anchor="middle" font-size="66" fill="#05020A">11</text>
+  </g>
+  <circle cx="262.5" cy="296" r="70" fill="none" stroke="#FF3FD0" stroke-width="2"/>
+
+  <!-- menu button, adult ring cue -->
+  <g transform="translate(321,18)">
+    <circle cx="22" cy="22" r="20" fill="none" stroke="#47CAE1" stroke-width="1.5"/>
+    <path d="M13 15 H31 M13 22 H31 M13 29 H31" stroke="#47CAE1" stroke-width="1.75" stroke-linecap="round"/>
+  </g>
+
+  <!-- ===== round-end flash, on the floor below the board ===== -->
+  <g text-anchor="middle">
+    <text x="187.5" y="414" font-size="12" fill="#728588" letter-spacing=".1em">ROUND</text>
+    <text x="187.5" y="466" font-size="46" font-weight="300" fill="#E8FDFF">1:24</text>
+
+    <!-- points -->
+    <text x="72" y="540" font-size="34" font-weight="300" fill="#E8FDFF">3 480</text>
+    <text x="72" y="566" font-size="12" fill="#728588" letter-spacing=".1em">POINTS</text>
+
+    <!-- best combo: drawn as line heat at the stop reached (2x), never a multiplier number -->
+    <rect x="164" y="526.65" width="47" height="2.7" rx="1.35" fill="#7CFFF2" filter="url(#g2)"/>
+    <text x="187.5" y="566" font-size="12" fill="#728588" letter-spacing=".1em">BEST COMBO</text>
+
+    <!-- clean round: one unbroken outline of the round's shape -->
+    <polygon points="303,513 289,539 317,539" fill="none" stroke="#4FE0FA" stroke-width="1.5" stroke-linejoin="miter" filter="url(#g)"/>
+    <text x="303" y="566" font-size="12" fill="#728588" letter-spacing=".1em">CLEAN</text>
+  </g>
+</svg>
+<figcaption><b>Normal · Vector Noir → Overdrive Bloom.</b> The completed tier-2 puzzle stays readable at full heat. The flash shows round time (largest), points, best combo drawn as a heat line at the 2x stop, and a clean-round outline (left out when the round had a wrong tap). At the edge, the Radiate ring from the tapped 11 is already relighting the board in the next theme. Nothing to tap: the flash fades as the ring sweeps the frame.</figcaption>
+</figure>
+</div>
+</body>
+</html>

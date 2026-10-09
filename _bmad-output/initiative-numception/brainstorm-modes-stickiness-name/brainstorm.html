@@ -1,0 +1,505 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Numception Brainstorm</title>
+<meta name="description" content="Keepsake of the Numception brainstorm: modes, stickiness, and a coined name.">
+<style>
+:root{
+  --bg:#04060b; --bg2:#070b14; --grid:rgba(62,240,255,.045);
+  --ink:#d7e3ee; --mute:#7d8ea3; --faint:#2a3546;
+  --neon:#3ef0ff; --neon-soft:rgba(62,240,255,.14); --glow:0 0 14px rgba(62,240,255,.45);
+  --half:#ffb85c; --half-soft:rgba(255,184,92,.12);
+  --red:#ff4f6d; --park:#c9a75e;
+  --coach:#8fa3bb; --coach-line:#26344a;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  --sans:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+}
+@media (prefers-color-scheme: light){
+  :root{
+    --bg:#f3efe6; --bg2:#ece6da; --grid:rgba(29,53,87,.05);
+    --ink:#1f2a3a; --mute:#6f6a5f; --faint:#d5cdbd;
+    --neon:#1d3f72; --neon-soft:rgba(29,63,114,.08); --glow:none;
+    --half:#a56a1f; --half-soft:rgba(165,106,31,.08);
+    --red:#b5452f; --park:#9a7425;
+    --coach:#6f6a5f; --coach-line:#d5cdbd;
+  }
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{
+  background:var(--bg); color:var(--ink); font:15px/1.55 var(--sans);
+  background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);
+  background-size:36px 36px; overflow-x:hidden; -webkit-font-smoothing:antialiased;
+}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+
+/* power rail */
+.rail{position:fixed;left:18px;top:0;bottom:0;width:2px;background:var(--faint);z-index:5}
+.rail i{position:absolute;left:0;top:0;width:2px;height:0;background:var(--neon);box-shadow:var(--glow)}
+@media (max-width:600px){.rail{left:7px}}
+
+main{max-width:1040px;margin:0 auto;padding:0 20px 0 48px}
+@media (max-width:600px){main{padding:0 16px 0 24px}}
+
+/* hero */
+.hero{min-height:88vh;display:flex;flex-direction:column;justify-content:center;padding:64px 0 40px}
+.eyebrow{font:500 11px/1 var(--mono);letter-spacing:.24em;text-transform:uppercase;color:var(--mute)}
+h1{font:200 clamp(44px,11vw,104px)/.95 var(--sans);letter-spacing:-.03em;margin:18px 0 6px}
+h1 b{font-weight:600;color:var(--neon);text-shadow:var(--glow)}
+.wt{font:12px var(--mono);color:var(--mute);letter-spacing:.1em}
+.lede{max-width:560px;margin-top:28px;color:var(--mute);font-size:16px}
+.lede em{color:var(--ink);font-style:normal}
+.stats{display:flex;gap:36px;flex-wrap:wrap;margin-top:40px}
+.stats div{border-left:1px solid var(--faint);padding-left:12px}
+.stats b{display:block;font:300 30px/1 var(--mono);color:var(--ink)}
+.stats span{font-size:12px;color:var(--mute)}
+.heroart{margin-top:44px;width:min(280px,70vw)}
+
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:10px 20px;margin-top:36px;font-size:12px;color:var(--mute)}
+.legend span{display:inline-flex;align-items:center;gap:8px}
+.sw{width:14px;height:14px;display:inline-block}
+.sw.u{border:1.5px solid var(--neon);background:var(--neon-soft);box-shadow:var(--glow)}
+.sw.c{border:1px solid var(--coach-line)}
+.sw.r{border:1px solid var(--faint);opacity:.6;background:linear-gradient(135deg,transparent 46%,var(--red) 47%,var(--red) 53%,transparent 54%)}
+.sw.p{border:1px dashed var(--park)}
+
+/* technique tiers */
+.tier{padding:72px 0 24px;position:relative}
+.tier-head{display:flex;gap:22px;align-items:center;margin-bottom:28px}
+.node{flex:none;width:76px;height:76px}
+.node rect{fill:none;stroke:var(--faint);stroke-width:1.2;transition:all .5s}
+.tier.on .node rect.c{stroke:var(--neon);fill:var(--neon-soft)}
+.tier.on .node rect.o{stroke:var(--neon);filter:drop-shadow(0 0 4px var(--neon))}
+.tier-head .k{font:500 11px var(--mono);letter-spacing:.2em;color:var(--mute);text-transform:uppercase}
+h2{font:300 clamp(26px,5vw,38px)/1.1 var(--sans);letter-spacing:-.01em;margin-top:4px}
+.tier-head p{color:var(--mute);font-size:13px;margin-top:6px}
+.tier-head .cnt{color:var(--neon)}
+
+h3{font:500 11px var(--mono);letter-spacing:.18em;text-transform:uppercase;color:var(--mute);margin:30px 0 12px;display:flex;align-items:center;gap:12px}
+h3::after{content:"";flex:1;height:1px;background:var(--faint)}
+h3 .L{font:600 18px var(--mono);color:var(--neon);letter-spacing:0}
+
+.tiles{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,232px),1fr));gap:10px}
+.t{position:relative;padding:12px 14px 13px;border:1px solid var(--coach-line);background:var(--bg);font-size:13.5px;color:var(--coach);
+   opacity:.18;transform:translateY(6px);transition:opacity .6s,transform .6s,border-color .6s,box-shadow .6s}
+.t.on{opacity:1;transform:none}
+.t .m{display:flex;align-items:center;gap:8px;font:10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin-bottom:6px}
+.t .m::before{content:"";width:7px;height:7px;border:1px solid currentColor;flex:none}
+.t[data-k=insight] .m::before{border-radius:50%}
+.t[data-k=decision] .m::before{transform:rotate(45deg)}
+.t[data-k=direction] .m::before{border-width:0 1.5px 1.5px 0;transform:rotate(-45deg)}
+.t[data-k=question] .m::before{content:"?";border:0;width:auto;height:auto;font-weight:700}
+.t.u{border:1.5px solid var(--neon);color:var(--ink);background:linear-gradient(var(--neon-soft),var(--neon-soft)),var(--bg)}
+.t.u.on{box-shadow:var(--glow)}
+.t.u .m{color:var(--neon)}
+.t.dec{border-color:var(--ink)}
+.t.rej{opacity:.38!important;box-shadow:none!important;border-color:var(--faint)!important;background:var(--bg)!important;color:var(--mute)!important}
+.t.rej .x{text-decoration:line-through;text-decoration-color:var(--red)}
+.t.prk{border-style:dashed!important;border-color:var(--park)!important;box-shadow:none!important}
+.t .why{display:block;margin-top:7px;font-size:12px;color:var(--mute)}
+.t .why b{font-weight:600;color:var(--ink)}
+.t.rej .why b{color:var(--red)}
+.chips{display:flex;flex-direction:column;gap:5px;margin-top:8px}
+.chip{font-size:12.5px;padding-left:16px;position:relative}
+.chip::before{content:"";position:absolute;left:0;top:6px;width:7px;height:7px;border:1px solid var(--neon)}
+.chip.k::before{background:var(--neon)}
+.chip.r{color:var(--mute);text-decoration:line-through;text-decoration-color:var(--red)}
+.chip.r::before{border-color:var(--red)}
+.chip.p{color:var(--park)}
+.chip.p::before{border:1px dashed var(--park)}
+.chip small{text-decoration:none;color:var(--mute);font-size:11px}
+
+/* SCAMPER letters */
+.scamper{display:flex;gap:6px;margin:4px 0 6px;flex-wrap:wrap}
+.scamper span{width:34px;height:34px;display:grid;place-items:center;font:500 15px var(--mono);border:1px solid var(--faint);color:var(--faint);transition:all .5s}
+.tier.on .scamper span.lit{border-color:var(--neon);color:var(--neon);box-shadow:var(--glow)}
+.note{font-size:12px;color:var(--mute);margin-top:6px}
+
+/* forge */
+.forge{display:flex;flex-wrap:wrap;gap:8px}
+.nm{padding:7px 12px;border:1px solid var(--coach-line);font:14px var(--mono);color:var(--coach);letter-spacing:.02em}
+.nm.u{border-color:var(--neon);color:var(--ink)}
+.nm.s{border:1.5px solid var(--neon);color:var(--neon);background:var(--neon-soft);box-shadow:var(--glow)}
+.nm.rj{text-decoration:line-through;text-decoration-color:var(--red);opacity:.6}
+.nm sup{font:9px var(--sans);color:var(--mute);margin-left:4px;letter-spacing:.06em;text-transform:uppercase}
+.summa{margin-top:22px;padding:16px 18px;border-left:2px solid var(--neon);max-width:620px;font-size:14px;color:var(--mute)}
+.summa i{font-style:normal;color:var(--ink);font-family:var(--mono)}
+
+/* convergence */
+.themes{display:flex;flex-wrap:wrap;gap:8px}
+.themes span{font:12px var(--mono);padding:6px 10px;border:1px solid var(--faint);color:var(--mute)}
+.conv{display:grid;grid-template-columns:1.5fr 1fr;gap:28px;align-items:end;margin-top:34px}
+@media (max-width:760px){.conv{grid-template-columns:1fr}}
+.pyr{display:flex;flex-direction:column;align-items:center;gap:6px}
+.lvl{text-align:center;padding:14px 16px;border:1px solid var(--faint);color:var(--mute);font-size:12.5px;clip-path:polygon(7% 0,93% 0,100% 100%,0 100%)}
+.lvl b{display:block;font:500 11px var(--mono);letter-spacing:.2em;color:var(--ink);margin-bottom:4px}
+.lvl.l3{width:44%}.lvl.l2{width:70%}.lvl.l1{width:100%;border:none;background:var(--neon-soft);color:var(--ink);padding:18px 26px;position:relative}
+.lvl.l1::before{content:"";position:absolute;inset:0;border-top:1.5px solid var(--neon)}
+.lvl.l1 b{color:var(--neon)}
+.lvl ul{list-style:none;display:flex;flex-wrap:wrap;justify-content:center;gap:6px 14px;margin-top:6px}
+.lvl li::before{content:"\25A0  ";color:var(--neon);font-size:8px;vertical-align:2px}
+.bay{border:1px dashed var(--park);padding:16px 16px 12px;position:relative}
+.bay>b{position:absolute;top:-8px;left:12px;background:var(--bg);padding:0 8px;font:500 11px var(--mono);letter-spacing:.2em;color:var(--park)}
+.bay li{list-style:none;font-size:13px;color:var(--mute);padding:7px 0;border-bottom:1px solid var(--faint)}
+.bay li:last-child{border:0}
+.bay li em{font-style:normal;font:10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--park);margin-right:6px}
+.bay li strong{color:var(--ink);font-weight:500}
+
+/* core */
+.core{padding:110px 0 60px;text-align:center}
+.core .eyebrow{color:var(--neon)}
+.core blockquote{font:200 clamp(24px,5.2vw,44px)/1.2 var(--sans);letter-spacing:-.01em;max-width:840px;margin:22px auto 10px}
+.core blockquote b{font-weight:400;color:var(--neon);text-shadow:var(--glow)}
+.core cite{font:12px var(--mono);font-style:normal;color:var(--mute)}
+.stage{margin:48px auto 10px;width:min(520px,100%);aspect-ratio:1;position:relative}
+.stage svg{width:100%;height:100%;display:block;overflow:visible}
+#frac .leaf{fill:transparent;stroke:var(--faint);stroke-width:.6;transition:all .35s}
+#frac .lt{fill:var(--mute);font:8px var(--mono);text-anchor:middle;dominant-baseline:central;transition:opacity .4s}
+#frac .leaf.pick{stroke:var(--neon);fill:var(--neon-soft);stroke-width:1.2}
+#frac .blk{fill:transparent;stroke:var(--faint);stroke-width:.8;transition:all .5s}
+#frac .blk.half{stroke:var(--half);fill:var(--half-soft)}
+#frac .done .leaf,#frac .done .lt{opacity:.08}
+#frac .bc{fill:var(--neon-soft);stroke:var(--neon);stroke-width:1.4;opacity:0;transition:opacity .5s, transform .5s;transform-box:fill-box;transform-origin:center;transform:scale(.2)}
+#frac .done .bc{opacity:1;transform:scale(1)}
+#frac .bct{fill:var(--neon);font:300 26px var(--mono);text-anchor:middle;dominant-baseline:central;opacity:0;transition:opacity .5s .2s}
+#frac .done .bct{opacity:1}
+#frac .bc.pick{fill:var(--neon);fill-opacity:.35}
+#frac .frame{fill:none;stroke:var(--faint);stroke-width:1;transition:all .6s}
+#frac .frame.half{stroke:var(--half)}
+#frac .frame.full{stroke:var(--neon);stroke-width:2;filter:drop-shadow(0 0 6px var(--neon))}
+#frac .wire{stroke:var(--faint);stroke-width:.8;fill:none;transition:stroke .5s}
+#frac .wire.on{stroke:var(--neon)}
+.eq{font:14px var(--mono);color:var(--mute);min-height:22px}
+.eq b{color:var(--neon);font-weight:400}
+.replay{margin-top:14px;background:none;border:1px solid var(--faint);color:var(--mute);font:12px var(--mono);letter-spacing:.15em;text-transform:uppercase;padding:9px 16px;cursor:pointer}
+.replay:hover{border-color:var(--neon);color:var(--neon)}
+.synth{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:1px;background:var(--faint);border:1px solid var(--faint);margin-top:60px;text-align:left}
+.synth div{background:var(--bg);padding:20px 18px;font-size:13.5px;color:var(--mute)}
+.synth div b{display:block;font:300 28px var(--mono);color:var(--neon);margin-bottom:8px}
+.synth div strong{color:var(--ink);font-weight:500}
+.dir{margin:56px auto 0;max-width:640px;padding:22px;border:1.5px solid var(--ink);text-align:left;font-size:14px}
+.dir .m{font:10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--mute);margin-bottom:8px;display:block}
+footer{padding:60px 0 80px;color:var(--mute);font-size:12px;text-align:center;font-family:var(--mono)}
+
+@media (prefers-reduced-motion:reduce){
+  *{transition:none!important;scroll-behavior:auto!important}
+  .t{opacity:1;transform:none}
+}
+</style>
+</head>
+<body>
+<div class="rail" aria-hidden="true"><i id="power"></i></div>
+<main>
+
+<header class="hero">
+  <div class="eyebrow">Creative Partner session &middot; 2026-10-08</div>
+  <h1>Num<b>ception</b></h1>
+  <div class="wt">WORKING TITLE &middot; MODES / STICKINESS / NAME</div>
+  <p class="lede">Find <span class="num">a &#8728; b = c</span> among numbers set in a shape. The answer becomes one cell of a bigger puzzle of the same shape, and the whole thing zooms out. Neon arcade <em>Normal</em> mode, calm <em>Zen</em> mode. The goal: a fun POC that can grow into an iOS, Android and web game.</p>
+  <div class="stats">
+    <div><b>~115</b><span>ideas</span></div>
+    <div><b>4</b><span>techniques</span></div>
+    <div><b>7</b><span>themes</span></div>
+    <div><b>1</b><span>core</span></div>
+  </div>
+  <div class="legend">
+    <span><i class="sw u"></i>user</span>
+    <span><i class="sw c"></i>coach</span>
+    <span><i class="sw r"></i>rejected</span>
+    <span><i class="sw p"></i>parked</span>
+  </div>
+  <p class="note" style="margin-top:22px">Scroll to send power up the wire. Light mode renders in Zen: paper and one ink.</p>
+</header>
+
+<div id="tiers"></div>
+
+<section class="tier" id="converge">
+  <div class="tier-head">
+    <svg class="node" viewBox="0 0 76 76" aria-hidden="true"><rect class="o" x="2" y="2" width="72" height="72"/><path d="M38 12 L66 64 L10 64 Z" fill="none" stroke="currentColor" style="color:var(--neon)" stroke-width="1.2"/><path d="M24 38 L52 38 M17 51 L59 51" stroke="var(--neon)" stroke-width="1"/></svg>
+    <div><div class="k">Convergence</div><h2>Clusters, then phases</h2><p>Affinity clustering into seven themes, then MoSCoW by phase. The coach proposed it; the user accepted it as proposed.</p></div>
+  </div>
+  <div class="themes"><span>core loop</span><span>inception / pyramid</span><span>content packs</span><span>modes</span><span>social / seeds</span><span>feel / UI principles</span><span>business / name</span></div>
+  <div class="conv">
+    <div class="pyr">
+      <div class="lvl l3"><b>LATER</b>per accepted phase plan</div>
+      <div class="lvl l2"><b>V1</b>per accepted phase plan</div>
+      <div class="lvl l1"><b>POC</b>
+        <ul><li>classic round</li><li>tower round</li><li>zoom + transition at the centre</li><li>Zen + Normal</li><li>+/&minus; generator with uniqueness</li><li>rating logs</li></ul>
+      </div>
+    </div>
+    <div class="bay"><b>PARKED BAY</b>
+      <ul>
+        <li><em>parked</em><strong>Interlocking shapes</strong>: crossword-style shared cells. Maybe its own future game.</li>
+        <li><em>parked</em><strong>Mixed representations + visual fractions</strong>: not rejected, just not now.</li>
+        <li><em>flag</em><strong>How far can a seed go?</strong> Pyramid, endless, complexity, adaptive difficulty.</li>
+        <li><em>punted</em><strong>The name</strong>: too early. Shortlist kept.</li>
+        <li><em>open</em><strong>Shapes that change per level</strong>: triangle of pentagons of squares. Breaks inception, or enriches it?</li>
+        <li><em>resolved</em><strong>What does a wrong tap do?</strong> Parked early, decided later in the session.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="core" id="core">
+  <div class="eyebrow">The core</div>
+  <blockquote>Every solve changes <b>the light</b> of a self-similar structure <b>at every scale.</b></blockquote>
+  <cite>synthesis by coach &middot; from the user's &ldquo;defining core: the inception zoom and the solve transition&rdquo;</cite>
+
+  <div class="stage"><svg id="frac" viewBox="-10 -10 290 290" role="img" aria-label="Nine puzzles solve one by one, each collapsing into one cell of a larger puzzle, which then lights up"></svg></div>
+  <div class="eq" id="eq">&nbsp;</div>
+  <button class="replay" id="replay" type="button">Replay</button>
+
+  <div class="synth">
+    <div><b>1</b><strong>Zoom and transition are one idea.</strong> Combo glow, power grid, fog reveal, the wrong-tap power cut, the surprise glitch, the climb and the pyramid are that idea at different scales.</div>
+    <div><b>2</b><strong>State as light.</strong> Geometry is the HUD, so Zen and Normal are mostly palette and intensity. Two modes come cheap.</div>
+    <div><b>3</b><strong>Two engines carry everything.</strong> Generator + uniqueness checker (seeds, daily, ghosts, teacher, Library, Operator Sudoku, top-down) and the rating model. The POC builds both.</div>
+    <div><b>4</b><strong>Surprise at mastery</strong> replaces levels and the unlock tree as the progression system, and fits no-pay-to-win.</div>
+  </div>
+
+  <div class="dir"><span class="m">&#9670; Chosen direction</span>POC = classic round + tower round with the zoom and transition at the centre, Zen + Normal, a +/&minus; generator with uniqueness, and rating logs. v1 and Later follow the accepted phase plan.</div>
+</section>
+
+<footer>Numception &middot; brainstorm keepsake &middot; built from the session log only</footer>
+</main>
+
+<script>
+(function(){
+// k: kind, u: 1=user, x: text, s: rej|prk, w: verdict note, ch: chips [state,text]
+const T=[
+{n:"01",key:"Build on What Works",title:"Build on What Works",sub:"Find the joy that's already there and push it further.",node:"grid",groups:[
+ ["The transition",[
+  {k:"idea",x:"The collapse: a solved puzzle shrinks to one number that becomes a cell of the bigger puzzle. The final puzzle visibly assembles from your answers."},
+  {k:"insight",u:1,x:"The core joy is selecting a number and watching the UI fold it into the parent shape, at any scale. Satisfaction that doesn't depend on scale."},
+  {k:"direction",u:1,x:"Don't lock into 'fold'. The real thing is the unsolved-to-solved transition of a piece. The transition style is still open."},
+  {k:"idea",x:"Infinite zoom, like Powers of Ten: the camera pulls out until the finished puzzle is one cell. Pinch back in through every level in pyramid mode."},
+  {k:"idea",x:"Pitch drops one note per tier on each solve, so your ears tell you how deep you are."}]],
+ ["Points, combo, heat",[
+  {k:"idea",u:1,x:"Each solved piece adds points to session and/or lifetime totals at the moment of transition."},
+  {k:"idea",x:"Visible point stream: the piece bursts and points flow into the session total, then the lifetime total. Bigger and brighter for harder pieces."},
+  {k:"idea",x:"Zen has no points. Each solve drops a light into a lifetime constellation or garden."},
+  {k:"idea",u:1,x:"Speed points plus a growing combo multiplier (1x, 1.2x … 2x) for consecutive fast solves, like timed trivia."},
+  {k:"idea",x:"Combo as glow intensity: lines thicken, brighten and spark as it rises. No number needed."},
+  {k:"idea",x:"Combo heat carries into the tier-2 puzzle. An unbroken round triggers Overdrive: double final points, full fireworks."},
+  {k:"idea",x:"Combo cools gradually: a slow solve drops a step, a wrong pick drains it hard."}]],
+ ["Neighbours & fog",[
+  {k:"question",u:1,x:"Asked the coach to elaborate on 'a solve changes neighbouring pieces'."},
+  {k:"idea",x:"Five neighbour effects:",ch:[["k","1 · ripple hint dims a distractor next door <small>easy-mode assist only</small>"],["r","2 · solved c becomes a tile in a neighbour"],["p","3 · shared, interlocking cells <small>parked: maybe a separate game</small>"],["r","4 · pressure: neighbours shuffle, tick, gain a decoy"],["r","5 · solve-order pattern bonus"]],w:"<b>User:</b> #2, #4, #5 rejected as gimmicky."},
+  {k:"idea",u:1,x:"Fog of war: only one puzzle is visible at the start, and solving it reveals its neighbours."},
+  {k:"idea",u:1,x:"Easy modes fade one wrong answer per solved neighbour. Caveat: shapes with many neighbours could eliminate too much."},
+  {k:"idea",x:"Hint budget: cap distractor fades per puzzle (1 easy, 2 very easy) whatever the neighbour count. Never fade a, b or c."},
+  {k:"idea",x:"Zen fog is mist lifting at dawn. The reveal is the reward."},
+  {k:"idea",x:"Pyramid fog: the endless tree as a map. Lifetime progress is territory pushed out of the fog."}]],
+ ["The wrong tap",[
+  {k:"question",x:"What does a wrong tap do? Should Zen even have 'wrong'?",w:"<b>User:</b> parked, revisit. Answered below."},
+  {k:"decision",u:1,x:"Normal: a wrong tap kills the combo entirely, with no point loss. It should hurt: dark red flash, background fade. Slow and steady beats fast and error-prone."},
+  {k:"decision",u:1,x:"Zen: gentle. React, but don't dominate. Never rub their face in it."},
+  {k:"idea",x:"Normal wrong tap as a power cut: the glow dies, lines flicker dark, a red pulse, a bass power-down, a reboot at dim 1x."},
+  {k:"idea",x:"Clean bonus: a zero-error round earns its own mark, so slow-and-steady is visible."},
+  {k:"idea",x:"Zen wrong tap: the number sinks like a pebble with a soft low tone. Errors are never counted on screen, and difficulty quietly eases."}]],
+ ["Inception & the tree",[
+  {k:"insight",u:1,x:"Big attraction #2 is shape inception: every puzzle is the same shape, made of numbers or of smaller same-shape puzzles. Zooming through the self-similarity is deeply satisfying."},
+  {k:"idea",x:"Descent mode: start at a huge locked top puzzle, tap a cell to dive down to real numbers, then solve back up."},
+  {k:"idea",x:"Completed subtrees become crystals: keepsakes you can reopen and zoom through later."},
+  {k:"idea",x:"Show the puzzle count during the zoom-out ('625 puzzles built this')."},
+  {k:"question",x:"Provocation: shapes change per level (a triangle of pentagons of squares). Does that break inception or enrich it?"},
+  {k:"idea",u:1,x:"The upside-down tree looks like a lightning bolt. Animate it striking down."},
+  {k:"idea",u:1,x:"Progress as altitude: 'climbed to the top of Mt Algonquin', 'climbed to the moon'."},
+  {k:"idea",u:1,x:"Pyramid home view: just the tree. Zoom out to show scale, zoom in to the next puzzle."},
+  {k:"idea",x:"Lightning strikes down the whole tree when the top level completes (Normal). Zen: a real tree or river delta growing."},
+  {k:"idea",x:"Altitude with real landmarks: Eiffel Tower, Everest, the edge of space, the Moon. Lifetime solves converted to metres."},
+  {k:"idea",x:"Home screen zooms out to the whole tree (scale), then glides to the next unsolved puzzle (purpose)."},
+  {k:"idea",u:1,x:"Power circuit: solved pieces send power up the wires. A partly powered puzzle is soft-lit in a different colour. Full power lights it up and unlocks it."}]]
+]},
+{n:"02",key:"SCAMPER",title:"SCAMPER",sub:"Substitute, combine, adapt, modify, put to other use, eliminate, reverse.",node:"scamper",groups:[
+ ["S","Substitute and onward",[
+  {k:"idea",x:"Substitute the tile content: money, clock time, fractions, dot faces for pre-readers."},
+  {k:"decision",u:1,x:"Content verdicts:",ch:[["r","money <small>doubtful vs decimals; no decimals yet</small>"],["k","fractions <small>definitely, escalating to mixed denominators</small>"]]},
+  {k:"idea",u:1,x:"Dot faces for pre-readers, covering values up to 12."},
+  {k:"direction",u:1,x:"Correction: not literal dominoes. Dice-style dot faces that can show values past 6 (up to ~12), with subitizing-friendly layouts for young kids."},
+  {k:"idea",s:"prk",x:"Mixed representations (numerals and dot faces in one puzzle) and visual fractions (pie, bar).",w:"<b>Parked:</b> not rejected, not now."},
+  {k:"idea",s:"rej",x:"Reverse tap: show the target c and the player finds a and b.",w:"<b>Killed as a mode.</b> At most a young-kid assist."},
+  {k:"idea",u:1,x:"Operator-tile mode (harder, e.g. n=5): some puzzles have their operators filled in, others need operator tiles placed. Sudoku-style elimination through tier-2 uniqueness."},
+  {k:"idea",x:"Call it 'Operator Sudoku'. Pencil marks count valid triples per ghost operator. The final puzzle locks or flashes red. Needs a whole-round uniqueness solver."},
+  {k:"decision",u:1,x:"Pencil marks: unsure, test it. Don't tell the player they're wrong. Show the proposed tier-2 puzzle and let them judge whether it's valid, then solve it."},
+  {k:"idea",x:"A 'No solution' button: correctly declaring your own draft tier-2 impossible is a scored move."},
+  {k:"idea",u:1,x:"Two-player duel: both get the same puzzles, and speed + accuracy decides it.",w:"Split-screen doubtful."},
+  {k:"idea",u:1,x:"Rapid Fire: no inception. Puzzles flash one at a time, and the first error loses all progress."},
+  {k:"idea",u:1,x:"A 'Totem of undying' save: each totem saves one Rapid Fire error."},
+  {k:"idea",x:"Ghost duels from seeded rounds: race a friend's recorded taps asynchronously. A live duel can come later."},
+  {k:"idea",x:"Daily Seed: one round worldwide each day, a shared leaderboard, and a Wordle-style result card coloured by speed."},
+  {k:"decision",u:1,x:"Monetization: hates pay-to-win. A flat one-time $2–5 purchase over ads or IAP. Totems are earn-only."},
+  {k:"question",u:1,s:"prk",x:"FLAG FOR LATER: how far can a seed go? Can it drive pyramid or endless play, or encode complexity? Does it conflict with auto-scaling difficulty?"},
+  {k:"insight",x:"Seed sketch: puzzle = f(rootSeed, treePath, difficulty, generatorVersion). Competitive play uses a fixed curve; personal play adapts but stays replayable by logging difficulty per node. An upward-infinite pyramid needs each new top to contain the old top's answer."}]],
+ ["A","Adapt",[
+  {k:"idea",s:"rej",x:"Golf 'par': par time and par taps per round.",w:"<b>Rejected:</b> it would just be n taps until late-game operator swapping."},
+  {k:"idea",u:1,x:"Unit conversions from cooking. n=4: [2 Tbsp, 1/2 cup, 1 fl oz, 1/4 cup], answer 2 Tbsp + 1 fl oz = 1/4 cup."},
+  {k:"idea",s:"rej",x:"Giant n: a 9-piece cube with 81 numbers.",w:"<b>No cube.</b> A flat 3×3 works for tier 1 and 2. n>9 breaks the geometry and mobile screens. Pyramid mode is the best 'extreme'."},
+  {k:"idea",x:"Zoom as layout: tier 2 is an overview of n glowing cells, and you zoom into one tier-1 at a time. That solves mobile size."},
+  {k:"idea",x:"Tower rounds: a bounded 3-tier mini-pyramid for one session (n=3: 9+3+1 = 13 puzzles)."},
+  {k:"idea",x:"Teacher mode: the class plays the same seeded round, and the teacher sees which skill tripped people up."},
+  {k:"idea",u:1,x:"Teacher mode on classroom smart boards, with kids playing at the shared screen."},
+  {k:"idea",u:1,x:"Library of Babel: a bounded, enumerable seed space built for discovery. Be first to a seed, and some seeds hold gifts (totems, awards, bonus points)."},
+  {k:"idea",x:"Smart-board team play: half the room against the other half, alternating taps on the same puzzle. Big targets, gentle feedback."},
+  {k:"idea",x:"Natural-rarity specimens: rare seed properties detected in code (all primes, final answer 42, a symmetric round). 'Discovered by…'"},
+  {k:"idea",x:"The Atlas: the seed space drawn as a map. Personal and global discoveries light up regions."}]],
+ ["E","Eliminate",[
+  {k:"idea",x:"Eliminate fixed positions: tiles drift slowly inside the shape.",w:"The user had no eliminate ideas, so the session moved on."}]],
+ ["R","Reverse",[
+  {k:"idea",x:"Reverse authorship: the player builds a round (answers + decoys), the game verifies uniqueness, and it goes out as a seed to a friend or class."},
+  {k:"idea",u:1,x:"Top-down reverse mode: given the answer c, select a and b. The previous tier of n puzzles that fed it then appears, and you work downward."},
+  {k:"idea",u:1,x:"Compete: one player starts at the bottom of the tree, the other at the top."},
+  {k:"idea",u:1,x:"Bracket race: different puzzle trees converge on the same final-final puzzle, sweet-16 style. First to arrive wins."},
+  {k:"idea",x:"Top-down rule: each known c has exactly one a, b pair (a reverse uniqueness check)."},
+  {k:"idea",x:"Tunnel race: two players dig toward each other through the same tree, and the meeting node is the finish line."},
+  {k:"idea",x:"Co-op bracket: each teammate or half of the class powers one branch. The final-final lights only when every branch delivers."}]]
+]},
+{n:"03",key:"Trait Transfer",title:"Trait Transfer",sub:"Borrow the traits that make loved things sticky.",node:"grid",groups:[
+ ["Traits named",[
+  {k:"idea",x:"Pokédex: a visible, incomplete collection with known gaps, shown as greyed specimen slots ('7 of 30 rare round types')."},
+  {k:"insight",u:1,x:"Pick it up for 15 seconds or 15 minutes, and put it down with no pressure."},
+  {k:"insight",u:1,x:"Feels infinite in scale and playability. Super Meat Boy-style instant restart, however often you fail."},
+  {k:"insight",u:1,x:"Surprises: you settle into a groove, then new content appears unannounced (square roots, powers, units, a²) that you didn't know existed."},
+  {k:"insight",u:1,x:"Minimal line- or shape-driven UI beats busy every time: Monument Valley, Infinitode 2 and Journey over Candy Crush and Royal Kingdom."}]],
+ ["Transferred",[
+  {k:"idea",x:"The app opens straight into the next unsolved puzzle. No menus on launch, and a save after every tap."},
+  {k:"idea",x:"The smallest unit, a ~10 s tier-1 puzzle, always counts: it powers the grid and extends the streak."},
+  {k:"idea",x:"Seamless failure: the Rapid Fire death animation is the restart (<1 s). A broken combo never stops play. No loading screens between tiers."},
+  {k:"idea",x:"Infinite by default: no end screen. The next round assembles at the edge of view."},
+  {k:"idea",x:"No visible unlock tree. New operators and packs arrive unannounced, as a piece with a never-seen glyph. Discovering it is the unlock."},
+  {k:"idea",x:"Surprises trigger at a mastery plateau (groove detection from ratings). The first encounter is deliberately easy (3² = 9)."},
+  {k:"idea",x:"Surprise presentation: in Normal the grid glitches, then resolves. In Zen a new flower blooms."},
+  {k:"idea",x:"The collection counts undiscovered secrets ('??? – 4 undiscovered') but never says what they are."},
+  {k:"idea",x:"Geometry is the HUD: no persistent score or timer widgets. Time is a line tracing the shape's outline, and points appear only during the transition."},
+  {k:"idea",x:"Spatial menus: zoom out past your tree to reach settings, the collection and modes as shapes."},
+  {k:"idea",x:"Strict palettes. Normal: black + one combo-shifting neon + error red. Zen: paper + one ink. Numbers are the only text, in one geometric typeface."},
+  {k:"direction",u:1,x:"Spatial nav is OK in theory, but there needs to be a single-tap shortcut that zooms to the control surface for game-wide settings."}]]
+]},
+{n:"04",key:"Morpheme Forge",title:"Morpheme Forge",sub:"An invented technique: coin names from the game's own fragments.",node:"forge"}
+];
+
+const esc=s=>s;
+const root=document.getElementById('tiers');
+function nodeSVG(type){
+  if(type==='scamper') return '';
+  let s='<svg class="node" viewBox="0 0 76 76" aria-hidden="true"><rect class="o" x="2" y="2" width="72" height="72"/>';
+  for(let i=0;i<9;i++){const x=10+(i%3)*20,y=10+Math.floor(i/3)*20;s+=`<rect class="c" x="${x}" y="${y}" width="16" height="16" style="transition-delay:${(i*90)}ms"/>`;}
+  if(type==='forge'){s='<svg class="node" viewBox="0 0 76 76" aria-hidden="true"><rect class="o" x="2" y="2" width="72" height="72"/>';
+    [[10,30],[30,30],[50,30]].forEach((p,i)=>s+=`<rect class="c" x="${p[0]}" y="${p[1]}" width="16" height="16" style="transition-delay:${i*160}ms"/>`);}
+  return s+'</svg>';
+}
+function tile(d){
+  const cls=['t'];if(d.u)cls.push('u');if(d.k==='decision')cls.push('dec');if(d.s==='rej')cls.push('rej');if(d.s==='prk')cls.push('prk');
+  let h=`<div class="${cls.join(' ')}" data-k="${d.k}"><div class="m">${d.k} · ${d.u?'user':'coach'}</div><span class="x">${d.x}</span>`;
+  if(d.ch)h+='<div class="chips">'+d.ch.map(c=>`<div class="chip ${c[0]}">${c[1]}</div>`).join('')+'</div>';
+  if(d.w)h+=`<span class="why">${d.w}</span>`;
+  return h+'</div>';
+}
+let html='';
+T.forEach(t=>{
+  let count=0;
+  if(t.groups)t.groups.forEach(g=>count+=g[g.length-1].length);
+  html+=`<section class="tier" id="t${t.n}"><div class="tier-head">${t.node==='scamper'?'':nodeSVG(t.node)}<div><div class="k">Technique ${t.n}</div><h2>${t.title}</h2><p>${t.sub}${count?` <span class="cnt num">· ${count} entries</span>`:''}</p></div></div>`;
+  if(t.node==='scamper'){
+    html+='<div class="scamper" aria-label="SCAMPER letters; S, A, E, R marked in the log">'+'SCAMPER'.split('').map((L,i)=>`<span class="${'SAER'.includes(L)&&!(L==='A'&&i!==2)?'lit':''}" style="transition-delay:${i*120}ms">${L}</span>`).join('')+'</div><p class="note">Letters light where the log marks a stop.</p>';
+    t.groups.forEach(g=>{html+=`<h3><span class="L">${g[0]}</span>${g[1]}</h3><div class="tiles">${g[2].map(tile).join('')}</div>`;});
+  } else if(t.groups){
+    t.groups.forEach(g=>{html+=`<h3>${g[0]}</h3><div class="tiles">${g[1].map(tile).join('')}</div>`;});
+  } else {
+    const names=[
+      ['Trinode'],['Numbolt'],['Glyfra'],['Sumryse',0,'rj','not landing · dislikes “ryse”'],['Fractl'],
+      ['Innumerable',1,'','tagline?'],['Numer8',1],['Digxpanse',1],
+      ['Sumspire',0,'s','coach fav'],['Summit'],['Infinum',0,'s','coach fav'],['Numberless'],['Voltsum'],['Lumen8'],['Numbral'],['Nestum'],['Enfold'],['Zenith'],['Zenumb'],
+      ['Numsummit',1,'s'],['Summa'],['Summara',0,'s'],['Summalux',0,'s'],['Numsumma']
+    ];
+    html+='<h3>Forged, in order</h3><div class="forge">'+names.map(n=>`<span class="nm ${n[1]?'u':''} ${n[2]||''}">${n[0]}${n[3]?`<sup>${n[3]}</sup>`:''}</span>`).join('')+'</div>';
+    html+='<p class="note" style="margin-top:12px">Outlined bright: user coinages. Filled: the kept shortlist.</p>';
+    html+='<div class="summa">Coach insight: Latin <i>summa</i> means both <i>sum</i> and <i>highest point</i>, the root of <i>summit</i>. A double meaning covering the maths and the climb.</div>';
+    html+=`<h3>Verdict</h3><div class="tiles">${tile({k:'decision',u:1,s:'prk',x:'Naming punted: too early. Working title: Numception.',w:'<b>Shortlist kept:</b> Sumspire, Infinum, Numsummit, Summara, Summalux.'})}</div>`;
+  }
+  html+='</section>';
+});
+root.innerHTML=html;
+
+// reveal
+const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.classList.add('on');io.unobserve(e.target);}}),{rootMargin:'0px 0px -12% 0px'});
+document.querySelectorAll('.t,.tier').forEach(el=>reduce?el.classList.add('on'):io.observe(el));
+
+// power rail
+const p=document.getElementById('power');
+function rail(){const h=document.documentElement;const f=h.scrollTop/(h.scrollHeight-h.clientHeight||1);p.style.height=(Math.min(1,f)*100)+'%';}
+addEventListener('scroll',rail,{passive:true});rail();
+
+// fractal climax
+const NS='http://www.w3.org/2000/svg',svg=document.getElementById('frac'),eq=document.getElementById('eq');
+const el=(n,a,par)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);(par||svg).appendChild(e);return e;};
+const R=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+let run=0,blocks,frame,wires;
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=R(0,i);[a[i],a[j]]=[a[j],a[i]];}return a;}
+function build(){
+  svg.innerHTML='';
+  // tier-2 values with one valid sum
+  const top=[];while(top.length<9){const v=R(6,29);if(!top.includes(v))top.push(v);}
+  const tI=shuffle([0,1,2,3,4,5,6,7,8]).slice(0,3);top[tI[2]]=top[tI[0]]+top[tI[1]];
+  wires=[];
+  for(let b=0;b<9;b++){const cx=(b%3)*90+45,cy=Math.floor(b/3)*90+45;
+    if(b!==4)wires.push(el('line',{class:'wire',x1:cx,y1:cy,x2:135,y2:135}));}
+  frame=el('rect',{class:'frame',x:-4,y:-4,width:278,height:278});
+  blocks=[];
+  for(let b=0;b<9;b++){
+    const bx=(b%3)*90,by=Math.floor(b/3)*90,g=el('g',{});
+    const c=top[b],a=R(1,c-1),bb=c-a;
+    const vals=[a,bb,c];while(vals.length<9){const v=R(1,c+6);if(!vals.includes(v))vals.push(v);}
+    const pos=shuffle([0,1,2,3,4,5,6,7,8]);const leaves=[];
+    el('rect',{class:'blk',x:bx+3,y:by+3,width:84,height:84},g);
+    for(let i=0;i<9;i++){const idx=pos[i],x=bx+9+(idx%3)*25,y=by+9+Math.floor(idx/3)*25;
+      const r=el('rect',{class:'leaf',x,y,width:22,height:22},g);el('text',{class:'lt',x:x+11,y:y+11},g).textContent=vals[i];leaves[i]=r;}
+    const bc=el('rect',{class:'bc',x:bx+8,y:by+8,width:74,height:74},g);
+    el('text',{class:'bct',x:bx+45,y:by+45},g).textContent=c;
+    blocks.push({g,bx,by,a,b:bb,c,leaves,bc,blk:g.firstChild});
+  }
+  blocks.tI=tI;blocks.top=top;
+}
+let vb=[-10,-10,290];
+function setVB(v){vb=v;svg.setAttribute('viewBox',v[0]+' '+v[1]+' '+v[2]+' '+v[2]);}
+function cam(to,ms,id){return new Promise(res=>{if(reduce){setVB(to);return res();}const from=vb.slice(),t0=performance.now();
+  (function step(t){if(id!==run)return res();let k=Math.min(1,(t-t0)/ms);k=k<.5?4*k*k*k:1-Math.pow(-2*k+2,3)/2;setVB(from.map((f,i)=>f+(to[i]-f)*k));k<1?requestAnimationFrame(step):res();})(t0);});}
+const wait=(ms,id)=>new Promise(r=>setTimeout(r,reduce?0:ms));
+async function play(){
+  const id=++run;build();setVB([-10,-10,290]);eq.innerHTML='&nbsp;';
+  await wait(500,id);
+  const order=[0,1,2,5,4,3,6,7,8];
+  for(let n=0;n<9;n++){
+    if(id!==run)return;const B=blocks[order[n]];
+    await cam([B.bx-4,B.by-4,98],750,id);
+    for(let i=0;i<3;i++){B.leaves[i].classList.add('pick');await wait(260,id);}
+    eq.innerHTML=`<span class="num">${B.a} + ${B.b} = <b>${B.c}</b></span>`;
+    await wait(280,id);
+    B.g.classList.add('done');
+    const w=wires[order[n]>4?order[n]-1:order[n]];if(order[n]!==4&&w)w.classList.add('on');
+    frame.classList.add('half');
+    await wait(420,id);
+    await cam([-10,-10,290],700,id);
+    eq.innerHTML=`<span class="num">${n+1} of 9 · tier 2 at partial power</span>`;
+    await wait(220,id);
+  }
+  if(id!==run)return;
+  const top=blocks.top,tI=blocks.tI;
+  for(const i of tI){blocks[i].bc.classList.add('pick');await wait(380,id);}
+  eq.innerHTML=`<span class="num">${top[tI[0]]} + ${top[tI[1]]} = <b>${top[tI[2]]}</b></span>`;
+  await wait(500,id);
+  frame.classList.remove('half');frame.classList.add('full');
+  await wait(700,id);
+  eq.innerHTML='<span class="num"><b>10 puzzles built this</b> · and it becomes one cell of the next</span>';
+}
+build();
+let started=false;
+new IntersectionObserver(es=>{if(es[0].isIntersecting&&!started){started=true;play();}},{threshold:.35}).observe(svg);
+document.getElementById('replay').addEventListener('click',play);
+})();
+</script>
+</body>
+</html>

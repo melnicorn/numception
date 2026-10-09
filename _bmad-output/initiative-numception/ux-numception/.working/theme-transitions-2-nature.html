@@ -1,0 +1,469 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Numception Nature Transitions</title>
+<style>
+/* Numception theme transitions 2: nature-inspired (ripple, snow / embers, crystal fracture).
+   Scene, tokens and controls reused from theme-transitions-1.html. */
+:root{--page:#1b1b1d;--card:#242427;--ink:#ececec;--mute:#a3a3a8;--rule:#38383c;--acc:#7cc4ff}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--page);color:var(--ink);font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+body{padding:20px 16px 48px;overflow-x:hidden}
+header{max-width:1100px;margin:0 auto 18px}
+h1{font-size:21px;font-weight:600;margin:0 0 6px}
+header p{margin:0;color:var(--mute);font-size:14px;line-height:1.5;max-width:80ch}
+main{max-width:1100px;margin:0 auto;display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start}
+.stage{flex:0 0 auto;width:min(375px,100%)}
+.phone{position:relative;width:100%;aspect-ratio:375/667;border-radius:28px;overflow:hidden;background:#000;box-shadow:0 0 0 1px #ffffff1a,0 10px 30px #0006;isolation:isolate}
+.phone svg,.phone canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+#old{z-index:1}#new{z-index:2;opacity:0}#gl,#fx{z-index:3;pointer-events:none;display:none}#hit{z-index:4}
+#hit polygon{fill:transparent;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.ans-t{transform-box:fill-box;transform-origin:center}
+text{text-anchor:middle;dominant-baseline:central;font-variant-numeric:tabular-nums lining-nums}
+.fps{margin-top:8px;display:flex;justify-content:space-between;gap:8px;font-size:12px;color:var(--mute);font-variant-numeric:tabular-nums}
+.fps b{color:var(--ink);font-weight:600}
+.panel{flex:1 1 320px;min-width:0;background:var(--card);border:1px solid var(--rule);border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:16px}
+.grp h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute);font-weight:600;margin:0 0 8px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+button{font:inherit;font-size:13px;color:var(--ink);background:#2e2e32;border:1px solid var(--rule);border-radius:8px;padding:7px 11px;cursor:pointer;min-height:36px}
+button:hover{border-color:#5a5a60}
+button[aria-pressed="true"]{background:#16324a;border-color:var(--acc);color:#fff}
+button.primary{background:var(--acc);color:#0b1a26;border-color:var(--acc);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+.desc{font-size:13px;line-height:1.5;color:#d4d4d8;margin:8px 0 0}
+.row{display:flex;flex-wrap:wrap;align-items:center;gap:10px}
+input[type=range]{flex:1 1 160px;min-width:0;accent-color:var(--acc)}
+.mono{font-variant-numeric:tabular-nums;font-size:13px;color:var(--mute)}
+.next{font-size:13px;color:#d4d4d8}
+.note{font-size:13px;line-height:1.45;background:#3a2f12;border:1px solid #6b5520;border-radius:8px;padding:8px 10px;color:#f3e3b5}
+.note label{display:flex;gap:6px;align-items:center;margin-top:6px}
+.readout{background:#1c1c1f;border:1px solid var(--rule);border-radius:10px;padding:10px 12px;font-size:12px}
+.bar{height:6px;border-radius:3px;background:#333;overflow:hidden;margin:6px 0 8px}
+.bar i{display:block;height:100%;width:0;background:var(--acc)}
+.rgrid{display:grid;grid-template-columns:auto 1fr;gap:3px 10px;font-variant-numeric:tabular-nums;margin:0}
+.rgrid dt{color:var(--mute)}.rgrid dd{margin:0;min-width:0;overflow-wrap:anywhere}
+</style></head><body>
+<header><h1>Numception: theme-to-theme transitions, round 2 (nature)</h1>
+<p>An n=3 round (8 + 5 = 13). Tap 13 in the phone, or press Play: a short solve beat plays, then the next round (4 + 7 = 11) arrives in a new theme. Three nature-inspired transitions, each with a hard boundary between old and new so there is never a half-mixed frame. After each transition the pair reverses, so you can replay it.</p></header>
+<main>
+  <div class="stage">
+    <div class="phone" id="phone">
+      <svg id="old" viewBox="0 0 375 667" aria-hidden="true"></svg>
+      <svg id="new" viewBox="0 0 375 667" aria-hidden="true"></svg>
+      <canvas id="gl" aria-hidden="true"></canvas>
+      <canvas id="fx" aria-hidden="true"></canvas>
+      <svg id="hit" viewBox="0 0 375 667" role="group" aria-label="puzzle cells"></svg>
+    </div>
+    <div class="fps" aria-live="off"><span>FPS <b id="fps">–</b></span><span id="fpsLast">last run: –</span></div>
+  </div>
+  <section class="panel">
+    <div class="grp"><h2>Transition</h2>
+      <div class="seg" id="appr">
+        <button data-a="1">1 · Ripple through water</button>
+        <button data-a="2">2 · Snow / embers</button>
+        <button data-a="3">3 · Crystal fracture</button>
+      </div>
+      <p class="desc" id="adesc"></p>
+    </div>
+    <div class="grp"><h2>Theme pair</h2>
+      <div class="seg" id="pairs"></div>
+      <p class="next" id="next"></p>
+    </div>
+    <div class="grp"><h2>Duration</h2>
+      <div class="row"><input type="range" id="dur" min="300" max="2500" step="50" value="1200" aria-label="Transition duration"><span class="mono" id="durv">1200 ms</span></div>
+    </div>
+    <div class="row"><button class="primary" id="play">Play</button><button id="tap">Tap 13</button></div>
+    <div class="note" id="rmnote" hidden>Reduced motion is on, so every transition plays as a quick 200 ms crossfade.
+      <label><input type="checkbox" id="rmover"> Preview the full motion anyway</label></div>
+    <div class="readout" aria-live="off">
+      <div class="row" style="justify-content:space-between"><strong id="phase">Idle</strong><span class="mono" id="pct">0%</span></div>
+      <div class="bar"><i id="barI"></i></div>
+      <dl class="rgrid" id="stats"></dl>
+    </div>
+  </section>
+</main>
+<script>
+"use strict";
+/* ---------- geometry: n=3 split triangle ---------- */
+const S=320, AY=195, H=S*Math.sqrt(3)/2, CX=187.5;
+const P={A:[CX,AY],BL:[CX-S/2,AY+H],BR:[CX+S/2,AY+H],Lm:[CX-S/4,AY+H/2],Rm:[CX+S/4,AY+H/2],Bm:[CX,AY+H]};
+const CELLS={top:[P.A,P.Lm,P.Rm],left:[P.Lm,P.BL,P.Bm],right:[P.Rm,P.Bm,P.BR],centre:[P.Lm,P.Rm,P.Bm]};
+const cen=pts=>[(pts[0][0]+pts[1][0]+pts[2][0])/3,(pts[0][1]+pts[1][1]+pts[2][1])/3];
+const CEN={};for(const k in CELLS)CEN[k]=cen(CELLS[k]);
+const WHOLE_C=[CX,AY+2*H/3];
+const INR=(S/2)/(2*Math.sqrt(3));
+const inset=(pts,e)=>{const c=cen(pts),f=Math.max(0,(INR-e)/INR);return pts.map(p=>[c[0]+(p[0]-c[0])*f,c[1]+(p[1]-c[1])*f])};
+const ps=pts=>pts.map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+
+/* ---------- rounds (verified unique below) ---------- */
+const ROUNDS=[{v:{top:8,left:5,right:13},ans:"right"},{v:{top:4,left:11,right:7},ans:"left"}];
+function solutions(v){const c=["top","left","right"];return c.filter(x=>{const o=c.filter(y=>y!==x);return v[o[0]]+v[o[1]]===v[x]})}
+ROUNDS.forEach((r,i)=>{const s=solutions(r.v);console.assert(s.length===1&&s[0]===r.ans,"round "+i+" not unique",s)});
+
+/* ---------- themes (hex, weights, glow from directions-1) ---------- */
+const AV="'Avenir Next','Avenir',ui-sans-serif,sans-serif", FU="'Futura','Century Gothic','Trebuchet MS',sans-serif",
+      DIN="'DIN Alternate','DIN Condensed','Bahnschrift','Roboto Condensed',sans-serif", RND="ui-rounded,'SF Pro Rounded','Avenir Next','Avenir',sans-serif";
+const THEMES={
+ vn:{name:"Vector Noir",bgTop:"#000000",bgBot:"#000000",bgGlow:"#0A1A1F",bgGlowO:0,line:"#4FE0FA",lineO:1,lineW:1.5,glow:7,glowK:1,inset:0,
+     fill:"#4FE0FA",fillO:0,centre:"#4FE0FA",centreO:0,num:"#E8FDFF",numO:1,op:"#4FE0FA",opO:.9,size:46,opSize:34,ls:.06,
+     solved:"#4FE0FA",solvedO:.09,solvedTxt:"#E8FDFF",font:AV,weight:200,opWeight:200,material:"lines",join:"miter",texture:"floor"},
+ ob:{name:"Overdrive Bloom",bgTop:"#05020A",bgBot:"#05020A",bgGlow:"#1D0B33",bgGlowO:1,line:"#D646EC",lineO:1,lineW:5,glow:16,glowK:2,inset:10,
+     fill:"#D646EC",fillO:0,centre:"#D646EC",centreO:0,num:"#FFE9FB",numO:1,op:"#D646EC",opO:1,size:50,opSize:40,ls:-.03,
+     solved:"#D646EC",solvedO:1,solvedTxt:"#05020A",font:FU,weight:700,opWeight:700,material:"tubes",join:"round",texture:"none"},
+ of:{name:"Obsidian Facet",bgTop:"#11171A",bgBot:"#040506",bgGlow:"#11171A",bgGlowO:0,line:"#A9FF55",lineO:1,lineW:2,glow:1.4,glowK:1,inset:6,
+     fill:"#20292C",fillO:1,centre:"#0C1012",centreO:1,num:"#F1FFE4",numO:1,op:"#A9FF55",opO:1,size:48,opSize:36,ls:0,
+     solved:"#3D5A20",solvedO:1,solvedTxt:"#F1FFE4",font:DIN,weight:700,opWeight:700,material:"facets",join:"miter",texture:"scan"},
+ wa:{name:"Washi Ink",bgTop:"#F2EDE3",bgBot:"#F2EDE3",bgGlow:"#F2EDE3",bgGlowO:0,line:"#283A6B",lineO:.9,lineW:1.2,glow:0,glowK:0,inset:0,
+     fill:"#283A6B",fillO:0,centre:"#283A6B",centreO:0,num:"#283A6B",numO:1,op:"#283A6B",opO:.6,size:42,opSize:30,ls:.03,
+     solved:"#283A6B",solvedO:.13,solvedTxt:"#283A6B",font:AV,weight:400,opWeight:300,material:"brush",join:"round",texture:"fibre"},
+ mw:{name:"Moonwater",bgTop:"#16242C",bgBot:"#223943",bgGlow:"#BFE3DA",bgGlowO:0,line:"#BFE3DA",lineO:.55,lineW:2.5,glow:3.5,glowK:1,inset:8,
+     fill:"#BFE3DA",fillO:0,centre:"#BFE3DA",centreO:0,num:"#BFE3DA",numO:.92,op:"#BFE3DA",opO:.55,size:44,opSize:34,ls:.02,
+     solved:"#BFE3DA",solvedO:.2,solvedTxt:"#BFE3DA",font:RND,weight:300,opWeight:300,material:"lines",join:"round",texture:"moon"},
+ kn:{name:"Kiln",bgTop:"#ECE3D7",bgBot:"#DCCDBB",bgGlow:"#ECE3D7",bgGlowO:0,line:"#A14E36",lineO:0,lineW:0,glow:0,glowK:0,inset:10,
+     fill:"#F6F0E8",fillO:1,centre:"#A14E36",centreO:.12,num:"#A14E36",numO:1,op:"#A14E36",opO:.7,size:44,opSize:32,ls:0,
+     solved:"#A14E36",solvedO:1,solvedTxt:"#F6F0E8",font:FU,weight:500,opWeight:500,material:"tiles",join:"round",texture:"none"}
+};
+const NUMK=["bgGlowO","lineO","lineW","glow","glowK","inset","fillO","centreO","numO","opO","size","opSize","ls","solvedO"];
+const COLK={bgTop:null,bgBot:null,bgGlow:"bgGlowO",line:"lineO",fill:"fillO",centre:"centreO",num:"numO",op:"opO",solved:"solvedO",solvedTxt:null};
+const DISCK=["name","font","weight","opWeight","material","join","texture"];
+const PAIRS=[["vn","ob"],["vn","of"],["wa","mw"],["mw","kn"],["of","wa"]];
+
+/* ---------- OKLCH colour interpolation ---------- */
+const hex2rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);
+const toLin=c=>c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4);
+const toSrgb=c=>c<=.0031308?12.92*c:1.055*Math.pow(c,1/2.4)-.055;
+function rgb2oklch(rgb){const[r,g,b]=rgb.map(toLin);
+ const l=Math.cbrt(.4122214708*r+.5363325363*g+.0514459929*b),m=Math.cbrt(.2119034982*r+.6806995451*g+.1073969566*b),s=Math.cbrt(.0883024619*r+.2817188376*g+.6299787005*b);
+ const L=.2104542553*l+.793617785*m-.0040720468*s,A=1.9779984951*l-2.428592205*m+.4505937099*s,B=.0259040371*l+.7827717662*m-.808675766*s;
+ return[L,Math.hypot(A,B),Math.atan2(B,A)]}
+function oklch2hex([L,C,h]){const A=C*Math.cos(h),B=C*Math.sin(h);
+ const l=(L+.3963377774*A+.2158037573*B)**3,m=(L-.1055613458*A-.0638541728*B)**3,s=(L-.0894841775*A-1.291485548*B)**3;
+ const rgb=[4.0767416621*l-3.3077115913*m+.2309699292*s,-1.2684380046*l+2.6097574011*m-.3413193965*s,-.0041960863*l-.7034186147*m+1.707614701*s];
+ return"#"+rgb.map(c=>Math.round(Math.max(0,Math.min(1,toSrgb(Math.max(0,c))))*255).toString(16).padStart(2,"0")).join("")}
+function mixC(a,b,t){if(t<=0)return a;if(t>=1)return b;const A=rgb2oklch(hex2rgb(a)),B=rgb2oklch(hex2rgb(b));
+ let ha=A[2],hb=B[2];if(A[1]<.02)ha=hb;if(B[1]<.02)hb=ha;let dh=hb-ha;if(dh>Math.PI)dh-=2*Math.PI;if(dh<-Math.PI)dh+=2*Math.PI;
+ return oklch2hex([A[0]+(B[0]-A[0])*t,A[1]+(B[1]-A[1])*t,ha+dh*t])}
+const lerp=(a,b,t)=>a+(b-a)*t;
+function lerpTokens(A,B,t){const o={};NUMK.forEach(k=>o[k]=lerp(A[k],B[k],t));
+ for(const k in COLK){const ok=COLK[k];let ca=A[k],cb=B[k];
+  if(ok){if(A[ok]<.01)ca=cb;if(B[ok]<.01)cb=ca;}o[k]=mixC(ca,cb,t)}
+ return o}
+
+/* ---------- scene renderer ---------- */
+const shade=(c,k)=>mixC(c,"#000000",k);
+function render(T,rd,o){
+ const p=o.p,R=ROUNDS[rd],sk=o.solvedK??0;
+ const glowOn=T.glow>.05&&T.lineO>.005&&T.lineW>.02;
+ let d=`<defs><clipPath id="${p}clip"><rect width="375" height="667" rx="28"/></clipPath>
+ <linearGradient id="${p}bg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="${T.bgTop}"/><stop offset="1" stop-color="${T.bgBot}"/></linearGradient>
+ <radialGradient id="${p}rg" cx=".5" cy=".42" r=".75"><stop offset="0" stop-color="${T.bgGlow}" stop-opacity="${T.bgGlowO.toFixed(3)}"/><stop offset=".55" stop-color="${T.bgGlow}" stop-opacity="${(T.bgGlowO*.4).toFixed(3)}"/><stop offset="1" stop-color="${T.bgGlow}" stop-opacity="0"/></radialGradient>`;
+ if(glowOn)d+=`<filter id="${p}glow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur in="SourceGraphic" stdDeviation="${(T.glow*.34).toFixed(2)}" result="a"/><feGaussianBlur in="SourceGraphic" stdDeviation="${T.glow.toFixed(2)}" result="b"/><feComponentTransfer in="b" result="b2"><feFuncA type="linear" slope="${T.glowK.toFixed(3)}"/></feComponentTransfer><feMerge><feMergeNode in="b2"/><feMergeNode in="a"/><feMergeNode in="SourceGraphic"/></feMerge></filter>`;
+ if(T.texture==="floor")d+=`<linearGradient id="${p}floor" gradientUnits="userSpaceOnUse" x1="0" y1="505" x2="0" y2="667"><stop offset="0" stop-color="${T.line}" stop-opacity="0"/><stop offset="1" stop-color="${T.line}" stop-opacity=".16"/></linearGradient>`;
+ if(T.texture==="scan")d+=`<pattern id="${p}scan" width="4" height="4" patternUnits="userSpaceOnUse"><rect width="4" height="1" fill="#FFFFFF" fill-opacity=".025"/></pattern>`;
+ if(T.texture==="fibre")d+=`<filter id="${p}fibre" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".9 .06" numOctaves="2" seed="4"/><feColorMatrix values="0 0 0 0 .55  0 0 0 0 .5  0 0 0 0 .42  0 0 0 .09 0"/></filter>`;
+ if(T.texture==="moon")d+=`<radialGradient id="${p}moon" gradientUnits="userSpaceOnUse" cx="120" cy="560" r="300"><stop offset="0" stop-color="${T.line}" stop-opacity=".2"/><stop offset="1" stop-color="${T.line}" stop-opacity="0"/></radialGradient>`;
+ if(T.material==="brush")d+=`<filter id="${p}brush" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency=".035" numOctaves="2" seed="7" result="t"/><feDisplacementMap in="SourceGraphic" in2="t" scale="2.2"/></filter>`;
+ if(T.material==="tiles")d+=`<filter id="${p}lift" x="-20%" y="-20%" width="140%" height="150%"><feDropShadow dx="0" dy="5" stdDeviation="5" flood-color="#A14E36" flood-opacity=".18"/></filter>`;
+ d+="</defs>";
+ // background + texture
+ let bg=`<rect width="375" height="667" fill="url(#${p}bg)"/><rect width="375" height="667" fill="url(#${p}rg)"/>`;
+ if(T.texture==="floor"){let g=`<g stroke="url(#${p}floor)" stroke-width=".75">`;for(let x=-442.5;x<=818;x+=70)g+=`<line x1="187.5" y1="505" x2="${x}" y2="667"/>`;
+  for(let i=1;i<=6;i++){const y=505+162*(i/6)**2;g+=`<line x1="0" y1="${y.toFixed(1)}" x2="375" y2="${y.toFixed(1)}"/>`}bg+=g+"</g>"}
+ if(T.texture==="scan")bg+=`<rect width="375" height="667" fill="url(#${p}scan)"/>`;
+ if(T.texture==="fibre")bg+=`<rect width="375" height="667" filter="url(#${p}fibre)"/>`;
+ if(T.texture==="moon")bg+=`<rect width="375" height="667" fill="url(#${p}moon)"/><g fill="none" stroke="${T.line}"><ellipse cx="187.5" cy="575" rx="150" ry="16" stroke-opacity=".06"/><ellipse cx="187.5" cy="575" rx="95" ry="10" stroke-opacity=".09"/><ellipse cx="187.5" cy="575" rx="45" ry="5" stroke-opacity=".12"/></g>`;
+ // cells
+ const e=T.inset/2, rc=(k,c="")=>`class="rc${c?" "+c:""}" data-x="${CEN[k][0].toFixed(1)}" data-y="${CEN[k][1].toFixed(1)}"`;
+ let fills="";
+ for(const k of ["top","left","right","centre"]){
+  const pts=inset(CELLS[k],e),isC=k==="centre",isA=k===R.ans;
+  const col=isC?T.centre:T.fill, op=isC?T.centreO:T.fillO;
+  if(T.material==="facets"){const c=cen(pts);const f=(cc,oo,cls)=>[[0,1,.0],[1,2,.4],[2,0,.22]].map(([a,b,s])=>`<polygon ${cls} points="${ps([pts[a],pts[b],c])}" fill="${shade(cc,s)}" fill-opacity="${oo.toFixed(3)}"/>`).join("");
+   if(op>.005)fills+=`<g ${rc(k)}>${f(col,op,"")}</g>`;
+   if(isA&&sk>0)fills+=`<g ${rc(k,"ans-fill")}>${f(T.solved,T.solvedO*sk,"")}</g>`;
+  }else{
+   const filt=(T.material==="tiles"&&!isC)?` filter="url(#${p}lift)"`:"";
+   if(op>.005)fills+=`<g${filt}><polygon ${rc(k)} points="${ps(pts)}" fill="${col}" fill-opacity="${op.toFixed(3)}"/></g>`;
+   if(isA&&sk>0)fills+=`<polygon ${rc(k,"ans-fill")} points="${ps(pts)}" fill="${T.solved}" fill-opacity="${(T.solvedO*sk).toFixed(3)}"/>`;
+  }
+ }
+ let strokes="";
+ if(T.lineW>.02&&T.lineO>.005){
+  let s="";for(const k of ["top","left","right","centre"]){const isC=k==="centre",w=T.lineW*(isC?.85:1);
+   s+=`<polygon ${rc(k)} data-w="${w.toFixed(2)}" points="${ps(inset(CELLS[k],e))}" fill="none" stroke="${T.line}" stroke-opacity="${(T.lineO*(isC?.8:1)).toFixed(3)}" stroke-width="${w.toFixed(2)}" stroke-linejoin="${T.join}" stroke-linecap="round"/>`}
+  if(glowOn)s=`<g filter="url(#${p}glow)">${s}</g>`;
+  if(T.material==="brush")s=`<g filter="url(#${p}brush)">${s}</g>`;
+  strokes=s;
+ }
+ const ff=`font-family="${T.font}" letter-spacing="${T.ls.toFixed(3)}em"`;
+ let txt="";
+ for(const k of ["top","left","right"]){const isA=k===R.ans,col=isA&&sk>0?mixC(T.num,T.solvedTxt,sk):T.num;
+  txt+=`<text ${rc(k,isA?"ans-t":"")} x="${CEN[k][0].toFixed(1)}" y="${CEN[k][1].toFixed(1)}" ${ff} font-weight="${T.weight}" font-size="${T.size.toFixed(1)}" fill="${col}" fill-opacity="${T.numO.toFixed(3)}">${R.v[k]}</text>`}
+ txt+=`<text ${rc("centre")} x="${CEN.centre[0].toFixed(1)}" y="${CEN.centre[1].toFixed(1)}" ${ff} font-weight="${T.opWeight}" font-size="${T.opSize.toFixed(1)}" fill="${T.op}" fill-opacity="${T.opO.toFixed(3)}">+</text>`;
+ return `${d}<g clip-path="url(#${p}clip)"><g class="cam"><g class="bg">${bg}</g><g class="pz">${fills}${strokes}${txt}</g></g></g>`;
+}
+
+/* ---------- DOM + state ---------- */
+const $=id=>document.getElementById(id);
+const oldS=$("old"),newS=$("new"),hitS=$("hit"),phone=$("phone"),glC=$("gl"),fxC=$("fx");
+const mq=matchMedia("(prefers-reduced-motion: reduce)");
+const DESC={
+ 1:"Concentric ripples spread from the tap point. A WebGL shader displaces both scenes radially along each ring, so the old scene refracts as the lead ring passes and the new theme sits behind its front (a 2px edge, no blend band). Trailing rings wobble the new round, then the surface settles to calm.",
+ 2:"Flakes in the new theme's colours fall and land; each landing grows a clump of snow until the old round is blanketed. Under full cover the rounds swap, then the clumps melt outward from the tap point to reveal the new round. Dark destination themes fall as glowing embers into ash instead of snow.",
+ 3:"Cracks in the new theme's accent race out from the tap point across a radial triangle mesh. The shards then tilt, spin and fall away (inner ones first, each at its own depth for parallax), revealing the new round underneath as it settles from a slight zoom."};
+let st={appr:1,pair:0,from:"vn",to:"ob",rd:0,dur:1200,busy:false};
+
+function hitRender(){hitS.innerHTML=["top","left","right","centre"].map(k=>`<polygon data-cell="${k}" points="${ps(CELLS[k])}" aria-label="${k==="centre"?"operator plus":"cell "+ROUNDS[st.rd].v[k]}"/>`).join("")}
+function show(){oldS.innerHTML=render(THEMES[st.from],st.rd,{p:"o"});hitRender();ui()}
+function ui(){
+ document.querySelectorAll("#appr button").forEach(b=>b.setAttribute("aria-pressed",String(+b.dataset.a===st.appr)));
+ document.querySelectorAll("#pairs button").forEach((b,i)=>b.setAttribute("aria-pressed",String(i===st.pair)));
+ $("adesc").textContent=DESC[st.appr];
+ const r0=ROUNDS[st.rd],r1=ROUNDS[1-st.rd],a=r0.v[r0.ans];
+ const eq=r=>{const o=["top","left","right"].filter(k=>k!==r.ans).map(k=>r.v[k]);return `${o[0]} + ${o[1]} = ${r.v[r.ans]}`};
+ $("next").textContent=`Next: ${THEMES[st.from].name} → ${THEMES[st.to].name} · round ${eq(r0)} → ${eq(r1)}`;
+ $("tap").textContent=`Tap ${a}`;
+ $("rmnote").hidden=!mq.matches;
+ ["play","tap"].forEach(id=>$(id).disabled=st.busy);
+ document.querySelectorAll("#pairs button,#appr button").forEach(b=>b.disabled=st.busy);
+}
+const reduce=()=>mq.matches&&!$("rmover").checked;
+const cl=x=>Math.max(0,Math.min(1,x)),sm=x=>{x=cl(x);return x*x*(3-2*x)},eio=x=>x<.5?4*x*x*x:1-Math.pow(-2*x+2,3)/2,eo=x=>1-Math.pow(1-cl(x),3);
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+function tween(ms,fn){return new Promise(res=>{const t0=performance.now();const step=now=>{const t=cl((now-t0)/ms);fn(t);if(t<1)requestAnimationFrame(step);else res()};requestAnimationFrame(step)})}
+const rnd=(a,b)=>a+Math.random()*(b-a);
+const lum=h=>{const[r,g,b]=hex2rgb(h).map(toLin);return .2126*r+.7152*g+.0722*b};
+const accent=T=>T.lineO>.05&&T.lineW>.1?T.line:T.num;
+const cornerDist=(x,y)=>Math.max(...[[0,0],[375,0],[0,667],[375,667]].map(c=>Math.hypot(c[0]-x,c[1]-y)));
+
+/* ---------- FPS meter (outside the frame) ---------- */
+const fr={n:0,t0:performance.now(),last:performance.now(),run:null};
+function fpsLoop(now){const dt=now-fr.last;fr.last=now;fr.n++;
+ if(now-fr.t0>=500){$("fps").textContent=Math.round(fr.n*1000/(now-fr.t0));fr.n=0;fr.t0=now}
+ if(fr.run){fr.run.frames++;fr.run.worst=Math.max(fr.run.worst,dt)}
+ requestAnimationFrame(fpsLoop)}
+requestAnimationFrame(fpsLoop);
+function fpsStart(){fr.run={frames:0,worst:0,t0:performance.now()}}
+function fpsEnd(){const r=fr.run;fr.run=null;if(!r)return null;const ms=performance.now()-r.t0;return{avg:r.frames*1000/ms,worst:r.worst,ms}}
+
+/* ---------- readout ---------- */
+let lastStats=null;
+function readout(phase,t){
+ $("phase").textContent=phase;$("pct").textContent=Math.round(t*100)+"%";$("barI").style.width=(t*100)+"%";
+}
+function statsOut(extra){
+ const s=lastStats;
+ $("stats").innerHTML=s?`<dt>avg fps</dt><dd>${s.avg.toFixed(1)}</dd><dt>worst frame</dt><dd>${s.worst.toFixed(1)} ms</dd><dt>elapsed</dt><dd>${Math.round(s.ms)} ms</dd><dt>renderer</dt><dd>${s.how}</dd><dt>buffer</dt><dd>${fxC.width} × ${fxC.height} px</dd>`
+  :`<dt>stats</dt><dd>play a transition to measure it</dd>`;
+ $("fpsLast").textContent=s?`last run: ${s.avg.toFixed(0)} avg · worst ${s.worst.toFixed(0)} ms`:"last run: –";
+}
+
+/* ---------- rasterise a scene (for canvas / WebGL effects) ---------- */
+function sizeCanvases(){const dpr=Math.min(window.devicePixelRatio||1,2);
+ const W=Math.round(phone.clientWidth*dpr),H=Math.round(phone.clientHeight*dpr);
+ for(const c of [glC,fxC]){if(c.width!==W)c.width=W;if(c.height!==H)c.height=H}return{W,H}}
+function rast(T,rd,o,W,H){
+ const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 375 667"><style>text{text-anchor:middle;dominant-baseline:central;font-variant-numeric:tabular-nums lining-nums}</style>${render(T,rd,o)}</svg>`;
+ return new Promise((res,rej)=>{const im=new Image();
+  im.onload=()=>{const c=document.createElement("canvas");c.width=W;c.height=H;const x=c.getContext("2d");x.fillStyle="#000";x.fillRect(0,0,W,H);x.drawImage(im,0,0,W,H);res(c)};
+  im.onerror=()=>rej(new Error("scene raster failed"));
+  im.src="data:image/svg+xml;charset=utf-8,"+encodeURIComponent(svg)})}
+
+/* ---------- 1 · Ripple (WebGL displacement, 2D fallback) ---------- */
+let GLS=null;
+const VS="attribute vec2 a;varying vec2 v;void main(){v=a*.5+.5;gl_Position=vec4(a,0.,1.);}";
+const FS=`precision mediump float;
+uniform sampler2D uOld,uNew;uniform vec2 uP;uniform float uR,uAmp,uDark;uniform vec3 uHi;varying vec2 v;
+float ring(float x,float w){return exp(-x*x/(w*w));}
+void main(){
+ vec2 pos=vec2(v.x*375.,(1.-v.y)*667.);vec2 dv=pos-uP;float d=length(dv);vec2 dir=d>.001?dv/d:vec2(0.);
+ float x=d-uR;float k=6.2831853/28.;
+ float h=sin(x*k)*ring(x,24.)+.55*sin((x+58.)*k)*ring(x+58.,20.)+.3*sin((x+116.)*k)*ring(x+116.,18.)
+        +.25*sin(x*k*.5)*ring(x-34.,30.)*step(0.,x);
+ float sl=cos(x*k)*ring(x,24.)+.55*cos((x+58.)*k)*ring(x+58.,20.)+.3*cos((x+116.)*k)*ring(x+116.,18.);
+ h*=uAmp;sl*=uAmp;
+ vec2 disp=dir*h*10.;vec2 uv=clamp(v+vec2(disp.x/375.,-disp.y/667.),0.,1.);
+ vec3 o=texture2D(uOld,uv).rgb,n=texture2D(uNew,uv).rgb;
+ vec3 c=mix(o,n,smoothstep(1.,-1.,x));
+ c+=sl*(uDark>.5?.07:.045)*vec3(1.);
+ c=mix(c,uHi,ring(x,2.2)*.75*uAmp);
+ gl_FragColor=vec4(clamp(c,0.,1.),1.);
+}`;
+function glSetup(oc,nc){
+ if(GLS===false)return null;
+ try{
+  if(!GLS){const g=glC.getContext("webgl",{antialias:false,premultipliedAlpha:false,alpha:false});if(!g){GLS=false;return null}
+   const sh=(t,s)=>{const o=g.createShader(t);g.shaderSource(o,s);g.compileShader(o);if(!g.getShaderParameter(o,g.COMPILE_STATUS))throw new Error(g.getShaderInfoLog(o));return o};
+   const p=g.createProgram();g.attachShader(p,sh(g.VERTEX_SHADER,VS));g.attachShader(p,sh(g.FRAGMENT_SHADER,FS));g.linkProgram(p);
+   if(!g.getProgramParameter(p,g.LINK_STATUS))throw new Error(g.getProgramInfoLog(p));
+   const b=g.createBuffer();g.bindBuffer(g.ARRAY_BUFFER,b);g.bufferData(g.ARRAY_BUFFER,new Float32Array([-1,-1,1,-1,-1,1,1,1]),g.STATIC_DRAW);
+   const al=g.getAttribLocation(p,"a");g.enableVertexAttribArray(al);g.vertexAttribPointer(al,2,g.FLOAT,false,0,0);
+   const u={};["uOld","uNew","uP","uR","uAmp","uDark","uHi"].forEach(n=>u[n]=g.getUniformLocation(p,n));
+   const tex=[g.createTexture(),g.createTexture()];
+   tex.forEach(t=>{g.bindTexture(g.TEXTURE_2D,t);[[g.TEXTURE_MIN_FILTER,g.LINEAR],[g.TEXTURE_MAG_FILTER,g.LINEAR],[g.TEXTURE_WRAP_S,g.CLAMP_TO_EDGE],[g.TEXTURE_WRAP_T,g.CLAMP_TO_EDGE]].forEach(([a,v])=>g.texParameteri(g.TEXTURE_2D,a,v))});
+   GLS={g,p,u,tex}}
+  const{g,u,tex}=GLS;g.useProgram(GLS.p);g.viewport(0,0,glC.width,glC.height);g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL,true);
+  [oc,nc].forEach((c,i)=>{g.activeTexture(g.TEXTURE0+i);g.bindTexture(g.TEXTURE_2D,tex[i]);g.texImage2D(g.TEXTURE_2D,0,g.RGBA,g.RGBA,g.UNSIGNED_BYTE,c)});
+  g.uniform1i(u.uOld,0);g.uniform1i(u.uNew,1);
+  return GLS;
+ }catch(e){console.warn("WebGL ripple unavailable, using 2D fallback:",e.message);GLS=false;return null}
+}
+async function tRipple(A,B,D,tp,oc,nc){
+ const[px,py]=tp,maxR=cornerDist(px,py)+4,acc=accent(B),hi=hex2rgb(acc),dark=lum(B.bgTop)<.18?1:0;
+ const Rf=t=>maxR*(1-Math.pow(1-cl(t/.78),1.7)),amp=t=>1-sm((t-.6)/.4);
+ const G=glSetup(oc,nc);let draw;
+ if(G){const{g,u}=G;glC.style.display="block";
+  draw=t=>{g.uniform2f(u.uP,px,py);g.uniform1f(u.uR,Rf(t));g.uniform1f(u.uAmp,amp(t));g.uniform1f(u.uDark,dark);g.uniform3f(u.uHi,hi[0],hi[1],hi[2]);g.drawArrays(g.TRIANGLE_STRIP,0,4)};
+ }else{const x=fxC.getContext("2d"),sx=fxC.width/375,sy=fxC.height/667;fxC.style.display="block";
+  draw=t=>{const R=Rf(t),a=amp(t);x.setTransform(1,0,0,1,0,0);x.drawImage(oc,0,0);x.save();x.beginPath();x.ellipse(px*sx,py*sy,R*sx,R*sy,0,0,7);x.clip();x.drawImage(nc,0,0);x.restore();
+   x.setTransform(sx,0,0,sy,0,0);x.strokeStyle=acc;[[0,1.8,.9],[-58,1.2,.45],[-116,1,.25]].forEach(([o,w,al])=>{if(R+o>0){x.globalAlpha=al*a;x.lineWidth=w;x.beginPath();x.arc(px,py,R+o,0,7);x.stroke()}});x.globalAlpha=1}}
+ draw(0);
+ await tween(D,t=>{draw(t);readout(t<.78?"Ripple":"Settle",t)});
+ return G?"WebGL shader":"canvas 2D fallback";
+}
+
+/* ---------- 2 · Snow / embers (canvas 2D overlay) ---------- */
+let emberSprite=null,emberCol="";
+function sprite(col){if(emberSprite&&emberCol===col)return emberSprite;const c=document.createElement("canvas");c.width=c.height=32;const x=c.getContext("2d");
+ const g=x.createRadialGradient(16,16,0,16,16,16);g.addColorStop(0,"#FFFFFF");g.addColorStop(.22,col);g.addColorStop(.5,col+"55");g.addColorStop(1,col+"00");
+ x.fillStyle=g;x.fillRect(0,0,32,32);emberSprite=c;emberCol=col;return c}
+async function tSnow(A,B,D,tp){
+ const x=fxC.getContext("2d"),sx=fxC.width/375,sy=fxC.height/667;fxC.style.display="block";
+ const[px,py]=tp,maxD=cornerDist(px,py),acc=accent(B),dark=lum(B.bgTop)<.18;
+ const top=dark?mixC(B.bgTop,acc,.14):mixC(B.bgTop,"#FFFFFF",.5),bot=dark?mixC(B.bgBot,acc,.14):mixC(B.bgBot,"#FFFFFF",.5);
+ const rim=dark?acc:mixC(B.bgBot,acc,.32),flakeFill=dark?acc:mixC(top,"#FFFFFF",.4);
+ const spr=dark?sprite(acc):null;
+ // clumps on a jittered hex grid: radius > worst-case gap, so all landed = full cover
+ const g=46,clumps=[];let row=0;
+ for(let y=-10;y<667+g;y+=g*.87,row++)for(let x0=-10+(row%2?g/2:0);x0<375+g;x0+=g){
+  const cx=x0+rnd(-6,6),cy=y+rnd(-6,6),r=rnd(38,45),tl=rnd(.04,.48);
+  const tm=.6+.25*(.7*Math.hypot(cx-px,cy-py)/maxD+.3*Math.random());
+  clumps.push({x:cx,y:cy,r,tl,tm,l:[0,1].map(()=>{const a=rnd(0,6.283),d=r*rnd(.45,.6);return[Math.cos(a)*d,Math.sin(a)*d,r*rnd(.45,.6)]})})}
+ const flakes=clumps.map(c=>{const fd=rnd(.15,.28);return{x0:c.x+rnd(-24,24),y0:c.y-rnd(200,380),x1:c.x,y1:c.y,t0:c.tl-fd,t1:c.tl,r:rnd(1.6,3.8),ph:rnd(0,6.283)}});
+ for(let i=0;i<90;i++){const t0=rnd(0,.5),x0=rnd(-10,385);flakes.push({x0,y0:-14,x1:x0+rnd(-35,35),y1:690,t0,t1:t0+rnd(.3,.45),r:rnd(1.2,3.4),ph:rnd(0,6.283)})}
+ const specks=Array.from({length:dark?260:160},()=>[rnd(0,375),rnd(0,667),rnd(.6,1.5)]);
+ const grad=x.createLinearGradient(0,0,0,667);grad.addColorStop(0,top);grad.addColorStop(1,bot);
+ let swapped=false;
+ const draw=t=>{
+  x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,fxC.width,fxC.height);x.setTransform(sx,0,0,sy,0,0);
+  const p=new Path2D();let any=false;
+  for(const c of clumps){if(t<c.tl)continue;const k=eo((t-c.tl)/.1)*(1-sm((t-c.tm)/.15));if(k<=.001)continue;any=true;
+   p.moveTo(c.x+c.r*k,c.y);p.arc(c.x,c.y,c.r*k,0,6.2832);
+   for(const[dx,dy,rr]of c.l){p.moveTo(c.x+dx*k+rr*k,c.y+dy*k);p.arc(c.x+dx*k,c.y+dy*k,rr*k,0,6.2832)}}
+  if(t>=.58&&t<.6){p.rect(0,0,375,667);any=true}
+  if(any){
+   x.save();x.translate(0,dark?-1.8:2.6);x.globalAlpha=dark?.6:.75;x.fillStyle=rim;x.fill(p);x.restore();
+   x.fillStyle=grad;x.fill(p);
+   x.save();x.clip(p);x.globalAlpha=dark?.55:.3;x.fillStyle=dark?acc:rim;x.beginPath();for(const[a,b,r]of specks)x.rect(a,b,r,r);x.fill();x.restore();
+  }
+  if(!swapped&&t>=.58){oldS.style.opacity=0;newS.style.opacity=1;swapped=true}
+  // falling flakes / embers on top
+  if(dark){for(const f of flakes){if(t<f.t0||t>f.t1)continue;const u=(t-f.t0)/(f.t1-f.t0);
+    const fx=lerp(f.x0,f.x1,u)+Math.sin(u*7+f.ph)*9,fy=lerp(f.y0,f.y1,u),s=f.r*3.2;
+    x.globalAlpha=.65+.35*Math.sin(t*38+f.ph*5);x.drawImage(spr,fx-s,fy-s,2*s,2*s)}x.globalAlpha=1}
+  else{const fp=new Path2D(),star=new Path2D();
+   for(const f of flakes){if(t<f.t0||t>f.t1)continue;const u=(t-f.t0)/(f.t1-f.t0);
+    const fx=lerp(f.x0,f.x1,u)+Math.sin(u*5+f.ph)*6,fy=lerp(f.y0,f.y1,u);
+    if(f.r>3){for(let i=0;i<3;i++){const a=f.ph+u*2+i*1.0472,c=Math.cos(a)*f.r*1.5,s=Math.sin(a)*f.r*1.5;star.moveTo(fx-c,fy-s);star.lineTo(fx+c,fy+s)}}
+    fp.moveTo(fx+f.r,fy);fp.arc(fx,fy,f.r,0,6.2832)}
+   x.fillStyle=flakeFill;x.fill(fp);x.strokeStyle=acc;x.globalAlpha=.6;x.lineWidth=.7;x.stroke(fp);x.globalAlpha=.85;x.lineWidth=.9;x.lineCap="round";x.stroke(star);x.globalAlpha=1}
+ };
+ await tween(D,t=>{draw(t);readout(t<.5?(dark?"Embers falling":"Snowfall"):t<.6?"Blanket":"Melt",t)});
+ if(!swapped){oldS.style.opacity=0;newS.style.opacity=1}
+ return dark?"canvas 2D (embers)":"canvas 2D (snow)";
+}
+
+/* ---------- 3 · Crystal fracture (canvas 2D shards over the new SVG) ---------- */
+async function tFracture(A,B,D,tp,oc){
+ const x=fxC.getContext("2d"),sx=fxC.width/375,sy=fxC.height/667;
+ const[px,py]=tp,maxD=cornerDist(px,py),acc=accent(B),seam=B.bgTop; // seams show the new world's paper/void through the cracks
+ const N=11,M=6,step=6.2832/N,base=rnd(0,6.2832);
+ const ang=Array.from({length:N},(_,i)=>base+i*step+rnd(-.27,.27)*step);
+ const radii=[0];for(let j=1;j<=M;j++)radii.push(j===M?(maxD+30)*1.4:30*Math.pow((maxD+30)/30,(j-1)/(M-1)));
+ const V=[null];for(let j=1;j<=M;j++)V.push(ang.map(a=>{const aa=j===M?a:a+rnd(-.15,.15)*step,rr=j===M?radii[j]:radii[j]*rnd(.89,1.11);return[px+Math.cos(aa)*rr,py+Math.sin(aa)*rr]}));
+ const tris=[];
+ for(let i=0;i<N;i++){const n=(i+1)%N;tris.push([[px,py],V[1][i],V[1][n]]);
+  for(let j=1;j<M;j++){const a=V[j][i],b=V[j][n],c=V[j+1][n],d=V[j+1][i];if((i+j)%2)tris.push([a,b,c],[a,c,d]);else tris.push([a,b,d],[b,c,d])}}
+ // pre-render each on-screen shard to its own small canvas
+ const shards=[];
+ for(const T of tris){
+  const xs=T.map(p=>p[0]),ys=T.map(p=>p[1]);
+  const x0=Math.max(0,Math.min(...xs)),x1=Math.min(375,Math.max(...xs)),y0=Math.max(0,Math.min(...ys)),y1=Math.min(667,Math.max(...ys));
+  if(x1-x0<.5||y1-y0<.5)continue;
+  const bx=Math.floor(x0*sx),by=Math.floor(y0*sy),bw=Math.max(1,Math.ceil(x1*sx)-bx),bh=Math.max(1,Math.ceil(y1*sy)-by);
+  const c=document.createElement("canvas");c.width=bw;c.height=bh;const cx=c.getContext("2d");
+  cx.beginPath();T.forEach((p,i)=>cx[i?"lineTo":"moveTo"](p[0]*sx-bx,p[1]*sy-by));cx.closePath();cx.clip();cx.drawImage(oc,-bx,-by);
+  const gx=(xs[0]+xs[1]+xs[2])/3,gy=(ys[0]+ys[1]+ys[2])/3,d=Math.hypot(gx-px,gy-py),ux=d>1?(gx-px)/d:0,uy=d>1?(gy-py)/d:-1;
+  shards.push({T,c,bx:bx/sx,by:by/sy,bw:bw/sx,bh:bh/sy,gx,gy,ux,uy,z:rnd(.75,1.35),rs:rnd(-1,1),ts:rnd(-1,1),del:Math.min(.58,.14+.38*Math.min(1,d/maxD)+rnd(0,.05))})}
+ const edges=[];for(const T of tris)for(let i=0;i<3;i++){let p=T[i],q=T[(i+1)%3];let dp=Math.hypot(p[0]-px,p[1]-py),dq=Math.hypot(q[0]-px,q[1]-py);if(dp>dq){[p,q]=[q,p];[dp,dq]=[dq,dp]}edges.push([p,q,dp,dq])}
+ const LIFE=.4,CR=.16,triPath=(P,T)=>{P.moveTo(T[0][0],T[0][1]);P.lineTo(T[1][0],T[1][1]);P.lineTo(T[2][0],T[2][1]);P.closePath()};
+ newS.style.transformOrigin=`${(px/375*100).toFixed(1)}% ${(py/667*100).toFixed(1)}%`;newS.style.opacity=1;
+ const draw=t=>{
+  x.setTransform(1,0,0,1,0,0);x.clearRect(0,0,fxC.width,fxC.height);x.setTransform(sx,0,0,sy,0,0);
+  newS.style.transform=`scale(${(1.06-.06*eo((t-CR)/(1-CR))).toFixed(4)})`;
+  if(t<CR){x.drawImage(oc,0,0,375,667);const f=(maxD+40)*eo(t/CR),P=new Path2D();
+   for(const[p,q,dp,dq]of edges){if(f<=dp)continue;const k=dq>dp?cl((f-dp)/(dq-dp)):1;P.moveTo(p[0],p[1]);P.lineTo(lerp(p[0],q[0],k),lerp(p[1],q[1],k))}
+   x.lineCap="round";x.strokeStyle=seam;x.lineWidth=3.2;x.stroke(P);x.strokeStyle=acc;x.lineWidth=1.1;x.stroke(P);return}
+  const still=new Path2D(),moving=[];
+  for(const s of shards){const u=(t-s.del)/LIFE;if(u>=1)continue;
+   if(u<=0){x.drawImage(s.c,s.bx,s.by,s.bw,s.bh);triPath(still,s.T)}else{s.u=u;moving.push(s)}}
+  x.lineJoin="round";x.strokeStyle=seam;x.lineWidth=3.2;x.stroke(still);x.strokeStyle=acc;x.lineWidth=1.1;x.stroke(still);
+  moving.sort((a,b)=>a.z-b.z);
+  for(const s of moving){const e=s.u,tilt=s.ts*1.6*e,rot=s.rs*.9*e,zf=1+(s.z-1)*1.4*e;
+   const dx=s.ux*70*s.z*e,dy=s.uy*70*s.z*e+1500*s.z*e*e,ct=Math.cos(tilt);
+   x.save();x.translate(s.gx+dx,s.gy+dy);x.rotate(rot);x.scale(zf*(Math.abs(ct)<.02?.02:ct),zf);x.translate(-s.gx,-s.gy);
+   x.drawImage(s.c,s.bx,s.by,s.bw,s.bh);
+   const P=new Path2D();triPath(P,s.T);
+   x.fillStyle="#000";x.globalAlpha=.5*Math.abs(Math.sin(tilt))+.15*e;x.fill(P);
+   x.globalAlpha=1;x.strokeStyle=acc;x.lineWidth=1.2/zf;x.stroke(P);x.restore()}
+ };
+ draw(0);fxC.style.display="block";oldS.style.opacity=0;
+ await tween(D,t=>{draw(t);readout(t<CR?"Crack":"Shatter",t)});
+ return "canvas 2D ("+shards.length+" shards)";
+}
+
+/* ---------- play ---------- */
+const reset=s=>{s.style.opacity="";s.style.filter="";s.style.transform="";s.style.transformOrigin="";s.style.zIndex=""};
+async function crossfade(ms,label){await tween(ms,t=>{newS.style.opacity=t;readout(label,t)})}
+async function play(tap){
+ if(st.busy)return;st.busy=true;ui();
+ const A=THEMES[st.from],B=THEMES[st.to],r0=st.rd,r1=1-st.rd,R=ROUNDS[r0];
+ const tp=tap||CEN[R.ans],red=reduce(),D=st.dur;
+ readout("Solve beat",0);
+ oldS.innerHTML=render(A,r0,{p:"o",solvedK:1});
+ if(!red){const t=oldS.querySelector(".ans-t");t&&t.animate([{transform:"scale(1)"},{transform:"scale(1.2)"},{transform:"scale(1)"}],{duration:380,easing:"ease-out"});
+  oldS.querySelectorAll(".ans-fill").forEach(f=>f.animate([{opacity:0},{opacity:1}],{duration:220,easing:"ease-out"}))}
+ const{W,H}=sizeCanvases();
+ const need=red?0:st.appr===1?2:st.appr===3?1:0;
+ const imgs=need?Promise.all([rast(A,r0,{p:"x",solvedK:1},W,H),need>1?rast(B,r1,{p:"y"},W,H):null]):null;
+ await wait(red?150:420);
+ newS.innerHTML=render(B,r1,{p:"n"});reset(newS);
+ let how="CSS crossfade";
+ try{
+  const im=imgs?await imgs:null;
+  fpsStart();
+  if(red)await crossfade(200,"Crossfade (reduced)");
+  else if(st.appr===1)how=await tRipple(A,B,D,tp,im[0],im[1]);
+  else if(st.appr===2)how=await tSnow(A,B,D,tp);
+  else how=await tFracture(A,B,D,tp,im[0]);
+ }catch(e){console.error(e);if(!fr.run)fpsStart();how="crossfade (effect failed)";await crossfade(250,"Crossfade (fallback)")}
+ const s=fpsEnd();if(s){s.how=how;lastStats=s}
+ // finalize: the new round becomes the base layer, the pair reverses
+ st.from=Object.keys(THEMES).find(k=>THEMES[k]===B);st.to=Object.keys(THEMES).find(k=>THEMES[k]===A);st.rd=r1;
+ oldS.innerHTML=render(B,r1,{p:"o"});reset(oldS);newS.innerHTML="";reset(newS);
+ glC.style.display="none";fxC.style.display="none";
+ st.busy=false;show();readout("Done",1);statsOut();
+}
+
+/* ---------- wiring ---------- */
+PAIRS.forEach((p,i)=>{const b=document.createElement("button");b.textContent=`${THEMES[p[0]].name} ↔ ${THEMES[p[1]].name}`;
+ b.onclick=()=>{if(st.busy)return;st.pair=i;st.from=p[0];st.to=p[1];st.rd=0;show();readout("Idle",0)};$("pairs").appendChild(b)});
+document.querySelectorAll("#appr button").forEach(b=>b.onclick=()=>{if(st.busy)return;st.appr=+b.dataset.a;ui();readout("Idle",0)});
+$("dur").oninput=e=>{st.dur=+e.target.value;$("durv").textContent=st.dur+" ms"};
+$("play").onclick=()=>play(null);
+$("tap").onclick=()=>play(null);
+$("rmover").onchange=ui;mq.addEventListener?.("change",ui);
+hitS.addEventListener("click",e=>{const c=e.target.dataset&&e.target.dataset.cell;if(!c||st.busy)return;
+ const R=ROUNDS[st.rd];if(c!==R.ans)return;
+ const r=hitS.getBoundingClientRect(),k=r.width/375;play([(e.clientX-r.left)/k,(e.clientY-r.top)/k])});
+show();readout("Idle",0);statsOut();
+</script>
+</body></html>
