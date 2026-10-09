@@ -22,8 +22,12 @@ describe('capacitor config webDir', () => {
     expect(await loadWebDir('phaser')).toBe('../../prototypes/renderer-bakeoff/phaser/dist');
   });
 
+  it('ships the PixiJS bake-off build when BAKEOFF=pixi', async () => {
+    expect(await loadWebDir('pixi')).toBe('../../prototypes/renderer-bakeoff/pixi/dist');
+  });
+
   it('rejects an unknown BAKEOFF value', async () => {
-    await expect(loadWebDir('pixi')).rejects.toThrow('Unknown BAKEOFF="pixi"');
+    await expect(loadWebDir('bogus')).rejects.toThrow('Unknown BAKEOFF="bogus"');
     // Inherited Object.prototype keys are not bake-off targets.
     await expect(loadWebDir('constructor')).rejects.toThrow('Unknown BAKEOFF="constructor"');
   });

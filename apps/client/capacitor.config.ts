@@ -4,10 +4,12 @@ import type { CapacitorConfig } from '@capacitor/cli';
 // prefix is a placeholder until store ids are registered; flavour ids arrive with
 // build flavours (AD-18).
 //
-// BAKEOFF=phaser points the shells at the renderer bake-off build instead
-// (prototypes/renderer-bakeoff, ticket 8). Unset or empty ships the client.
+// BAKEOFF=phaser or BAKEOFF=pixi points the shells at a renderer bake-off build
+// instead (prototypes/renderer-bakeoff, tickets 8 and 9). Unset or empty ships the
+// client.
 const bakeoffWebDirs: Record<string, string> = {
   phaser: '../../prototypes/renderer-bakeoff/phaser/dist',
+  pixi: '../../prototypes/renderer-bakeoff/pixi/dist',
 };
 
 function webDir(): string {

@@ -4,9 +4,11 @@ import { basePath } from './apps/client/base-path.ts';
 const port = 4173;
 const baseURL = `http://localhost:${port}${basePath()}`;
 
-// Renderer bake-off prototype (ticket 8): built and served on its own port.
+// Renderer bake-off prototypes (tickets 8 and 9): each built and served on its own port.
 const bakeoffPort = 4174;
 const bakeoffURL = `http://localhost:${bakeoffPort}/`;
+const bakeoffPixiPort = 4175;
+const bakeoffPixiURL = `http://localhost:${bakeoffPixiPort}/`;
 
 export default defineConfig({
   forbidOnly: !!process.env.CI,
@@ -32,6 +34,18 @@ export default defineConfig({
         baseURL: bakeoffURL,
       },
     },
+    {
+      name: 'bakeoff-pixi',
+      testDir: 'prototypes/renderer-bakeoff/pixi/e2e',
+      // Same small DPR-1 viewport as bakeoff-phaser, for the same reason: software
+      // WebKit and three glow passes, with behaviour (not fps) under test.
+      use: {
+        ...devices['Desktop Safari'],
+        viewport: { width: 480, height: 360 },
+        deviceScaleFactor: 1,
+        baseURL: bakeoffPixiURL,
+      },
+    },
   ],
   webServer: [
     {
@@ -44,6 +58,13 @@ export default defineConfig({
         `pnpm --filter @numception/bakeoff-phaser run build && ` +
         `pnpm --filter @numception/bakeoff-phaser run preview --port ${bakeoffPort} --strictPort`,
       url: bakeoffURL,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command:
+        `pnpm --filter @numception/bakeoff-pixi run build && ` +
+        `pnpm --filter @numception/bakeoff-pixi run preview --port ${bakeoffPixiPort} --strictPort`,
+      url: bakeoffPixiURL,
       reuseExistingServer: !process.env.CI,
     },
   ],

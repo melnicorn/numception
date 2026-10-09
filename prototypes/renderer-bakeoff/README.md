@@ -15,13 +15,17 @@ fully self-contained: no CDN, no remote fonts, no network requests.
 
 ## Running
 
-- Browser: `pnpm --filter @numception/bakeoff-phaser dev` (or `build` then `preview`).
-- Shells: `pnpm --filter @numception/client run cap:sync:phaser` builds the prototype
-  and syncs it into the iOS and Android shells (`BAKEOFF=phaser` points Capacitor's
-  `webDir` at `prototypes/renderer-bakeoff/phaser/dist`). Run
+- Browser: `pnpm --filter @numception/bakeoff-phaser dev` or
+  `pnpm --filter @numception/bakeoff-pixi dev` (or `build` then `preview`).
+- Shells: `pnpm --filter @numception/client run cap:sync:phaser` (or `cap:sync:pixi`)
+  builds the prototype and syncs it into the iOS and Android shells (`BAKEOFF=phaser`
+  or `BAKEOFF=pixi` points Capacitor's `webDir` at that prototype's `dist`). Run
   `pnpm --filter @numception/client run cap:sync` afterwards to put the tracer client
   back. Any other non-empty `BAKEOFF` value is rejected.
-- Size: Vite prints the gzipped bundle size at the end of `build`.
+- Size: Vite prints the gzipped bundle size at the end of `build`. The PixiJS build is
+  split into chunks by PixiJS's own dynamic imports, and the WebGPU and web-worker
+  chunks are never fetched (the renderer is WebGL), so count only the chunks the page
+  loads (the network panel shows them).
 
 ## Shared scene spec
 
@@ -86,6 +90,23 @@ segments:
   knockout). Phaser: `addGlow(colour, 2, 0, devicePixelRatio, false, 10, 12)` in
   screen space. PixiJS should match distance and strength; if its sample settings
   differ, write the chosen values here.
+
+  Glow settings side by side (both: 12 rings, one sample ring per css px, same
+  distance-weighted alpha sum and outer-strength formula):
+
+  | | Phaser 4 `Glow` | PixiJS `GlowFilter` (pixi-filters 6.1) |
+  |---|---|---|
+  | Colour | line colour | `color`: line colour |
+  | Outer / inner strength | 2 / 0 | `outerStrength: 2`, `innerStrength: 0` |
+  | Knockout | `false` | `knockout: false` (`alpha: 1`) |
+  | Distance | 12 steps x `scale = devicePixelRatio` device px = 12 css px | `distance: 12`; PixiJS sizes filter input in css px, so 12 steps of 1 css px at any resolution |
+  | Samples per pixel | quality 10: 10 angles per ring, random rotation per ring, 120 in all | `quality: 0.1326`: angle step `1 / (quality x distance)` rad gives 10 fixed angles per ring, 120 in all |
+  | Resolution | game canvas at DPR, filters on the camera context at that size | `resolution: devicePixelRatio` on the filter (the Filter default of 1 would be soft); renderer `resolution` DPR with `autoDensity` |
+  | Area | the whole camera (Graphics have no bounds) | the colour layer's bounds plus `padding: 12` css px |
+  | Filter MSAA | none (filter framebuffers are single-sampled) | `antialias: 'off'` (the default), so also single-sampled |
+
+  The visible difference: Phaser's random per-ring rotation hides sampling rays,
+  while PixiJS's fixed angles can show faint rays at line ends.
 
 ### Particles
 

@@ -10,6 +10,7 @@
     { "path": "./apps/client" },
     { "path": "./apps/client/tsconfig.node.json" },
     { "path": "./prototypes/renderer-bakeoff/phaser" },
+    { "path": "./prototypes/renderer-bakeoff/pixi" },
     { "path": "./tsconfig.tooling.json" }
   ]
 }

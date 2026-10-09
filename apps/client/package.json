@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "cap:sync": "BASE_PATH= vite build && cap sync",
-    "cap:sync:phaser": "pnpm --filter @numception/bakeoff-phaser run build && BAKEOFF=phaser cap sync"
+    "cap:sync:phaser": "pnpm --filter @numception/bakeoff-phaser run build && BAKEOFF=phaser cap sync",
+    "cap:sync:pixi": "pnpm --filter @numception/bakeoff-pixi run build && BAKEOFF=pixi cap sync"
   },
   "dependencies": {
     "@capacitor/android": "~8.5.3",
