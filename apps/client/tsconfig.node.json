@@ -1,0 +1,10 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM"],
+    "types": ["node"],
+    "allowImportingTsExtensions": true,
+    "outDir": "./.tsbuild/node"
+  },
+  "include": ["base-path.ts", "base-path.test.ts", "vite.config.ts", "e2e"]
+}

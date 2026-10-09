@@ -1,2 +1,7 @@
 _bmad/render/
 node_modules/
+dist/
+.tsbuild/
+test-results/
+playwright-report/
+*.tsbuildinfo

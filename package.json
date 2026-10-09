@@ -1,20 +1,28 @@
 {
   "name": "numception",
   "version": "0.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "typecheck": "tsc -b",
+    "test": "vitest run",
+    "build": "pnpm --filter @numception/client run build",
+    "e2e": "playwright test"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
+  "devDependencies": {
+    "@playwright/test": "~1.64.0",
+    "@types/node": "~24.19.1",
+    "typescript": "~6.0.3",
+    "vitest": "~5.0.3"
+  },
+  "engines": {
+    "node": ">=24 <25"
+  },
   "devEngines": {
     "packageManager": {
       "name": "pnpm",
       "version": "^11.18.0",
       "onFail": "download"
     }
-  },
-  "type": "module"
+  }
 }

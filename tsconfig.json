@@ -1,0 +1,14 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/core" },
+    { "path": "./packages/app" },
+    { "path": "./packages/render" },
+    { "path": "./packages/ui" },
+    { "path": "./packages/platform-web" },
+    { "path": "./packages/platform-native" },
+    { "path": "./apps/client" },
+    { "path": "./apps/client/tsconfig.node.json" },
+    { "path": "./tsconfig.tooling.json" }
+  ]
+}
