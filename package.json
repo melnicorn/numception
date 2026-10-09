@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -b",
+    "lint:deps": "depcruise packages apps/client/src --config .dependency-cruiser.cjs && node tools/check-supply.mjs",
     "test": "vitest run",
     "build": "pnpm --filter @numception/client run build",
     "e2e": "playwright test"
@@ -12,6 +13,7 @@
   "devDependencies": {
     "@playwright/test": "~1.64.0",
     "@types/node": "~24.19.1",
+    "dependency-cruiser": "~18.5.0",
     "typescript": "~6.0.3",
     "vitest": "~5.0.3"
   },

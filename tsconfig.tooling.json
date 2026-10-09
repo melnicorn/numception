@@ -2,8 +2,10 @@
   "extends": "./tsconfig.base.json",
   "compilerOptions": {
     "types": ["node"],
-    "allowImportingTsExtensions": true
+    "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": true
   },
-  "include": ["vitest.config.ts", "playwright.config.ts"],
+  "include": ["vitest.config.ts", "playwright.config.ts", "tools/*.ts", "tools/*.mjs", "tools/*.cjs"],
   "references": [{ "path": "./apps/client/tsconfig.node.json" }]
 }
