@@ -34,6 +34,10 @@ const game = new Phaser.Game({
   antialias: true,
   powerPreference: 'high-performance',
   audio: { noAudio: true },
+  // Raw frame deltas: Phaser's smoothing substitutes ~16 ms when frames are slow or the
+  // page is unfocused, which would slow the loop clock below real time. The scene
+  // clamps dt to 100 ms itself, as the shared spec (and the PixiJS ticker) do.
+  fps: { smoothStep: false },
   input: { keyboard: false, mouse: false, touch: false, gamepad: false },
   scale: {
     mode: Phaser.Scale.NONE,

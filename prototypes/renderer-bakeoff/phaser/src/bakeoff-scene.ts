@@ -51,9 +51,10 @@ export interface BakeoffDebug {
   liveParticles: number; // particle dots visible in the scene's display list last frame
   loopsCompleted: number; // 5 s loops completed since page load
   restarts: number; // scene restarts after a WebGL context restore
+  sceneSeconds: number; // loop clock advanced since page load (clamped dt, survives restarts)
 }
 
-export const bakeoffDebug: BakeoffDebug = { liveParticles: 0, loopsCompleted: 0, restarts: 0 };
+export const bakeoffDebug: BakeoffDebug = { liveParticles: 0, loopsCompleted: 0, restarts: 0, sceneSeconds: 0 };
 
 // ---------------------------------------------------------------------------
 // Geometry: segments are stored flat as [ax, ay, bx, by] in Float32Arrays.
@@ -236,6 +237,7 @@ export class BakeoffScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     const dt = Math.min(deltaMs / 1000, MAX_DELTA);
     this.loopTime += dt;
+    bakeoffDebug.sceneSeconds += dt;
     if (this.loopTime >= LOOP) {
       this.loopTime %= LOOP;
       bakeoffDebug.loopsCompleted++;
