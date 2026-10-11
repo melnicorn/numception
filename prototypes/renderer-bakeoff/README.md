@@ -167,6 +167,8 @@ the background resumes the loop where it was instead of jumping).
 
 ### Measured in ticket 3
 
+Results, method and the glow tiers (`BAKEOFF_GLOW=full|lite|off`): [measurements.md](measurements.md).
+
 Cold start and size come from this build: Vite's gzipped output size, plus the
 first-frame readout. Fps comes from the readout on the reference phones. The
 prototypes do not measure or decide anything themselves.

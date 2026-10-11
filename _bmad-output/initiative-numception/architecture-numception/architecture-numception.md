@@ -416,7 +416,7 @@ Verified 2026-10-09 (`research-stack-versions.md`, plus npm checks recorded in t
 | idb (web storage) | 8.0.x |
 | @capacitor/core, cli, ios, android | 8.5.x |
 | @capacitor/filesystem · preferences · haptics · share · app | 8.1.x · 8.0.x · 8.0.x · 8.0.x · 8.1.x |
-| Renderer (prototype decides) | phaser 4.2.x **or** pixi.js 8.22.x + pixi-filters 6.1.x |
+| Renderer | pixi.js 8.22.x (+ pixi-filters 6.1.x only if a filter effect survives the glow rework). **Provisional**: chosen 2026-10-10 by the bake-off; see Deferred. |
 | Platform floor | iOS 15+, Android minSdk 24, WebGL 2 baseline |
 
 ## Structural Seed
@@ -512,7 +512,9 @@ flowchart LR
 
 ## Deferred
 
-- **Renderer: Phaser 4 or PixiJS v8.** Decided by `prototypes/renderer-bakeoff`. The test scene is neon lines, glow, 200 particles, a tier zoom and a round collapse. Measure fps, gzipped size and cold start on a Galaxy A35-class phone and an iPhone 13. Tie-break: control of the render loop first, then size, then cold start. AD-14 keeps the choice local to `render`.
+- **Renderer: PixiJS v8, provisional (2026-10-10).** Chosen by `prototypes/renderer-bakeoff` (`measurements.md`). On an iPhone 16 Pro, Release Capacitor build, both engines hold 60 fps for the zoom, collapse and 200 particles with glow off. Neither holds 60 with the specified filter glow (Phaser 12–16 fps, whose per-colour glow filters each cover the whole screen; PixiJS 46–53). Tie-break: render-loop control is about even, PixiJS is smaller (139 kB vs 349 kB gzipped fetched) and has a slightly faster first frame, so PixiJS wins. AD-14 keeps the choice local to `render`.
+  - **Glow technique is open.** Filter glow at full resolution is too expensive. The theme and render work must use a cheaper technique (for example pre-baked glow sprites or one shared low-resolution bloom pass) and prove 60 fps on an older device.
+  - **Gaps (the decision stays provisional until closed):** the reference iPhone 13 was replaced by the 16 Pro (upper bound only). The stricter A14 iPad Air 4 is not yet measured. Android (Galaxy A35 class) is not measured; the user has no Android device for now. Re-measure both before POC architecture locks, and in any case before epic-native-apps.
 - **Formula constants** (K, selector, scoring, durations). These live in `TuningConfig` (AD-7) and the PRD addendum §A2.
 - **Multiple rating chains, propensity-corrected recalibration, and device-wide bucket ratings.** AD-8 and AD-9 let all three be added later without a data migration.
 - **Upward generation for the endless Pyramid** (PRD OQ-4). This means choosing a new top's answer contract around the existing top's answer. Bottom-anchored addressing (AD-4) is already in place. Deferred to the v1 Pyramid epic.

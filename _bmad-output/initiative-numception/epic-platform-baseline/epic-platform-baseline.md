@@ -55,4 +55,4 @@ The build substrate and the renderer decision. No game rules, no player-facing f
 - Sequencing: the renderer bake-off (8 and 9 in parallel, then 3) comes right after the phone shells because it is the least certain and gates epics 3 and 6; entry 4 runs beside the bake-off; 5 then 6 follow; 7 closes.
 - Assumption: the tracer reaches the static host on day one (entry 1 owns the host account step); offline PWA and the size budget stay in entry 6.
 - Assumption: epic-puzzle-generator's wait on CI includes the boundary lint, so its entries will wait on 1.1 and 1.4; epic-core-play-loop and epic-themes-and-feedback will wait on 1.3.
-
+- Decision: 2026-10-10 (user). Development runs on the user's iPhone 16 Pro and the browser. No Android device for now. The iPad Air 4 (A14) stands in for the iPhone 13 when it is available. Done-when item 4 is met provisionally: the renderer was measured on the 16 Pro only, and the A35 and older-iPhone measurements are recorded as gaps in the architecture spine's Deferred section.

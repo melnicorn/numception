@@ -27,6 +27,9 @@ const config: CapacitorConfig = {
   appId: 'app.numception.dev',
   appName: 'Numception',
   webDir: webDir(),
+  // Bake-off builds forward console.log in release too, so ticket 3 can read the
+  // readout's measurement lines over USB (devicectl --console).
+  ...(process.env.BAKEOFF ? { loggingBehavior: 'production' as const } : {}),
 };
 
 export default config;

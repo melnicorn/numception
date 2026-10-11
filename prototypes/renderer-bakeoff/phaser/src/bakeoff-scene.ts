@@ -1,4 +1,5 @@
 import * as Phaser from 'phaser';
+import { GLOW_SHAPE, GLOW_TIER } from './glow-tier';
 
 // The bake-off scene, built exactly to the shared spec in ../README.md
 // ("Shared scene spec"). Every number here comes from that spec; change the spec
@@ -22,9 +23,9 @@ const FIT_FRACTION = 0.8;
 const ZOOMED_SCALE = 3;
 
 const LINE_WIDTH_CSS = 3;
-const GLOW_DISTANCE = 12;
+const GLOW_DISTANCE = GLOW_SHAPE.distance;
 const GLOW_OUTER_STRENGTH = 2;
-const GLOW_QUALITY = 10;
+const GLOW_QUALITY = GLOW_SHAPE.directions; // Phaser quality = directions per ring
 
 const PARTICLE_COUNT = 200;
 const PARTICLE_LIFE = 1.5;
@@ -202,6 +203,7 @@ export class BakeoffScene extends Phaser.Scene {
     // bounds, so their filters focus on the camera context: the glow is screen space.
     this.layers = PALETTE.map((colour) => {
       const graphics = this.add.graphics();
+      if (GLOW_TIER === 'off') return { graphics, colour };
       graphics.enableFilters().setFiltersFocusContext(true);
       graphics.filters!.internal.addGlow(
         colour,

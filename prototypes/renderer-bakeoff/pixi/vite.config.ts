@@ -5,4 +5,6 @@ import { defineConfig } from 'vite';
 // imports, so the build has several chunks; only the WebGL path is fetched at runtime.
 export default defineConfig({
   base: './',
+  // Glow tier for device measurement (ticket 3): full | lite | off. See src/glow-tier.ts.
+  define: { __BAKEOFF_GLOW__: JSON.stringify(process.env.BAKEOFF_GLOW ?? 'full') },
 });

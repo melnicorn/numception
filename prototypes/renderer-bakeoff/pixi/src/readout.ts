@@ -5,6 +5,7 @@
 const UPDATE_MS = 500;
 const WINDOW_MS = 5000;
 const CAPACITY = 2048;
+const LOG_MS = 5000; // console line for device measurement (ticket 3), read over USB
 
 export interface Readout {
   frame(now: number): void;
@@ -17,6 +18,8 @@ export function createReadout(el: HTMLElement): Readout {
   let firstFrameMs = -1;
   let intervalStart = -1;
   let intervalFrames = 0;
+  let lastLog = -1;
+  let minFps = Infinity;
 
   function rollingAverage(now: number): number {
     // Walk back from the newest frame until we leave the 5 s window.
@@ -53,6 +56,16 @@ export function createReadout(el: HTMLElement): Readout {
         const instantFps = (intervalFrames * 1000) / elapsed;
         intervalStart = now;
         intervalFrames = 0;
+        if (instantFps < minFps) minFps = instantFps;
+        if (lastLog < 0) lastLog = now;
+        if (now - lastLog >= LOG_MS) {
+          console.log(
+            `BAKEOFF t=${(now / 1000).toFixed(1)} avg=${rollingAverage(now).toFixed(1)}` +
+              ` min=${minFps.toFixed(0)} first=${Math.round(firstFrameMs)}`,
+          );
+          lastLog = now;
+          minFps = Infinity;
+        }
         el.textContent =
           `fps ${instantFps.toFixed(0)} · avg ${rollingAverage(now).toFixed(1)}` +
           ` · first frame ${Math.round(firstFrameMs)} ms`;

@@ -1,5 +1,6 @@
 import { type Application, Container, Graphics, Rectangle, Sprite, type Texture } from 'pixi.js';
 import { GlowFilter } from 'pixi-filters';
+import { GLOW_SHAPE, GLOW_TIER } from './glow-tier';
 
 // The bake-off scene, built exactly to the shared spec in ../README.md
 // ("Shared scene spec"). Every number here comes from that spec; change the spec
@@ -29,9 +30,10 @@ const LINE_WIDTH_CSS = 3;
 // px. Its padding defaults to the distance, also in css px. Quality sets the angle
 // step to 1 / (quality x distance) rad: 0.1326 gives 10 directions per ring, so
 // 12 rings x 10 = 120 samples per pixel, the same count as Phaser's quality 10.
-const GLOW_DISTANCE_CSS = 12;
+const GLOW_DISTANCE_CSS = GLOW_SHAPE.distance;
 const GLOW_OUTER_STRENGTH = 2;
-const GLOW_QUALITY = 0.1326;
+// quality = directions / (2 pi x distance): full gives 0.1326, as before.
+const GLOW_QUALITY = GLOW_SHAPE.directions / (2 * Math.PI * Math.max(GLOW_SHAPE.distance, 1));
 
 const PARTICLE_COUNT = 200;
 const PARTICLE_LIFE = 1.5;
@@ -229,6 +231,8 @@ export class BakeoffScene {
     // at device pixel ratio (the Filter default is resolution 1, which would be soft).
     this.layers = PALETTE.map((colour) => {
       const graphics = new Graphics();
+      this.world.addChild(graphics);
+      if (GLOW_TIER === 'off') return graphics;
       const glow = new GlowFilter({
         color: colour,
         distance: GLOW_DISTANCE_CSS,
@@ -239,7 +243,6 @@ export class BakeoffScene {
       });
       glow.resolution = this.dpr;
       graphics.filters = [glow];
-      this.world.addChild(graphics);
       return graphics;
     });
 
