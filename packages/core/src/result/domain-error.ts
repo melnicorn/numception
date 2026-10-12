@@ -7,6 +7,7 @@ export type DomainError =
   | { readonly code: 'invalid-seed'; readonly message: string }
   | { readonly code: 'invalid-node-id'; readonly message: string }
   | { readonly code: 'invalid-spec'; readonly message: string }
+  | { readonly code: 'unrealisable'; readonly message: string }
   | { readonly code: 'unsupported-version'; readonly message: string };
 
 /** Every `DomainError` code. */

@@ -1,4 +1,4 @@
-import { displayValue, type NodeId, parseTuning, realise, versionsFor } from '@numception/core';
+import { displayValue, type NodeId, parseTuning, realise, specFor, versionsFor } from '@numception/core';
 
 /** The dev panel's demo seed: a fixed constant, so every reload shows the same puzzle. */
 export const DEMO_SEED = 20261011;
@@ -15,6 +15,7 @@ export type DemoPuzzleView = {
   readonly n: number;
   readonly operator: string;
   readonly operatorSymbol: string;
+  /** The served band's largest value. */
   readonly maxValue: number;
   /** In placement order. */
   readonly cells: readonly DemoPuzzleCell[];
@@ -35,26 +36,23 @@ const OPERATOR_SYMBOLS = { add: '+', sub: '−' } as const;
 
 /**
  * Validates `tuningJson` (passed in by the composition root, AD-7) and realises the
- * demo n = 3 puzzle at `DEMO_NODE_ID` with band 1's `maxValue` and `add` when the
- * tuning enables it, else its first operator. Until entry 4 only `add` realises: a
- * tuning enabling `sub` alone gets realise's `invalid-spec` error back.
+ * demo puzzle at `DEMO_NODE_ID`: n = 3, band 1, no answer contract, and `add` when
+ * the tuning enables it, else its first operator. The spec comes from `specFor`.
  */
 export function demoPuzzle(tuningJson: unknown, seed: number = DEMO_SEED): DemoPuzzleResult {
   const tuning = parseTuning(tuningJson);
   if (!tuning.ok) return { ok: false, error: { code: tuning.error.code, message: tuning.error.message } };
 
   const config = tuning.value;
-  const band1 = config.generation.bands[0];
-  // Unreachable for a parsed config: the schema requires band 1.
-  if (band1 === undefined) return { ok: false, error: { code: 'invalid-tuning', message: 'Invalid TuningConfig: generation.bands: no band 1' } };
-  // add whenever it's enabled (the only operator realised until entry 4), else the first.
   const operators = config.generation.operators;
   const operator = operators.includes('add') ? 'add' : (operators[0] ?? 'add');
-  const spec = { n: 3, operator, maxValue: band1.maxValue } as const;
-  const puzzle = realise(seed, DEMO_NODE_ID, spec, versionsFor(config));
+  const spec = specFor(config, { n: 3, operator, band: 1 });
+  if (!spec.ok) return { ok: false, error: { code: spec.error.code, message: spec.error.message } };
+  const puzzle = realise(seed, DEMO_NODE_ID, spec.value, versionsFor(config));
   if (!puzzle.ok) return { ok: false, error: { code: puzzle.error.code, message: puzzle.error.message } };
 
   const p = puzzle.value;
+  const served = [p.spec.band, ...p.spec.fallbackBands].find((b) => b.band === p.servedBand) ?? p.spec.band;
   return {
     ok: true,
     view: {
@@ -63,7 +61,7 @@ export function demoPuzzle(tuningJson: unknown, seed: number = DEMO_SEED): DemoP
       n: p.spec.n,
       operator: p.spec.operator,
       operatorSymbol: OPERATOR_SYMBOLS[p.spec.operator],
-      maxValue: p.spec.maxValue,
+      maxValue: served.maxValue,
       cells: p.cells.map((value, i) => ({ text: displayValue(value), isAnswer: i === p.answerIndex })),
       answerIndex: p.answerIndex,
       versions: p.versions,

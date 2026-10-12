@@ -3,31 +3,43 @@
 // (tools/golden-harness) and `pnpm golden:update`. Pure: no I/O, so it runs
 // unchanged in Node and in a browser page.
 import type { NodeId } from '../../src/generator/node-id';
-import type { PuzzleSpec } from '../../src/generator/puzzle-spec';
+import type { PuzzleClamp, PuzzleRoles } from '../../src/generator/puzzle';
+import type { PuzzleBand, PuzzleSpec } from '../../src/generator/puzzle-spec';
 import type { PuzzleVersions } from '../../src/generator/puzzle-versions';
 import { realise } from '../../src/generator/realise';
 import { serialiseRational } from '../../src/numbers/rational';
+import { type SpecRequest, specFor } from '../../src/spec/spec-for';
 import { parseTuning } from '../../src/tuning/parse-tuning';
 import type { TuningConfig } from '../../src/tuning/tuning-config';
 
 /**
  * What a case realises. `tuning` names a file in packages/core/test/fixtures/tuning
- * (without `.json`); `spec` must be the one `specForTuning` derives from it, and
- * `versions` are pinned (generatorVersion the fixture's, tuningVersion the tuning's)
- * so a later difficulty-model bump never changes a replay.
+ * (without `.json`); `request` is the node's ask (n, operator, band, contract?);
+ * `spec` must be the one `specFor(tuning, request)` derives, and `versions` are
+ * pinned (generatorVersion the fixture's, tuningVersion the tuning's) so a later
+ * difficulty-model bump never changes a replay.
  */
 export type GoldenCaseInput = {
   readonly seed: number;
   readonly nodeId: NodeId;
+  readonly request: SpecRequest;
   readonly spec: PuzzleSpec;
   readonly tuning: string;
   readonly versions: PuzzleVersions;
 };
 
-/** The stable serialised form of a realised puzzle: cells (AD-5 strings) in placement order. */
+/**
+ * The stable serialised form of a realised puzzle: cells (AD-5 strings) in
+ * placement order, the triple's roles, the served band (and clamp, if any) and the
+ * near-misses placed.
+ */
 export type GoldenExpected = {
   readonly cells: readonly string[];
+  readonly roles: PuzzleRoles;
   readonly answerIndex: number;
+  readonly servedBand: number;
+  readonly clamp?: PuzzleClamp;
+  readonly nearMisses: number;
   readonly versions: PuzzleVersions;
 };
 
@@ -57,18 +69,14 @@ export function versionOfFixtureFile(file: string): number | undefined {
   return match ? Number(match[1]) : undefined;
 }
 
-/** A case's name, unique within a fixture: `s<seed>/t<tier>i<index>/<tuning>`. */
+/**
+ * A case's name, unique within a fixture:
+ * `s<seed>/t<tier>i<index>/<tuning>/<operator>n<n>b<band>[c<contract>]`.
+ */
 export function caseName(input: GoldenCaseInput): string {
-  return `s${input.seed}/t${input.nodeId.tier}i${input.nodeId.index}/${input.tuning}`;
-}
-
-/** The spec a tuning fixture stands for: n 3, add if enabled (else its first operator), band 1's maxValue. */
-export function specForTuning(tuning: TuningConfig): PuzzleSpec {
-  const band1 = tuning.generation.bands[0];
-  // Unreachable for a parsed config: the schema requires band 1.
-  if (band1 === undefined) throw new Error(`tuning ${tuning.tuningVersion} has no band 1`);
-  const operators = tuning.generation.operators;
-  return { n: 3, operator: operators.includes('add') ? 'add' : (operators[0] ?? 'add'), maxValue: band1.maxValue };
+  const r: Partial<SpecRequest> = isObject(input.request) ? input.request : {};
+  const contract = r.contract === undefined ? '' : `c${r.contract}`;
+  return `s${input.seed}/t${input.nodeId.tier}i${input.nodeId.index}/${input.tuning}/${r.operator}n${r.n}b${r.band}${contract}`;
 }
 
 function parseCaseTuning(input: GoldenCaseInput, tunings: GoldenTunings): TuningConfig | string {
@@ -101,9 +109,14 @@ export function realiseCase(
       error: `input tuningVersion ${canonical(versions.tuningVersion)} is not tuning fixture "${input.tuning}"'s ${tuning.tuningVersion}`,
     };
   }
-  const expectedSpec = specForTuning(tuning);
-  if (canonical(input.spec) !== canonical(expectedSpec)) {
-    return { ok: false, error: `input spec ${canonical(input.spec)} is not ${canonical(expectedSpec)}, derived from tuning fixture "${input.tuning}"` };
+  if (!isObject(input.request)) return { ok: false, error: 'input.request must be an object' };
+  const derived = specFor(tuning, input.request);
+  if (!derived.ok) return { ok: false, error: `input request ${canonical(input.request)}: ${derived.error.message}` };
+  if (canonical(input.spec) !== canonical(derived.value)) {
+    return {
+      ok: false,
+      error: `input spec ${canonical(input.spec)} is not ${canonical(derived.value)}, derived from tuning fixture "${input.tuning}" and the request`,
+    };
   }
   const result = realise(input.seed, input.nodeId, input.spec, input.versions);
   if (!result.ok) return { ok: false, error: `${result.error.code}: ${result.error.message}` };
@@ -115,7 +128,11 @@ export function realiseCase(
     ok: true,
     value: {
       cells: p.cells.map(serialiseRational),
+      roles: { a: p.roles.a, b: p.roles.b, c: p.roles.c },
       answerIndex: p.answerIndex,
+      servedBand: p.servedBand,
+      ...(p.clamp === undefined ? {} : { clamp: { requestedBand: p.clamp.requestedBand, servedBand: p.clamp.servedBand } }),
+      nearMisses: p.nearMisses,
       versions: {
         generatorVersion: p.versions.generatorVersion,
         difficultyModelVersion: p.versions.difficultyModelVersion,
@@ -214,13 +231,29 @@ export function buildGoldenSeeds(generatorVersion: number, inputs: readonly Gold
  * newline), so the same fixture always hashes the same in shipped.lock.json.
  */
 export function formatGoldenSeeds(fixture: GoldenSeeds): string {
+  const band = (b: PuzzleBand) => ({ band: b.band, minValue: b.minValue, maxValue: b.maxValue, maxCarries: b.maxCarries });
   const line = (c: GoldenCase): string =>
     JSON.stringify({
       name: c.name,
       input: {
         seed: c.input.seed,
         nodeId: { tier: c.input.nodeId.tier, index: c.input.nodeId.index },
-        spec: { n: c.input.spec.n, operator: c.input.spec.operator, maxValue: c.input.spec.maxValue },
+        request: {
+          n: c.input.request.n,
+          operator: c.input.request.operator,
+          band: c.input.request.band,
+          ...(c.input.request.contract === undefined ? {} : { contract: c.input.request.contract }),
+        },
+        spec: {
+          n: c.input.spec.n,
+          operator: c.input.spec.operator,
+          band: band(c.input.spec.band),
+          fallbackBands: c.input.spec.fallbackBands.map(band),
+          ...(c.input.spec.contract === undefined ? {} : { contract: c.input.spec.contract }),
+          nearMissCount: c.input.spec.nearMissCount,
+          nearMissDelta: c.input.spec.nearMissDelta,
+          maxAttempts: c.input.spec.maxAttempts,
+        },
         tuning: c.input.tuning,
         versions: {
           generatorVersion: c.input.versions.generatorVersion,
@@ -230,7 +263,13 @@ export function formatGoldenSeeds(fixture: GoldenSeeds): string {
       },
       expected: {
         cells: c.expected.cells,
+        roles: { a: c.expected.roles.a, b: c.expected.roles.b, c: c.expected.roles.c },
         answerIndex: c.expected.answerIndex,
+        servedBand: c.expected.servedBand,
+        ...(c.expected.clamp === undefined
+          ? {}
+          : { clamp: { requestedBand: c.expected.clamp.requestedBand, servedBand: c.expected.clamp.servedBand } }),
+        nearMisses: c.expected.nearMisses,
         versions: {
           generatorVersion: c.expected.versions.generatorVersion,
           difficultyModelVersion: c.expected.versions.difficultyModelVersion,

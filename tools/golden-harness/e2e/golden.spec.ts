@@ -11,6 +11,6 @@ test('every golden-seed case reproduces in WebKit', async ({ page }) => {
   // The mismatches name each failing case; compared first so a failure lists them.
   expect(report.mismatches).toEqual([]);
   expect(report.fixtures).toContain('generator-v1.json');
-  expect(report.cases).toBeGreaterThanOrEqual(50);
+  expect(report.cases).toBeGreaterThanOrEqual(90);
   await expect(result).toHaveAttribute('data-status', 'pass');
 });

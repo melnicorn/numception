@@ -3,21 +3,50 @@ import { goldenInputs } from './golden-inputs';
 import {
   buildGoldenSeeds,
   canonical,
+  caseName,
   checkGoldenCoverage,
   compareGoldenSeeds,
   formatGoldenSeeds,
+  type GoldenCaseInput,
   type GoldenSeeds,
-  specForTuning,
   versionOfFixtureFile,
 } from './golden-seeds';
 import { goldenTunings } from './golden-tunings';
 import { parseTuning } from '../../src/tuning/parse-tuning';
+import { specFor } from '../../src/spec/spec-for';
 
-const tunings = { t: { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 5, generation: { operators: ['add'], n: { min: 3, max: 3 }, bands: [{ band: 1, minValue: 1, maxValue: 20, maxCarries: 0 }], distractors: { nearMissDelta: 1, nearMissShare: 0 }, retries: { maxAttempts: 1 } } } };
-const input = {
+const tunings = {
+  t: {
+    kind: 'TuningConfig',
+    schemaVersion: 1,
+    tuningVersion: 5,
+    generation: {
+      operators: ['add', 'sub'],
+      n: { min: 3, max: 9 },
+      bands: [
+        { band: 1, minValue: 1, maxValue: 20, maxCarries: 0 },
+        { band: 2, minValue: 5, maxValue: 99, maxCarries: 1 },
+      ],
+      distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
+      retries: { maxAttempts: 20 },
+    },
+  },
+};
+
+function specOf(request: GoldenCaseInput['request']): GoldenCaseInput['spec'] {
+  const parsed = parseTuning(tunings.t);
+  if (!parsed.ok) throw new Error(parsed.error.message);
+  const spec = specFor(parsed.value, request);
+  if (!spec.ok) throw new Error(spec.error.message);
+  return spec.value;
+}
+
+const request = { n: 5, operator: 'add', band: 2 } as const;
+const input: GoldenCaseInput = {
   seed: 1,
   nodeId: { tier: 1, index: 0 },
-  spec: { n: 3, operator: 'add', maxValue: 20 } as const,
+  request,
+  spec: specOf(request),
   tuning: 't',
   versions: { generatorVersion: 1, difficultyModelVersion: 1, tuningVersion: 5 },
 };
@@ -41,7 +70,7 @@ describe('compareGoldenSeeds', () => {
     const drifted = { ...f, cases: [f.cases[0], { ...f.cases[1], expected: { ...f.cases[1]!.expected, answerIndex: 9 } }] };
     const problems = compareGoldenSeeds('generator-v1.json', drifted, tunings);
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toMatch(/^generator-v1\.json case "s2\/t1i0\/t": expected .*"answerIndex":9.*, got /);
+    expect(problems[0]).toMatch(/^generator-v1\.json case "s2\/t1i0\/t\/addn5b2": expected .*"answerIndex":9.*, got /);
   });
 
   it('fails on a drifted cell value or version', () => {
@@ -72,12 +101,12 @@ describe('compareGoldenSeeds', () => {
     expect(compareGoldenSeeds('generator-v1.json', { kind: 'Other' }, tunings)).toHaveLength(1);
     expect(compareGoldenSeeds('golden.json', fixture(), tunings)).toHaveLength(1);
     const f = reread(fixture());
-    const unknownTuning = { ...f, cases: [{ ...f.cases[0]!, name: 's1/t1i0/nope', input: { ...f.cases[0]!.input, tuning: 'nope' } }] };
+    const unknownTuning = { ...f, cases: [{ ...f.cases[0]!, name: 's1/t1i0/nope/addn5b2', input: { ...f.cases[0]!.input, tuning: 'nope' } }] };
     expect(compareGoldenSeeds('generator-v1.json', unknownTuning, tunings)).toEqual([
-      'generator-v1.json case "s1/t1i0/nope": unknown tuning fixture "nope"',
+      'generator-v1.json case "s1/t1i0/nope/addn5b2": unknown tuning fixture "nope"',
     ]);
     const dup = { ...f, cases: [f.cases[0]!, f.cases[0]!] };
-    expect(compareGoldenSeeds('generator-v1.json', dup, tunings)).toEqual(['generator-v1.json case "s1/t1i0/t": duplicate case name']);
+    expect(compareGoldenSeeds('generator-v1.json', dup, tunings)).toEqual(['generator-v1.json case "s1/t1i0/t/addn5b2": duplicate case name']);
   });
 });
 
@@ -89,15 +118,30 @@ describe('compareGoldenSeeds: inputs must agree with themselves', () => {
   }
 
   it("fails when a case's name doesn't match its inputs", () => {
-    expect(compareGoldenSeeds('generator-v1.json', withInput({}, 's9/t1i0/t'), tunings)).toEqual([
-      'generator-v1.json case "s9/t1i0/t": name does not match its inputs (expected "s1/t1i0/t")',
+    expect(compareGoldenSeeds('generator-v1.json', withInput({}, 's9/t1i0/t/addn5b2'), tunings)).toEqual([
+      'generator-v1.json case "s9/t1i0/t/addn5b2": name does not match its inputs (expected "s1/t1i0/t/addn5b2")',
     ]);
   });
 
-  it("fails when the spec isn't the one derived from the case's tuning", () => {
-    const problems = compareGoldenSeeds('generator-v1.json', withInput({ spec: { n: 3, operator: 'add', maxValue: 19 } }), tunings);
+  it("fails when the spec isn't the one specFor derives from the case's tuning and request", () => {
+    const tampered = withInput({ spec: { ...input.spec, maxAttempts: 19 } });
+    const problems = compareGoldenSeeds('generator-v1.json', tampered, tunings);
     expect(problems).toHaveLength(1);
-    expect(problems[0]).toMatch(/input spec .* is not .*derived from tuning fixture "t"/);
+    expect(problems[0]).toMatch(/input spec .* is not .*derived from tuning fixture "t" and the request/);
+    // A request naming another band, with the spec left as it was, is caught the same way.
+    const otherBand = { n: 5, operator: 'add', band: 1 } as const;
+    const moved = withInput({ request: otherBand }, caseName({ ...input, request: otherBand }));
+    expect(compareGoldenSeeds('generator-v1.json', moved, tunings)[0]).toMatch(/input spec .* is not /);
+  });
+
+  it('fails when the request is missing or specFor rejects it', () => {
+    expect(compareGoldenSeeds('generator-v1.json', withInput({ request: undefined }, caseName({ ...input, request: undefined as never })), tunings)[0]).toMatch(
+      /input\.request must be an object/,
+    );
+    const bad = { n: 10, operator: 'add', band: 2 } as const;
+    expect(compareGoldenSeeds('generator-v1.json', withInput({ request: bad }, caseName({ ...input, request: bad })), tunings)[0]).toMatch(
+      /input request .*: n must be an integer in 3\.\.9/,
+    );
   });
 
   it("fails when the pinned versions disagree with the fixture or the tuning", () => {
@@ -151,27 +195,20 @@ describe('fixture helpers', () => {
     expect(text.endsWith('}\n')).toBe(true);
   });
 
-  it('builds at least 50 golden inputs from the tuning fixtures, all distinct', () => {
+  it('builds at least 90 golden inputs from the tuning fixtures, all distinct', () => {
     const inputs = goldenInputs(1, goldenTunings);
-    expect(inputs.length).toBeGreaterThanOrEqual(50);
+    expect(inputs.length).toBeGreaterThanOrEqual(90);
     expect(new Set(inputs.map((i) => canonical(i))).size).toBe(inputs.length);
-  });
-});
-
-describe('specForTuning', () => {
-  const generation = tunings.t.generation;
-  const specFor = (operators: string[]) => {
-    const parsed = parseTuning({ ...tunings.t, generation: { ...generation, operators } });
-    if (!parsed.ok) throw new Error(parsed.error.message);
-    return specForTuning(parsed.value);
-  };
-
-  it("takes band 1's maxValue and add when listed, whatever the order", () => {
-    expect(specFor(['add'])).toEqual({ n: 3, operator: 'add', maxValue: 20 });
-    expect(specFor(['sub', 'add'])).toEqual({ n: 3, operator: 'add', maxValue: 20 });
+    expect(new Set(inputs.map((i) => caseName(i))).size).toBe(inputs.length);
   });
 
-  it('falls back to the first operator when add is not listed', () => {
-    expect(specFor(['sub']).operator).toBe('sub');
+  it('covers n 3..9, both operators, several bands, contracts and a clamp', () => {
+    const inputs = goldenInputs(1, goldenTunings);
+    expect([...new Set(inputs.map((i) => i.request.n))].sort()).toEqual([3, 4, 5, 6, 7, 8, 9]);
+    expect([...new Set(inputs.map((i) => i.request.operator))].sort()).toEqual(['add', 'sub']);
+    expect(new Set(inputs.map((i) => `${i.tuning}/${i.request.band}`)).size).toBeGreaterThanOrEqual(5);
+    expect(inputs.filter((i) => i.request.contract !== undefined).length).toBeGreaterThanOrEqual(10);
+    const fixture = buildGoldenSeeds(1, inputs, goldenTunings);
+    expect(fixture.cases.some((c) => c.expected.clamp !== undefined)).toBe(true);
   });
 });

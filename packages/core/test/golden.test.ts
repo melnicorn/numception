@@ -18,9 +18,9 @@ describe('golden seeds', () => {
     expect(compareGoldenSeeds(file, goldenFixtures[file], goldenTunings)).toEqual([]);
   });
 
-  it.each(files)('%s: at least 50 cases, spread across seeds, NodeIds and tunings', (file) => {
+  it.each(files)('%s: at least 90 cases, spread across seeds, NodeIds and tunings', (file) => {
     const { cases } = goldenFixtures[file] as GoldenSeeds;
-    expect(cases.length).toBeGreaterThanOrEqual(50);
+    expect(cases.length).toBeGreaterThanOrEqual(90);
     expect(new Set(cases.map((c) => c.input.seed)).size).toBeGreaterThanOrEqual(5);
     expect(new Set(cases.map((c) => `${c.input.nodeId.tier}/${c.input.nodeId.index}`)).size).toBeGreaterThanOrEqual(5);
     expect(new Set(cases.map((c) => c.input.tuning)).size).toBeGreaterThanOrEqual(2);

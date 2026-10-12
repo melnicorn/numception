@@ -53,12 +53,12 @@ describe('demoPuzzle', () => {
   it("takes its value range from band 1's maxValue", () => {
     const result = demoPuzzle(tuningV1);
     expect(result.ok && result.view.maxValue).toBe(20);
-    // The demo puzzle under tuning v1 (band 1 maxValue 20), unchanged since the tracer.
+    // The demo puzzle under tuning v1 (band 1: 1..20, no carries).
     expect(result.ok && result.view.cells.map((c) => c.text)).toMatchInlineSnapshot(`
       [
-        "1",
-        "3",
-        "2",
+        "4",
+        "16",
+        "12",
       ]
     `);
   });
@@ -73,7 +73,7 @@ describe('demoPuzzle', () => {
     for (const cell of wider.view.cells) expect(Number(cell.text)).toBeLessThanOrEqual(1000);
   });
 
-  it('ignores the other bands for now (entry 4 generates with them)', () => {
+  it('requests band 1, so higher bands play no part (band 1 has no fallback)', () => {
     const otherBands = { ...tuningV1, generation: { ...tuningV1.generation, bands: tuningV1.generation.bands.slice(0, 1) } };
     expect(demoPuzzle(otherBands)).toEqual(demoPuzzle(tuningV1));
   });
@@ -85,9 +85,23 @@ describe('demoPuzzle', () => {
     expect(result).toEqual(demoPuzzle(tuningV1));
   });
 
-  it("returns realise's error when sub is the only operator (not generated until entry 4)", () => {
+  it('realises a − puzzle when sub is the only operator', () => {
     const subOnly = { ...tuningV1, generation: { ...tuningV1.generation, operators: ['sub'] } };
     const result = demoPuzzle(subOnly);
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.view.operator).toBe('sub');
+    expect(result.view.operatorSymbol).toBe('−');
+    const values = result.view.cells.map((c) => Number(c.text));
+    const answer = values[result.view.answerIndex] as number;
+    const others = values.filter((_, i) => i !== result.view.answerIndex);
+    // a − b = c: the answer plus the soft-miss cell gives the largest.
+    expect(Math.max(...others)).toBe(answer + Math.min(...others));
+  });
+
+  it("returns specFor's error when the tuning's n range excludes 3", () => {
+    const noThree = { ...tuningV1, generation: { ...tuningV1.generation, n: { min: 4, max: 9 } } };
+    const result = demoPuzzle(noThree);
     expect(!result.ok && result.error.code).toBe('invalid-spec');
   });
 

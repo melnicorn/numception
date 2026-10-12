@@ -1,8 +1,10 @@
 # Golden seeds
 
 `generator-v<N>.json` pins generatorVersion N's output (AD-6): each case's inputs
-(seed, NodeId, spec, a tuning file from `../tuning/`, never `content/`) and the
-expected cells, `answerIndex` and versions. `pnpm test` checks them in Node, and the
+(seed, NodeId, the request — n, operator, band, contract? — a tuning file from
+`../tuning/`, never `content/`, and the spec `specFor` derives from those two) and
+the expected cells, roles, `answerIndex`, served band, clamp, near-misses and
+versions. `pnpm test` checks them in Node, and the
 `golden-webkit` Playwright project (`pnpm e2e`) checks them in WebKit. Every
 registered version needs a fixture, and every fixture a registered version.
 

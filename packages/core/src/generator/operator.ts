@@ -4,8 +4,5 @@
  */
 export const OPERATORS = ['add', 'sub'] as const;
 
-/**
- * An operator a tuning config may enable. Generation of `sub` arrives with entry 4:
- * until then `realise` rejects a spec with operator `sub` as `invalid-spec`.
- */
+/** An operator a tuning config may enable, and `realise` generates. */
 export type Operator = (typeof OPERATORS)[number];

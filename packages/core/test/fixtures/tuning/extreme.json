@@ -3,10 +3,10 @@
   "schemaVersion": 1,
   "tuningVersion": 4,
   "generation": {
-    "operators": ["add"],
-    "n": { "min": 3, "max": 3 },
+    "operators": ["add", "sub"],
+    "n": { "min": 3, "max": 9 },
     "bands": [{ "band": 1, "minValue": 1, "maxValue": 2147483647, "maxCarries": 9 }],
-    "distractors": { "nearMissDelta": 1, "nearMissShare": 0 },
-    "retries": { "maxAttempts": 1 }
+    "distractors": { "nearMissDelta": 1, "nearMissShare": 0.25 },
+    "retries": { "maxAttempts": 10 }
   }
 }

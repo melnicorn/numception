@@ -1,10 +1,9 @@
 import * as v from 'valibot';
 import { OPERATORS } from '../generator/operator';
+import { MAX_ATTEMPTS, MAX_N, MIN_N } from './generation-limits';
 import { MAX_TUNING_VALUE } from './max-tuning-value';
 
-/** The smallest and largest n (cells per puzzle) the generator supports (FR-1). */
-export const MIN_N = 3;
-export const MAX_N = 9;
+export { MAX_ATTEMPTS, MAX_N, MIN_N };
 
 const int = (min: number, max: number) => v.pipe(v.number(), v.integer(), v.minValue(min), v.maxValue(max));
 
@@ -32,7 +31,7 @@ const BandSchema = v.pipe(
 );
 
 /**
- * The generation section (AD-7): everything entry 4's realiser reads. Strict
+ * The generation section (AD-7): everything the realiser reads (via `specFor`). Strict
  * throughout, so a typo can't silently fall back to a default.
  *
  * - `operators`: non-empty, unique, from + and − only (no × or ÷ in a POC build).
@@ -41,7 +40,7 @@ const BandSchema = v.pipe(
  * - `distractors`: `nearMissDelta` is how close a distractor must be to some cell
  *   pair's sum or difference to count as a near-miss; `nearMissShare` is the target
  *   fraction of the n − 3 distractors that are near-misses. A float because it's a
- *   tuning weight, never generation arithmetic: entry 4 quantises it before use (AD-3).
+ *   tuning weight, never generation arithmetic: `specFor` quantises it to an integer count before use (AD-3).
  * - `retries.maxAttempts`: realisation attempts before falling back a band.
  */
 const GenerationSchema = v.strictObject({
@@ -67,7 +66,7 @@ const GenerationSchema = v.strictObject({
     nearMissShare: v.pipe(v.number(), v.minValue(0), v.maxValue(1)),
   }),
   retries: v.strictObject({
-    maxAttempts: int(1, 1000),
+    maxAttempts: int(1, MAX_ATTEMPTS),
   }),
 });
 
