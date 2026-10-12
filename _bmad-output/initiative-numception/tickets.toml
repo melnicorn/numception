@@ -11,7 +11,7 @@ id = 2
 slug = "epic-puzzle-generator"
 title = "Unique, deterministic, tunable puzzle generation"
 covers = ["CAP-1", "CAP-2", "CAP-9"]
-after = [{ epic = 1, needs = "workspace, core package and CI" }]
+after = [{ epic = 1, needs = "workspace, core package, CI, dev panel shell (1.5) and offline playtest PWA (1.6)" }]
 
 [[epic]]
 id = 3

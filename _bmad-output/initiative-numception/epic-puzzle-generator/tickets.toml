@@ -1,0 +1,144 @@
+# epic-puzzle-generator — agreed children in build order. Table order is the build order; id is not.
+
+[[entry]]
+id = 1
+type = "story"
+title = "Seeded puzzle tracer"
+description = "Generates one + puzzle at n=3 in core through realise(seed, nodeId, spec, versions) per AD-4, which derives its stream from a pinned pure-rand xoroshiro128plus seed and the NodeId, reading a minimal valibot-validated content/tuning/1.json that entry 3 extends; the dev panel of the playtest PWA shows the puzzle with its seed and versions, getting it through app because ui imports core types only (AD-1)."
+verify = "The deployed playtest's dev panel shows the same three-cell puzzle for the same seed on every reload, and a core test pins that output."
+covers = ["CAP-1", "CAP-2", "CAP-9"]
+after = ["1.6"]
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-3-core-is-deterministic", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-18-build-flavours-and-the-release-envelope", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-4-puzzle-addressing-round-planning-and-lazy-realisation", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-7-tuning-is-data-passed-in-explicitly-and-pinned-per-round"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Golden seeds and generator versioning"
+description = "Adds the generatorVersion dispatch registry, records generator, difficulty-model and tuning versions on every realised puzzle (telemetry carriage of them is FR-44, epic-adaptive-difficulty), pins outputs in golden-seed fixtures under packages/core/test/fixtures/golden-seeds run under Node and in WebKit through a Playwright page harness, guards fixtures of versions marked shipped, and adds a tools/ CI check that bans Math.*, uniformFloat*, Date.now and performance.now in packages/core/src/generator."
+verify = "Changing the output of a version marked shipped fails CI under both Node and WebKit while bumping generatorVersion with new fixtures passes, and a Math.random call planted in the generator fails the purity check."
+covers = ["CAP-2", "CAP-9"]
+after = [1]
+hitl = false
+risk = "high"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-6-versioned-and-every-shipped-version-stays-runnable", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-3-core-is-deterministic", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-19-tests-are-part-of-the-contract"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Tuning schema for generation"
+description = "Extends the valibot TuningConfig schema and content/tuning/1.json from entry 1 with the generation section (enabled operators, n range, integer bands with value ranges and carry/borrow allowance, distractor and near-miss parameters including nearMissDelta, retry bound), rejects \u00d7 and \u00f7 in the POC build, and fails CI if a shipped tuning file is removed."
+verify = "A config enabling × or ÷ is rejected, a removed tuning file fails CI, and editing a band's range in a test config changes generated values with no code change."
+covers = ["CAP-9"]
+after = [2]
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-7-tuning-is-data-passed-in-explicitly-and-pinned-per-round"]
+
+[[entry]]
+id = 4
+type = "story"
+title = "Puzzle realisation for + and −"
+description = "Extends realise(seed, nodeId, spec, versions) from entry 1 to + and \u2212 puzzles for every n from 3 to 9 under a requested band and answer contract: distinct positive integers as Rational values with core displayValue, n\u22123 distractors including near-misses, seeded cell placement, exactly one valid triple, a defined set of accepted contracts (e.g. + needs c \u2265 3), bounded retries with fallback to a lower band and the clamp recorded, and Result errors instead of throws."
+verify = "fast-check properties pass: exactly one valid triple for every n and operator, and for every band and answer contract a puzzle exists or the band is clamped with the clamp recorded."
+covers = ["CAP-1", "CAP-2"]
+after = [3]
+hitl = false
+risk = "high"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-5-numbers-are-exact-rationals-core-produces-display-values", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-19-tests-are-part-of-the-contract", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-4-puzzle-addressing-round-planning-and-lazy-realisation", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-9-every-served-puzzle-records-why-it-was-chosen"]
+
+[[entry]]
+id = 5
+type = "story"
+title = "Classic and Tower round planning"
+description = "Plans Classic and Tower rounds top-down from a derived round seed for epic-core-play-loop: bottom-anchored NodeIds, per-node seed streams, answer contracts for every node limited to contracts realisable in the lowest band, tier-k puzzle content fixed from its children's contracts so every tier is a unique-triple puzzle before tier 1 starts, a RoundType registry with plan and realise, and a plan API that can take a pre-fixed cell at a child index for later upward growth (OQ-4)."
+verify = "Round-consistency tests pass at every tier for Classic and Tower at every n and operator, and the same round seed always yields the same plan."
+covers = ["CAP-1", "CAP-2"]
+after = [4]
+hitl = false
+risk = "high"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-4-puzzle-addressing-round-planning-and-lazy-realisation", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-24-round-types-and-per-round-mode"]
+
+[[entry]]
+id = 6
+type = "story"
+title = "Tap classification and soft miss"
+description = "Adds the core rule that classifies a tap on a realised puzzle as correct, softMiss or wrong, with soft miss only for the other valid-reading cell of a − puzzle."
+verify = "Property tests show tapping c is correct, tapping b in a − puzzle is softMiss, and every other cell (and b in a + puzzle) is wrong, for every n."
+covers = ["CAP-1"]
+after = [4]
+hitl = false
+risk = "low"
+references = ["_bmad-output/initiative-numception/spec-numception/glossary.md"]
+
+[[entry]]
+id = 7
+type = "story"
+title = "Bucket features and bucketId"
+description = "Computes a realised puzzle's equation and puzzle features (digit count of the largest cell, carries or borrows of the triple, operator, n, near-miss count) and its canonical versioned bucketId as a pure function bucketOf(puzzle), delivering the bucket features epic-adaptive-difficulty waits on, which it freezes into the selection context (AD-9)."
+verify = "Unit tests give the documented features and bucketId (e.g. dm1|add|d2|c1|n5|nm1) for fixed puzzles, and every bucketId parses back to its features."
+covers = []
+after = [4]
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/prd-numception/addendum.md#a2-difficulty-and-rating-model-for-architecture-and-the-core-package"]
+
+[[entry]]
+id = 8
+type = "story"
+title = "Layout geometry for shapes 3 to 9"
+description = "Provides pure normalised cell and operator polygons keyed by shape id for the POC shapes (3A, 4A at 1:1.25, 5B, 6A, 7A, 8A, 9B) with whether each cell has the whole puzzle's shape (FR-9), a hit-test that maps a point to a cell or nothing with shared edges as no-ops (FR-8), and keyboard focus order \u2014 the spec's Shapes constraint (addendum A4) and tap-target geometry for epic-core-play-loop."
+verify = "Tests show every shape's cells tile without overlap around a centre operator cell, points inside each cell hit it, points within the edge tolerance of a shared edge hit nothing, and focus order visits every cell once."
+covers = []
+after = []
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/prd-numception/addendum.md#a4-shapes-per-n-from-the-ux-spine-not-locked", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-13-core-owns-view-models-layout-and-guide-state-canvas-draws-play-the-dom-draws-everything-else"]
+
+[[entry]]
+id = 9
+type = "story"
+title = "Generator benchmark gate"
+description = "Adds a CI benchmark that fails when puzzle realisation exceeds p95 10 ms per node or a round plan exceeds 50 ms, measured on Tower rounds at n=9 for both operators."
+verify = "CI runs the benchmark on every change, and a deliberately slowed realise makes it fail."
+covers = ["CAP-1"]
+after = [5]
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-19-tests-are-part-of-the-contract"]
+
+[[entry]]
+id = 10
+type = "story"
+title = "Nightly 100,000-puzzle check"
+description = "Adds a scheduled and manually dispatchable CI workflow, split by n, in which an independent brute-force checker confirms exactly one valid triple in 100,000 realised puzzles per n and enabled operator and that sampled rounds pass at every tier."
+verify = "The scheduled workflow runs green, and a planted non-unique puzzle in a test run makes the checker fail."
+covers = ["CAP-1"]
+after = [5]
+hitl = false
+risk = "low"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-19-tests-are-part-of-the-contract"]
+
+[[entry]]
+id = 11
+type = "story"
+title = "Dev panel round inspector"
+description = "Lets the playtest dev panel plan a Classic or Tower round for a chosen n, operator, seed and bundled tuning file and show every tier's puzzles as text with NodeIds, answers, versions and bucketIds, offline in the PWA."
+verify = "On a phone, the deployed playtest PWA in airplane mode shows a full Tower round at n=9 in the dev panel, and the same seed shows the same round after reload."
+covers = ["CAP-1", "CAP-2", "CAP-9"]
+after = [5, 7]
+hitl = false
+risk = "low"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-18-build-flavours-and-the-release-envelope"]
+
+[[entry]]
+id = 12
+type = "story"
+title = "Refactor sweep"
+description = "Cleans up what the plans and reviews of this epic deferred; scope is set when it starts."
+verify = "CI stays green and every deferred cleanup item is closed or moved to a new story."
+covers = []
+after = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
+hitl = false
+risk = "low"
