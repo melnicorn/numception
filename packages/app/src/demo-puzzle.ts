@@ -31,19 +31,26 @@ export type DemoPuzzleResult =
   | { readonly ok: true; readonly view: DemoPuzzleView }
   | { readonly ok: false; readonly error: { readonly code: string; readonly message: string } };
 
-const OPERATOR_SYMBOLS = { add: '+' } as const;
+const OPERATOR_SYMBOLS = { add: '+', sub: '−' } as const;
 
 /**
  * Validates `tuningJson` (passed in by the composition root, AD-7) and realises the
- * demo n = 3 `add` puzzle at `DEMO_NODE_ID` with the tuning's value range.
+ * demo n = 3 puzzle at `DEMO_NODE_ID` with band 1's `maxValue` and `add` when the
+ * tuning enables it, else its first operator. Until entry 4 only `add` realises: a
+ * tuning enabling `sub` alone gets realise's `invalid-spec` error back.
  */
 export function demoPuzzle(tuningJson: unknown, seed: number = DEMO_SEED): DemoPuzzleResult {
   const tuning = parseTuning(tuningJson);
   if (!tuning.ok) return { ok: false, error: { code: tuning.error.code, message: tuning.error.message } };
 
   const config = tuning.value;
-  const operator = config.generation.operators[0] ?? 'add';
-  const spec = { n: 3, operator, maxValue: config.generation.maxValue } as const;
+  const band1 = config.generation.bands[0];
+  // Unreachable for a parsed config: the schema requires band 1.
+  if (band1 === undefined) return { ok: false, error: { code: 'invalid-tuning', message: 'Invalid TuningConfig: generation.bands: no band 1' } };
+  // add whenever it's enabled (the only operator realised until entry 4), else the first.
+  const operators = config.generation.operators;
+  const operator = operators.includes('add') ? 'add' : (operators[0] ?? 'add');
+  const spec = { n: 3, operator, maxValue: band1.maxValue } as const;
   const puzzle = realise(seed, DEMO_NODE_ID, spec, versionsFor(config));
   if (!puzzle.ok) return { ok: false, error: { code: puzzle.error.code, message: puzzle.error.message } };
 

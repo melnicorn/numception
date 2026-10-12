@@ -12,11 +12,11 @@ export { type Rational, rational, serialiseRational } from './numbers/rational';
 export { displayValue } from './numbers/display-value';
 
 export { MAX_TUNING_VALUE } from './tuning/max-tuning-value';
-export { type TuningConfig, TuningConfigSchema } from './tuning/tuning-config';
+export { MAX_N, MIN_N, type TuningBand, type TuningConfig, TuningConfigSchema } from './tuning/tuning-config';
 export { parseTuning } from './tuning/parse-tuning';
 
 export type { NodeId } from './generator/node-id';
-export type { Operator } from './generator/operator';
+export { OPERATORS, type Operator } from './generator/operator';
 export type { Puzzle } from './generator/puzzle';
 export type { PuzzleSpec } from './generator/puzzle-spec';
 export { DIFFICULTY_MODEL_VERSION } from './generator/difficulty-model-version';

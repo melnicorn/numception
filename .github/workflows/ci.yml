@@ -30,6 +30,7 @@ jobs:
       - run: pnpm typecheck
       # Import boundaries, lockfile supply check, and the AD-3 purity check of core/generator and core/random.
       - run: pnpm lint:deps
+      # Includes tools/tuning-content.test.ts: content/tuning parses, runs 1..N, and keeps every shipped version (AD-7).
       - run: pnpm test
       # Builds all three flavours into apps/client/dist/{dev,playtest,prod} (AD-18).
       - run: pnpm build

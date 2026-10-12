@@ -7,8 +7,25 @@ const tuningV1 = {
   kind: 'TuningConfig',
   schemaVersion: 1,
   tuningVersion: 1,
-  generation: { operators: ['add'], maxValue: 20 },
+  generation: {
+    operators: ['add', 'sub'],
+    n: { min: 3, max: 9 },
+    bands: [
+      { band: 1, minValue: 1, maxValue: 20, maxCarries: 0 },
+      { band: 2, minValue: 1, maxValue: 50, maxCarries: 1 },
+      { band: 3, minValue: 5, maxValue: 99, maxCarries: 1 },
+      { band: 4, minValue: 10, maxValue: 999, maxCarries: 2 },
+    ],
+    distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
+    retries: { maxAttempts: 100 },
+  },
 };
+
+/** tuningV1 with band 1's maxValue replaced. */
+function withBand1Max(maxValue: number): typeof tuningV1 {
+  const [band1, ...rest] = tuningV1.generation.bands;
+  return { ...tuningV1, generation: { ...tuningV1.generation, bands: [{ ...band1!, maxValue }, ...rest] } };
+}
 
 describe('demoPuzzle', () => {
   it('realises the demo puzzle from tuning v1', () => {
@@ -31,6 +48,53 @@ describe('demoPuzzle', () => {
     const others = values.filter((_, i) => i !== view.answerIndex);
     expect(answer).toBe((others[0] as number) + (others[1] as number));
     expect(new Set(values).size).toBe(3);
+  });
+
+  it("takes its value range from band 1's maxValue", () => {
+    const result = demoPuzzle(tuningV1);
+    expect(result.ok && result.view.maxValue).toBe(20);
+    // The demo puzzle under tuning v1 (band 1 maxValue 20), unchanged since the tracer.
+    expect(result.ok && result.view.cells.map((c) => c.text)).toMatchInlineSnapshot(`
+      [
+        "1",
+        "3",
+        "2",
+      ]
+    `);
+  });
+
+  it('changes with band 1 maxValue, with no code change (tuning drives output)', () => {
+    const base = demoPuzzle(tuningV1);
+    const wider = demoPuzzle(withBand1Max(1000));
+    expect(base.ok && wider.ok).toBe(true);
+    if (!base.ok || !wider.ok) return;
+    expect(wider.view.maxValue).toBe(1000);
+    expect(wider.view.cells.map((c) => c.text)).not.toEqual(base.view.cells.map((c) => c.text));
+    for (const cell of wider.view.cells) expect(Number(cell.text)).toBeLessThanOrEqual(1000);
+  });
+
+  it('ignores the other bands for now (entry 4 generates with them)', () => {
+    const otherBands = { ...tuningV1, generation: { ...tuningV1.generation, bands: tuningV1.generation.bands.slice(0, 1) } };
+    expect(demoPuzzle(otherBands)).toEqual(demoPuzzle(tuningV1));
+  });
+
+  it('picks add when it is listed, whatever the order', () => {
+    const subFirst = { ...tuningV1, generation: { ...tuningV1.generation, operators: ['sub', 'add'] } };
+    const result = demoPuzzle(subFirst);
+    expect(result.ok && result.view.operator).toBe('add');
+    expect(result).toEqual(demoPuzzle(tuningV1));
+  });
+
+  it("returns realise's error when sub is the only operator (not generated until entry 4)", () => {
+    const subOnly = { ...tuningV1, generation: { ...tuningV1.generation, operators: ['sub'] } };
+    const result = demoPuzzle(subOnly);
+    expect(!result.ok && result.error.code).toBe('invalid-spec');
+  });
+
+  it('rejects a tuning naming mul', () => {
+    const mul = { ...tuningV1, generation: { ...tuningV1.generation, operators: ['add', 'mul'] } };
+    const result = demoPuzzle(mul);
+    expect(!result.ok && result.error.message).toMatch(/generation\.operators/);
   });
 
   it('is the same on every call (fixed demo seed)', () => {

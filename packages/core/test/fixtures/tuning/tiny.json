@@ -4,6 +4,9 @@
   "tuningVersion": 3,
   "generation": {
     "operators": ["add"],
-    "maxValue": 3
+    "n": { "min": 3, "max": 3 },
+    "bands": [{ "band": 1, "minValue": 1, "maxValue": 3, "maxCarries": 0 }],
+    "distractors": { "nearMissDelta": 1, "nearMissShare": 0 },
+    "retries": { "maxAttempts": 1 }
   }
 }

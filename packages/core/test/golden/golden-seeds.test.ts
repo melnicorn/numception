@@ -7,11 +7,13 @@ import {
   compareGoldenSeeds,
   formatGoldenSeeds,
   type GoldenSeeds,
+  specForTuning,
   versionOfFixtureFile,
 } from './golden-seeds';
 import { goldenTunings } from './golden-tunings';
+import { parseTuning } from '../../src/tuning/parse-tuning';
 
-const tunings = { t: { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 5, generation: { operators: ['add'], maxValue: 20 } } };
+const tunings = { t: { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 5, generation: { operators: ['add'], n: { min: 3, max: 3 }, bands: [{ band: 1, minValue: 1, maxValue: 20, maxCarries: 0 }], distractors: { nearMissDelta: 1, nearMissShare: 0 }, retries: { maxAttempts: 1 } } } };
 const input = {
   seed: 1,
   nodeId: { tier: 1, index: 0 },
@@ -153,5 +155,23 @@ describe('fixture helpers', () => {
     const inputs = goldenInputs(1, goldenTunings);
     expect(inputs.length).toBeGreaterThanOrEqual(50);
     expect(new Set(inputs.map((i) => canonical(i))).size).toBe(inputs.length);
+  });
+});
+
+describe('specForTuning', () => {
+  const generation = tunings.t.generation;
+  const specFor = (operators: string[]) => {
+    const parsed = parseTuning({ ...tunings.t, generation: { ...generation, operators } });
+    if (!parsed.ok) throw new Error(parsed.error.message);
+    return specForTuning(parsed.value);
+  };
+
+  it("takes band 1's maxValue and add when listed, whatever the order", () => {
+    expect(specFor(['add'])).toEqual({ n: 3, operator: 'add', maxValue: 20 });
+    expect(specFor(['sub', 'add'])).toEqual({ n: 3, operator: 'add', maxValue: 20 });
+  });
+
+  it('falls back to the first operator when add is not listed', () => {
+    expect(specFor(['sub']).operator).toBe('sub');
   });
 });

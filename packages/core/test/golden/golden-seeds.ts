@@ -62,9 +62,13 @@ export function caseName(input: GoldenCaseInput): string {
   return `s${input.seed}/t${input.nodeId.tier}i${input.nodeId.index}/${input.tuning}`;
 }
 
-/** The spec a tuning fixture stands for: n 3, its first operator, its maxValue. */
+/** The spec a tuning fixture stands for: n 3, add if enabled (else its first operator), band 1's maxValue. */
 export function specForTuning(tuning: TuningConfig): PuzzleSpec {
-  return { n: 3, operator: tuning.generation.operators[0] ?? 'add', maxValue: tuning.generation.maxValue };
+  const band1 = tuning.generation.bands[0];
+  // Unreachable for a parsed config: the schema requires band 1.
+  if (band1 === undefined) throw new Error(`tuning ${tuning.tuningVersion} has no band 1`);
+  const operators = tuning.generation.operators;
+  return { n: 3, operator: operators.includes('add') ? 'add' : (operators[0] ?? 'add'), maxValue: band1.maxValue };
 }
 
 function parseCaseTuning(input: GoldenCaseInput, tunings: GoldenTunings): TuningConfig | string {

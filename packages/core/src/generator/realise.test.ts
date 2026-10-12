@@ -125,7 +125,7 @@ describe('realise: validity', () => {
   });
 
   it('accepts the versions built from a tuning config', () => {
-    const tuning: TuningConfig = { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 4, generation: { operators: ['add'], maxValue: 20 } };
+    const tuning: TuningConfig = { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 4, generation: { operators: ['add'], n: { min: 3, max: 3 }, bands: [{ band: 1, minValue: 1, maxValue: 20, maxCarries: 0 }], distractors: { nearMissDelta: 1, nearMissShare: 0 }, retries: { maxAttempts: 1 } } };
     const result = realise(1, leaf, spec, versionsFor(tuning));
     expect(result.ok && result.value.versions).toEqual({ generatorVersion: 1, difficultyModelVersion: 1, tuningVersion: 4 });
   });
@@ -149,6 +149,7 @@ describe('realise: bad input returns an error, never throws', () => {
     ['missing nodeId', () => realise(1, undefined as unknown as NodeId, spec, versions), 'invalid-node-id'],
     ['n other than 3', () => realise(1, leaf, { ...spec, n: 4 as 3 }, versions), 'invalid-spec'],
     ['operator other than add', () => realise(1, leaf, { ...spec, operator: 'mul' as 'add' }, versions), 'invalid-spec'],
+    ['operator sub (tuning may enable it; generation arrives with entry 4)', () => realise(1, leaf, { ...spec, operator: 'sub' }, versions), 'invalid-spec'],
     ['maxValue below 3', () => realise(1, leaf, { ...spec, maxValue: 2 }, versions), 'invalid-spec'],
     ['maxValue above int32', () => realise(1, leaf, { ...spec, maxValue: 2 ** 31 }, versions), 'invalid-spec'],
     [

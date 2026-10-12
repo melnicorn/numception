@@ -1,0 +1,4 @@
+{
+  "comment": "Shipped tuningVersions mapped to the sha256 of their content/tuning/<version>.json (AD-7). A shipped tuning file is never removed or changed: tools/tuning-content.test.ts fails if a listed file is missing or its hash differs. A version is listed when it first ships; v1 stays unlisted (and editable) until epic-poc-playtest's first release.",
+  "shipped": {}
+}
