@@ -3,7 +3,7 @@ title: 'Refactor sweep'
 type: 'chore'
 ticket: '7'
 created: '2026-10-11'
-status: 'in-review'
+status: 'built'
 baseline_revision: '23811ef50fc4df7a4995651afa344b4d0ff4cf61'
 route: 'oneshot'
 route_source: 'auto'
@@ -15,7 +15,14 @@ review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: []
-deferred: []
+deferred:
+  - summary: >-
+      Carried-over items live as epic Notes, not stories.
+    evidence: |-
+      epic-native-apps, epic-core-play-loop, epic-themes-and-feedback and epic-poc-playtest aren't sliced into tickets yet. When each is sliced (bmad-ticket), turn its "Carried over" notes into stories with verify lines.
+    location: >-
+      Notes sections of those four epic files
+    severity: low
 ---
 
 <intent-contract>
@@ -48,8 +55,41 @@ Disposition of every deferred item:
 | 6: phone airplane-mode check on the deployed URL | **Moved** to epic-poc-playtest (note): blocked on the Pages custom domain (DNS). |
 | 6: SW skipped in Capacitor shells | **Closed as by design, check moved.** Native shells load bundled assets, so they don't need a SW. Confirming the client runs offline in both shells on a device moved to epic-native-apps (note). |
 
+## Review Triage Log
+
+### 2026-10-11 — Review pass
+- verdicts: 8 findings — high 0, medium 2, low 6, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` The Android CI job built dev, whose ids equal the Gradle fallback, so broken synced-config wiring couldn't show. Fixed: it builds playtest and asserts the APK package and label with aapt2. Run 38191819952 shows `app.numception.playtest`, application label and launcher label `Numception Playtest`.
+  - `[medium]` `[patch]` The renderer-measurement note went to epic-native-apps, which starts after the POC, but the spine requires it before POC architecture locks. Moved to epic-core-play-loop.
+  - `[low]` `[patch]` The iOS row was "Closed" on the strength of the 16 Pro running bake-off builds, not the tracer client. Reworded to partly closed, with the client-on-phone install moved to epic-native-apps.
+  - `[low]` `[patch]` The Android install on a phone had no disposition. Added a row and an epic-native-apps note (no Android device for now).
+  - `[low]` `[patch]` The SW closure cited ticket 3 runs that never included `main.ts`. Reworded to by design, with an on-device offline check moved to epic-native-apps.
+  - `[low]` `[patch]` The epic-native-apps iOS-CI note cited 1.7 instead of its source ticket 1.5. Fixed.
+  - `[low]` `[defer]` The verify line says "moved to a new story", but the moves are epic notes, because the receiving epics aren't sliced into tickets yet. Convert the carried-over notes into stories when those epics are sliced.
+  - `[low]` `[reject]` The source plans' `deferred:` lists still read as open. Those lists are append-only by design, and this plan's disposition table is the record of where each item went.
+
 ## Verification
 
 **Commands:**
 - `pnpm typecheck && pnpm lint:deps && pnpm test` -- expected: pass (no app code changes)
 - CI on push: the `ci` and `deploy` jobs green, the `android` job green with `app-debug.apk` built; no Node 20 deprecation annotations
+
+## Auto Run Result
+
+**Summary:**
+- **Android CI:** a new, independent job builds the Android shell for the first time (playtest flavour, JDK 21, `assembleDebug`) and checks the APK's package and launcher label.
+- **Actions:** GitHub actions bumped to their Node 24 majors, which cleared the deprecation warnings.
+- **Deferred items:** every deferred item from the epic's plans is closed, fixed, or carried into the epic that owns it, with the disposition table above as the record.
+
+**Files changed:**
+- `.github/workflows/ci.yml`: `android` job; action version bumps.
+- `epic-native-apps.md`, `epic-core-play-loop.md`, `epic-themes-and-feedback.md`, `epic-poc-playtest.md`: carried-over notes.
+
+**Review findings:** 6 patches applied (2 medium, 4 low), 1 deferred (notes become stories when those epics are sliced), 1 rejected (append-only deferred lists).
+
+**Follow-up review recommended:** false. Patched: high 0, medium 2, low 4. The CI evidence covers the riskiest patch.
+
+**Verification:** `pnpm typecheck`, `pnpm lint:deps` and `pnpm test` (158) pass. On GitHub, runs 38191359883 and 38191819952 passed `ci`, `android` and `deploy` with no Node 20 annotations. The APK badging shows `app.numception.playtest` and `Numception Playtest`.
+
+**Residual risks:** Android has never run on a device. iOS isn't compiled in CI.
