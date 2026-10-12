@@ -4,13 +4,14 @@ import { FLAVOUR_NAMES, FLAVOURS, flavourOutDir, resolveFlavour } from './flavou
 describe('flavour table', () => {
   it('has the three flavours with the AD-18 ids', () => {
     expect(Object.keys(FLAVOURS)).toEqual([...FLAVOUR_NAMES]);
-    expect(FLAVOURS.dev).toMatchObject({ appId: 'app.numception.dev', appName: 'Numception Dev', devPanel: true });
+    expect(FLAVOURS.dev).toMatchObject({ appId: 'app.numception.dev', appName: 'Numception Dev', devPanel: true, pwa: false });
     expect(FLAVOURS.playtest).toMatchObject({
       appId: 'app.numception.playtest',
       appName: 'Numception Playtest',
       devPanel: true,
+      pwa: true,
     });
-    expect(FLAVOURS.prod).toMatchObject({ appId: 'app.numception', appName: 'Numception', devPanel: false });
+    expect(FLAVOURS.prod).toMatchObject({ appId: 'app.numception', appName: 'Numception', devPanel: false, pwa: true });
   });
 
   it('gives every flavour a distinct appId and name', () => {

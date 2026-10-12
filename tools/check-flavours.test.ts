@@ -11,7 +11,9 @@ import { xcconfigFor } from '../apps/client/scripts/write-ios-flavour.mjs';
 import {
   checkFlavours,
   DEV_PANEL_MARKER,
+  MANIFEST_FILE,
   pageIdentity,
+  precacheUrls,
   parseGradleWiring,
   parseXcconfig,
 } from './check-flavours.mjs';
@@ -36,8 +38,14 @@ function page(name: FlavourName, overrides: { appId?: string; title?: string } =
     `<title>${overrides.title ?? f.appName}</title>`,
     `<meta name="application-name" content="${f.appName}">`,
     `<meta name="numception-app-id" content="${overrides.appId ?? f.appId}">`,
+    ...(f.pwa ? [`<link rel="manifest" href="/${MANIFEST_FILE}">`] : []),
     '</head><body><div id="app"></div></body></html>',
   ].join('\n');
+}
+
+function manifest(name: FlavourName, overrides: Record<string, unknown> = {}): string {
+  const f = FLAVOURS[name];
+  return JSON.stringify({ name: f.appName, short_name: f.appName, id: f.appId, display: 'standalone', ...overrides });
 }
 
 /** A repo that passes; `files` overrides or adds paths (null deletes). */
@@ -56,6 +64,18 @@ function fixtureRepo(files: Record<string, string | null> = {}): string {
       : 'console.log("tracer")';
     if (FLAVOURS[name].devPanel) {
       base[`apps/client/dist/${name}/assets/mount-dev-panel-x.js`] = `const id="${DEV_PANEL_MARKER}";`;
+    }
+    if (FLAVOURS[name].pwa) {
+      base[`apps/client/dist/${name}/assets/index-abc.js`] += ';navigator.serviceWorker.register("/sw.js")';
+      const entries = Object.keys(base)
+        .filter((k) => k.startsWith(`apps/client/dist/${name}/`))
+        .map((k) => k.slice(`apps/client/dist/${name}/`.length))
+        .concat(MANIFEST_FILE)
+        .map((url) => `{url:"${url}",revision:null}`);
+      base[`apps/client/dist/${name}/sw.js`] =
+        `define(["./workbox-1"],function(e){e.precacheAndRoute([${entries.join(',')}],{})})`;
+      base[`apps/client/dist/${name}/workbox-1.js`] = 'define(["exports"],function(e){})';
+      base[`apps/client/dist/${name}/${MANIFEST_FILE}`] = manifest(name);
     }
   }
   for (const [file, text] of Object.entries({ ...base, ...files })) {
@@ -174,6 +194,80 @@ describe('checkFlavours', () => {
       'NUMCEPTION_APP_ID = app.numception',
     );
     expect(checkFlavours(fixtureRepo({ [BASE_XCCONFIG]: xc })).some((e) => e.startsWith('ios: '))).toBe(true);
+  });
+});
+
+describe('checkFlavours PWA', () => {
+  it('fails when dev ships a service worker, Workbox, a manifest, its link or registration code', () => {
+    const errors = checkFlavours(
+      fixtureRepo({
+        'apps/client/dist/dev/index.html': page('dev').replace('</head>', `<link rel="manifest" href="/${MANIFEST_FILE}"></head>`),
+        'apps/client/dist/dev/sw.js': 'x',
+        'apps/client/dist/dev/workbox-1.js': 'x',
+        [`apps/client/dist/dev/${MANIFEST_FILE}`]: manifest('dev'),
+        'apps/client/dist/dev/assets/index-abc.js': 'navigator.serviceWorker.register("/sw.js")',
+      }),
+    );
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        'web dev: apps/client/dist/dev/sw.js must not ship (no service worker in dev)',
+        'web dev: apps/client/dist/dev/workbox-1.js must not ship (no service worker in dev)',
+        `web dev: apps/client/dist/dev/${MANIFEST_FILE} must not ship (no service worker in dev)`,
+        'web dev: apps/client/dist/dev/assets/index-abc.js mentions "serviceWorker"',
+        `web dev: index.html links a manifest (/${MANIFEST_FILE})`,
+      ]),
+    );
+  });
+
+  it('fails when a PWA flavour lacks its service worker, manifest, link or registration', () => {
+    const errors = checkFlavours(
+      fixtureRepo({
+        'apps/client/dist/playtest/sw.js': null,
+        [`apps/client/dist/playtest/${MANIFEST_FILE}`]: null,
+        'apps/client/dist/playtest/index.html': page('playtest').replace(/<link rel="manifest"[^>]*>/, ''),
+        'apps/client/dist/playtest/assets/index-abc.js': 'import("./mount-dev-panel-x.js")',
+      }),
+    );
+    expect(errors).toEqual(
+      expect.arrayContaining([
+        'web playtest: apps/client/dist/playtest/sw.js is missing (pwa flavour)',
+        `web playtest: apps/client/dist/playtest/${MANIFEST_FILE} is missing (pwa flavour)`,
+        `web playtest: index.html has no <link rel="manifest"> to ${MANIFEST_FILE}`,
+        'web playtest: no service-worker registration code in apps/client/dist/playtest',
+      ]),
+    );
+  });
+
+  it("fails when a manifest doesn't carry the flavour's name and id", () => {
+    const errors = checkFlavours(
+      fixtureRepo({
+        [`apps/client/dist/prod/${MANIFEST_FILE}`]: manifest('prod', { id: 'app.numception.dev', short_name: 'X' }),
+        [`apps/client/dist/playtest/${MANIFEST_FILE}`]: '{',
+      }),
+    );
+    expect(errors).toContain('web prod: manifest id is app.numception.dev, expected app.numception');
+    expect(errors).toContain('web prod: manifest short_name is X, expected Numception');
+    expect(errors).toContain(`web playtest: apps/client/dist/playtest/${MANIFEST_FILE} is not a valid JSON object`);
+  });
+
+  it('reports a manifest that parses to a non-object instead of throwing', () => {
+    for (const text of ['null', '[]', '"x"']) {
+      expect(checkFlavours(fixtureRepo({ [`apps/client/dist/prod/${MANIFEST_FILE}`]: text }))).toContain(
+        `web prod: apps/client/dist/prod/${MANIFEST_FILE} is not a valid JSON object`,
+      );
+    }
+  });
+
+  it('fails when a PWA build emits a file the sw.js precache leaves out', () => {
+    const errors = checkFlavours(fixtureRepo({ 'apps/client/dist/playtest/assets/music-1.ogg': 'x' }));
+    expect(errors).toEqual(['web playtest: apps/client/dist/playtest/assets/music-1.ogg is not in the sw.js precache']);
+  });
+
+  it('reads the precache URLs from a generated sw.js', () => {
+    expect([...precacheUrls('e.precacheAndRoute([{url:"index.html",revision:"a"},{url:"assets/x.js",revision:null}],{})')]).toEqual([
+      'index.html',
+      'assets/x.js',
+    ]);
   });
 });
 

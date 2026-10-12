@@ -17,13 +17,18 @@ export interface Flavour {
   readonly appName: string;
   /** Whether the dev panel ships in this build. Prod never ships it. */
   readonly devPanel: boolean;
+  /**
+   * Whether the web build is an offline PWA (service worker precaching every asset,
+   * plus a web app manifest; NFR-2). Dev never registers a service worker.
+   */
+  readonly pwa: boolean;
 }
 
 export const FLAVOURS: Readonly<Record<FlavourName, Flavour>> = {
-  dev: { name: 'dev', appId: 'app.numception.dev', appName: 'Numception Dev', devPanel: true },
-  playtest: { name: 'playtest', appId: 'app.numception.playtest', appName: 'Numception Playtest', devPanel: true },
+  dev: { name: 'dev', appId: 'app.numception.dev', appName: 'Numception Dev', devPanel: true, pwa: false },
+  playtest: { name: 'playtest', appId: 'app.numception.playtest', appName: 'Numception Playtest', devPanel: true, pwa: true },
   // `app.numception` is a placeholder store id until registration (epic-native-apps).
-  prod: { name: 'prod', appId: 'app.numception', appName: 'Numception', devPanel: false },
+  prod: { name: 'prod', appId: 'app.numception', appName: 'Numception', devPanel: false, pwa: true },
 };
 
 export const DEFAULT_FLAVOUR: FlavourName = 'dev';

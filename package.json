@@ -9,6 +9,7 @@
     "test": "vitest run",
     "build": "pnpm --filter @numception/client run build:all",
     "check:flavours": "node tools/check-flavours.mjs",
+    "check:budget": "node tools/check-budget.mjs",
     "e2e": "playwright test"
   },
   "devDependencies": {

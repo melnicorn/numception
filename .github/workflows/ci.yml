@@ -35,8 +35,12 @@ jobs:
       # Distinct ids across the table, web pages and iOS xcconfig; Android reads the synced config;
       # no dev-panel code in prod. Native shells are not compiled in CI (cost; gap).
       - run: pnpm check:flavours
+      # NFR-1: each web flavour's initial download (for the PWA flavours, the whole
+      # precached build) within 5,000,000 bytes gzipped.
+      - run: pnpm check:budget
       - run: pnpm exec playwright install --with-deps webkit
-      # E2E runs against the playtest build, the one deployed to Pages.
+      # E2E runs against the playtest build, the one deployed to Pages, including the
+      # offline reload (NFR-2), which WebKit's service-worker support handles.
       - run: pnpm e2e
       - if: failure()
         uses: actions/upload-artifact@v4

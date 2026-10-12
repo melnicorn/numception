@@ -7,6 +7,8 @@ declare global {
   const __NUMCEPTION_FLAVOUR__: 'dev' | 'playtest' | 'prod';
   /** True in dev and playtest builds; literal `false` in prod. */
   const __NUMCEPTION_DEV_PANEL__: boolean;
+  /** True in PWA builds (playtest, prod); literal `false` in dev, which has no service worker. */
+  const __NUMCEPTION_PWA__: boolean;
 }
 
 export {};

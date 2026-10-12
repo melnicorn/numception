@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Placeholder app icon (ticket 6): neon ring on the game background. Replace with final art. -->
+  <rect width="512" height="512" fill="#05060a"/>
+  <circle cx="256" cy="256" r="150" fill="none" stroke="#2ff3e0" stroke-width="36"/>
+  <circle cx="256" cy="256" r="56" fill="#ff3cac"/>
+</svg>

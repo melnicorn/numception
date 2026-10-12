@@ -12,6 +12,12 @@
 //  5. Dev-panel builds contain the dev-panel marker and its chunk; builds without
 //     the panel (prod) contain neither the marker, nor "dev-panel" anywhere, nor a
 //     dev-panel chunk.
+//  6. PWA builds (playtest, prod) have sw.js, a manifest carrying the flavour's
+//     name and id linked from index.html, and the registration code. Builds
+//     without it (dev) have no service worker, Workbox runtime, manifest, manifest
+//     link or registration code (NFR-2; no service worker while developing).
+//     Every file a PWA build emits, other than sw.js and the Workbox runtime, is
+//     in the sw.js precache manifest (precache = initial download, see check-budget).
 //
 // Usage: node tools/check-flavours.mjs [--root <dir>]
 // Exits 1 and prints every finding.
@@ -35,6 +41,12 @@ const PROD_FORBIDDEN = 'dev-panel';
 const DEV_PANEL_SOURCE = 'packages/ui/src/dev-panel/dev-panel.tsx';
 const BUILD_GRADLE = 'apps/client/android/app/build.gradle';
 const IOS_BASE_XCCONFIG = 'apps/client/ios/flavour-base.xcconfig';
+/** Emitted by vite-plugin-pwa (generateSW) for PWA flavours only. */
+export const SW_FILE = 'sw.js';
+export const MANIFEST_FILE = 'manifest.webmanifest';
+/** The registration call in src/main.ts; non-PWA builds must not mention service workers at all. */
+const SW_REGISTER = 'serviceWorker.register';
+const SW_MENTION = 'serviceWorker';
 
 /**
  * Reads `KEY = value` lines from xcconfig text (comments and includes skipped).
@@ -101,7 +113,17 @@ export function pageIdentity(html) {
     applicationName: attrOf(html, /<meta\b[^>]*\bname\s*=\s*"application-name"[^>]*>/, 'content'),
     title: html.match(/<title>([^<]*)<\/title>/)?.[1],
     flavour: attrOf(html, /<html\b[^>]*>/, 'data-flavour'),
+    manifestHref: attrOf(html, /<link\b[^>]*\brel\s*=\s*"manifest"[^>]*>/, 'href'),
   };
+}
+
+/**
+ * The URLs in a generated sw.js precache manifest (`precacheAndRoute([{url:"…",…}])`).
+ * @param {string} swText
+ * @returns {Set<string>}
+ */
+export function precacheUrls(swText) {
+  return new Set([...swText.matchAll(/\burl\s*:\s*["'`]([^"'`]+)["'`]/g)].map((m) => m[1] ?? ''));
 }
 
 /**
@@ -217,6 +239,58 @@ export function checkFlavours(root) {
         }
       }
     }
+
+    // 6. PWA.
+    const jsWithRegister = files.filter((p) => p.endsWith('.js') && readFileSync(join(dist, p), 'utf8').includes(SW_REGISTER));
+    if (f.pwa) {
+      if (!files.includes(SW_FILE)) {
+        errors.push(`web ${f.name}: ${distRel}/${SW_FILE} is missing (pwa flavour)`);
+      } else {
+        const precached = precacheUrls(readFileSync(join(dist, SW_FILE), 'utf8'));
+        for (const p of files) {
+          if (p === SW_FILE || /^workbox-[^/]*\.js$/.test(p)) continue;
+          if (!precached.has(p)) errors.push(`web ${f.name}: ${distRel}/${p} is not in the ${SW_FILE} precache`);
+        }
+      }
+      if (jsWithRegister.length === 0) errors.push(`web ${f.name}: no service-worker registration code in ${distRel}`);
+      if (id.manifestHref === undefined || !id.manifestHref.endsWith(`/${MANIFEST_FILE}`)) {
+        errors.push(`web ${f.name}: index.html has no <link rel="manifest"> to ${MANIFEST_FILE}`);
+      }
+      if (!files.includes(MANIFEST_FILE)) {
+        errors.push(`web ${f.name}: ${distRel}/${MANIFEST_FILE} is missing (pwa flavour)`);
+      } else {
+        /** @type {Record<string, unknown>} */
+        let manifest = {};
+        try {
+          const parsed = JSON.parse(readFileSync(join(dist, MANIFEST_FILE), 'utf8'));
+          if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object');
+          manifest = parsed;
+        } catch {
+          errors.push(`web ${f.name}: ${distRel}/${MANIFEST_FILE} is not a valid JSON object`);
+        }
+        /** @type {[string, unknown][]} */
+        const expected = [
+          ['name', f.appName],
+          ['short_name', f.appName],
+          ['id', f.appId],
+          ['display', 'standalone'],
+        ];
+        for (const [key, want] of expected) {
+          if (manifest[key] !== want) {
+            errors.push(`web ${f.name}: manifest ${key} is ${String(manifest[key])}, expected ${String(want)}`);
+          }
+        }
+      }
+    } else {
+      for (const p of files) {
+        if (p === SW_FILE || /(^|\/)workbox-[^/]*\.js$/.test(p) || p.endsWith('.webmanifest')) {
+          errors.push(`web ${f.name}: ${distRel}/${p} must not ship (no service worker in ${f.name})`);
+        } else if (readFileSync(join(dist, p), 'utf8').includes(SW_MENTION)) {
+          errors.push(`web ${f.name}: ${distRel}/${p} mentions "${SW_MENTION}"`);
+        }
+      }
+      if (id.manifestHref !== undefined) errors.push(`web ${f.name}: index.html links a manifest (${id.manifestHref})`);
+    }
   }
   if (new Set(pageIds).size !== pageIds.length) errors.push(`web: page app ids are not distinct: ${pageIds.join(', ')}`);
 
@@ -235,7 +309,7 @@ function main() {
   }
   console.log(
     `✔ check-flavours: ${Object.keys(FLAVOURS).join(', ')} have distinct ids across table, web and iOS; Android follows the synced config; ` +
-      'dev panel only where enabled',
+      'dev panel only where enabled; service worker and manifest only in PWA flavours',
   );
 }
 
