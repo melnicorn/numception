@@ -1,10 +1,20 @@
 apply plugin: 'com.android.application'
 
+// Build flavour (AD-18): follows the last `cap:sync`, like iOS. The app id and name
+// come from the synced capacitor.config.json (written by `cap sync` from
+// apps/client/flavours.ts), so the bundle id always matches the web bundle it
+// ships. A fresh clone with nothing synced builds as dev.
+def syncedCapConfig = file('src/main/assets/capacitor.config.json')
+def numceptionCap = syncedCapConfig.exists() ? new groovy.json.JsonSlurper().parse(syncedCapConfig) : [:]
+def numceptionAppId = numceptionCap.appId ?: 'app.numception.dev'
+def numceptionAppName = numceptionCap.appName ?: 'Numception Dev'
+
 android {
     namespace = "app.numception.dev"
     compileSdk = rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "app.numception.dev"
+        applicationId numceptionAppId
+        resValue "string", "app_name", numceptionAppName
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1
@@ -15,6 +25,9 @@ android {
              // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
+    }
+    buildFeatures {
+        resValues = true
     }
     buildTypes {
         release {

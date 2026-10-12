@@ -1,0 +1,10 @@
+// Bundle id and display name per build flavour (AD-18). The App target reads
+// PRODUCT_BUNDLE_IDENTIFIER and CFBundleDisplayName from these settings.
+// Dev values are the fallback, so a fresh clone builds as dev; `cap:sync`
+// (scripts/write-ios-flavour.mjs) generates App/flavour.xcconfig from
+// apps/client/flavours.ts and its values override these.
+NUMCEPTION_FLAVOUR = dev
+NUMCEPTION_APP_ID = app.numception.dev
+NUMCEPTION_APP_NAME = Numception Dev
+
+#include? "App/flavour.xcconfig"

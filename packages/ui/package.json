@@ -4,7 +4,8 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": "./src/index.ts"
+    ".": "./src/index.ts",
+    "./dev-panel": "./src/dev-panel/mount-dev-panel.ts"
   },
   "dependencies": {
     "@numception/app": "workspace:*",

@@ -21,6 +21,11 @@ public class ExampleInstrumentedTest {
         // Context of the app under test.
         Context appContext = InstrumentationRegistry.getInstrumentation().getTargetContext();
 
-        assertEquals("app.numception.dev", appContext.getPackageName());
+        // The package follows the last cap:sync: one of the appIds in apps/client/flavours.ts.
+        String pkg = appContext.getPackageName();
+        assertTrue(
+            "unexpected package " + pkg,
+            java.util.Arrays.asList("app.numception.dev", "app.numception.playtest", "app.numception").contains(pkg)
+        );
     }
 }

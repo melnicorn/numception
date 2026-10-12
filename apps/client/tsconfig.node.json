@@ -4,7 +4,19 @@
     "lib": ["ES2022", "DOM"],
     "types": ["node"],
     "allowImportingTsExtensions": true,
+    "allowJs": true,
+    "checkJs": true,
     "outDir": "./.tsbuild/node"
   },
-  "include": ["base-path.ts", "base-path.test.ts", "capacitor-config.test.ts", "capacitor.config.ts", "vite.config.ts", "e2e"]
+  "include": [
+    "base-path.ts",
+    "base-path.test.ts",
+    "capacitor-config.test.ts",
+    "capacitor.config.ts",
+    "flavours.ts",
+    "flavours.test.ts",
+    "scripts/*.mjs",
+    "vite.config.ts",
+    "e2e"
+  ]
 }

@@ -30,8 +30,13 @@ jobs:
       - run: pnpm typecheck
       - run: pnpm lint:deps
       - run: pnpm test
+      # Builds all three flavours into apps/client/dist/{dev,playtest,prod} (AD-18).
       - run: pnpm build
+      # Distinct ids across the table, web pages and iOS xcconfig; Android reads the synced config;
+      # no dev-panel code in prod. Native shells are not compiled in CI (cost; gap).
+      - run: pnpm check:flavours
       - run: pnpm exec playwright install --with-deps webkit
+      # E2E runs against the playtest build, the one deployed to Pages.
       - run: pnpm e2e
       - if: failure()
         uses: actions/upload-artifact@v4
@@ -44,7 +49,7 @@ jobs:
       - if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: actions/upload-pages-artifact@v4
         with:
-          path: apps/client/dist
+          path: apps/client/dist/playtest
 
   deploy:
     needs: ci

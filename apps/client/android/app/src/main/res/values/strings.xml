@@ -1,7 +1,4 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Numception</string>
-    <string name="title_activity_main">Numception</string>
-    <string name="package_name">app.numception.dev</string>
-    <string name="custom_url_scheme">app.numception.dev</string>
+    <!-- app_name (application and launcher label) is a resValue in app/build.gradle, read from the synced capacitor.config.json: the flavour of the last cap:sync. -->
 </resources>

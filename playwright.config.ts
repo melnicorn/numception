@@ -49,7 +49,8 @@ export default defineConfig({
   ],
   webServer: [
     {
-      command: `pnpm --filter @numception/client run preview --port ${port} --strictPort`,
+      // Serves the playtest build (apps/client/dist/playtest), as deployed to Pages.
+      command: `FLAVOUR=playtest pnpm --filter @numception/client run preview --port ${port} --strictPort`,
       url: baseURL,
       reuseExistingServer: !process.env.CI,
     },
