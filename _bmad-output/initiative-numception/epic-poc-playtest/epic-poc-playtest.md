@@ -43,3 +43,4 @@ Running and analysing the playtest. Not new features; fixes found become bugs in
 - Waits on epic-adaptive-difficulty because: it needs log export.
 - Waits on epic-themes-and-feedback because: it needs themes and feedback.
 - Waits on epic-profiles-and-controls because: it needs profiles and controls.
+- Carried over: 2026-10-11 from epic-platform-baseline 1.6. The deployed playtest PWA hasn't been checked in airplane mode on a phone: the Pages URL redirects to the user-site custom domain www.shellmelwood.com, which doesn't resolve. Fix the DNS (or remove the custom domain), then load once and reopen offline. Offline reload is already proven in the WebKit e2e.
