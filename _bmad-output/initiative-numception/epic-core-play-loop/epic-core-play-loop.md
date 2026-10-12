@@ -46,3 +46,4 @@ The play loop, navigation, presentation timeline and persistence. Not mode scori
 - Open question: OQ-8 — pinch in addition to tap-to-enter is open; POC ships tap-to-enter.
 - Waits on epic-platform-baseline because: it needs the renderer decision.
 - Waits on epic-puzzle-generator because: it needs round planning and realisation API.
+- Carried over: 2026-10-11 from epic-platform-baseline 1.3 (via 1.7), placed here because it must happen before POC architecture locks, which this epic's render work precedes. The renderer (PixiJS, provisional) still needs measuring on an older iPhone-class device (iPad Air 4, A14) and a mid-range Android (Galaxy A35 class) before POC architecture locks; see the architecture spine's Deferred (Renderer) and prototypes/renderer-bakeoff/measurements.md.

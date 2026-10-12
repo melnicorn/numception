@@ -3,14 +3,14 @@ title: 'Refactor sweep'
 type: 'chore'
 ticket: '7'
 created: '2026-10-11'
-status: 'in-progress'
+status: 'in-review'
 baseline_revision: '23811ef50fc4df7a4995651afa344b4d0ff4cf61'
 route: 'oneshot'
 route_source: 'auto'
 risk: 'low'
-review: ''
-review_source: ''
-lenses_ran: []
+review: 'quick'
+review_source: 'pinned'
+lenses_ran: ['quick']
 review_loop_iteration: 0
 followup_review_recommended: false
 context: []
@@ -39,13 +39,14 @@ Disposition of every deferred item:
 | Item | Disposition |
 |---|---|
 | 8, 9: bake-off e2e may time out on ubuntu WebKit | **Closed.** Fixed in `da0c89e` (Phaser raw deltas and clock-sized waits); CI green on runs 38069502978 and 38189788269. |
-| 2: iOS shell not on a real phone | **Closed.** Installed and run on the user's iPhone 16 Pro during ticket 3 (Release builds, devicectl). |
-| 2, 5: Android never compiled | **Fixed here.** CI `android` job. |
+| 2: iOS shell not on a real phone | **Partly closed, rest moved.** The shell installs and runs on the user's iPhone 16 Pro (ticket 3, Release, devicectl), but with the bake-off content, not the tracer client. Installing the client on a phone moved to epic-native-apps (note). |
+| 2, 5: Android never compiled | **Fixed here.** CI `android` job builds the **playtest** flavour, so the synced-config wiring differs from the dev fallback, and checks the APK's package (`app.numception.playtest`) and label (`Numception Playtest`) with aapt2. |
+| 2: Android not installed on a phone | **Moved** to epic-native-apps (note). The user has no Android device for now. |
 | 5: native shells not compiled in CI (iOS part) | **Moved** to epic-native-apps (note): macOS runner cost; local Xcode builds cover it until store builds. |
-| 3: renderer not measured on an older iPhone or Android | **Moved** to epic-native-apps (note). Also stays in the spine's Deferred (Renderer). |
+| 3: renderer not measured on an older iPhone or Android | **Moved** to epic-core-play-loop (note), which comes before POC architecture locks. Also stays in the spine's Deferred (Renderer). |
 | 3: filter glow too expensive | **Moved** to epic-themes-and-feedback (note). Also in the spine's Deferred. |
 | 6: phone airplane-mode check on the deployed URL | **Moved** to epic-poc-playtest (note): blocked on the Pages custom domain (DNS). |
-| 6: SW skipped in Capacitor shells | **Closed** as by design: native shells load bundled assets and are offline by construction. Native offline is exercised whenever the shells run (e.g. ticket 3's device runs had no network dependency). |
+| 6: SW skipped in Capacitor shells | **Closed as by design, check moved.** Native shells load bundled assets, so they don't need a SW. Confirming the client runs offline in both shells on a device moved to epic-native-apps (note). |
 
 ## Verification
 

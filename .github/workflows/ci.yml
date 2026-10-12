@@ -55,8 +55,9 @@ jobs:
         with:
           path: apps/client/dist/playtest
 
-  # First compile of the Android shell (dev flavour). ubuntu-latest ships the Android SDK;
-  # Gradle fetches any missing platform. Independent of `ci`, so it never blocks the deploy.
+  # Android shell compile. Builds the playtest flavour (not dev, whose ids equal the Gradle
+  # fallback), so a broken synced-config wiring in build.gradle shows up as a wrong package
+  # or label. ubuntu-latest ships the Android SDK. Independent of `ci`; never blocks the deploy.
   android:
     runs-on: ubuntu-latest
     steps:
@@ -73,12 +74,20 @@ jobs:
           distribution: temurin
           java-version: 21
       - run: pnpm install --frozen-lockfile
-      # Same as the cap:sync script, limited to Android: dev web build at base /, then sync.
+      # Same as the cap:sync script, limited to Android: playtest web build at base /, then sync.
       - working-directory: apps/client
-        run: BASE_PATH= FLAVOUR=dev pnpm exec vite build && FLAVOUR=dev pnpm exec cap sync android
+        run: BASE_PATH= FLAVOUR=playtest pnpm exec vite build && FLAVOUR=playtest pnpm exec cap sync android
       - working-directory: apps/client/android
         run: ./gradlew assembleDebug --no-daemon --stacktrace
-      - run: test -f apps/client/android/app/build/outputs/apk/debug/app-debug.apk
+      # The APK must carry the playtest flavour's package and launcher label (apps/client/flavours.ts).
+      - name: Check APK package and label
+        run: |
+          AAPT2=$(ls "$ANDROID_HOME"/build-tools/*/aapt2 | sort -V | tail -1)
+          BADGING=$("$AAPT2" dump badging apps/client/android/app/build/outputs/apk/debug/app-debug.apk)
+          echo "$BADGING" | grep -E "^package:|^application-label:|launchable-activity"
+          echo "$BADGING" | grep -q "^package: name='app.numception.playtest'"
+          echo "$BADGING" | grep -q "^application-label:'Numception Playtest'"
+          echo "$BADGING" | grep -q "launchable-activity:.*label='Numception Playtest'"
 
   deploy:
     needs: ci

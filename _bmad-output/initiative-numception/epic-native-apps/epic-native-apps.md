@@ -42,5 +42,6 @@ Native shells and platform services. Not the purchase (epic-one-time-unlock).
 - Waits on epic-poc-playtest because: it needs go/no-go.
 - Waits on epic-pyramid-home because: it needs Pyramid height for the bragging-rights board.
 - Waits on epic-daily-habit because: it needs streak for Grown-up reminders.
-- Carried over: 2026-10-11 from epic-platform-baseline 1.7. The iOS shell is not compiled in CI (macOS runner cost). Add a macOS build, or rely on store/TestFlight builds, when this epic starts.
-- Carried over: 2026-10-11 from epic-platform-baseline 1.3. The renderer (PixiJS, provisional) still needs measuring on an older iPhone-class device (iPad Air 4, A14) and a mid-range Android (Galaxy A35 class) before POC architecture locks; see the architecture spine's Deferred (Renderer) and prototypes/renderer-bakeoff/measurements.md.
+- Carried over: 2026-10-11 from epic-platform-baseline 1.5 (via 1.7). The iOS shell is not compiled in CI (macOS runner cost). Add a macOS build, or rely on store/TestFlight builds, when this epic starts.
+- Carried over: 2026-10-11 from epic-platform-baseline 1.2 (via 1.7). Neither shell has run the real client on a phone. Android now compiles in CI (playtest flavour, package and label checked) but has never been installed on a device (the user has no Android device for now). The iOS client shell was only run in the simulator; the 16 Pro ran the bake-off scenes, not the tracer client. Install both shells with the client on real phones when this epic starts.
+- Carried over: 2026-10-11 from epic-platform-baseline 1.6 (via 1.7). Service-worker registration is skipped inside the Capacitor shells by design (they load bundled assets). Confirm the client runs offline in both shells on a device.
