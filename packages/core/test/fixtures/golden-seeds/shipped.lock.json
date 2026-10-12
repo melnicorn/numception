@@ -1,0 +1,4 @@
+{
+  "comment": "Shipped generatorVersions mapped to the sha256 of their fixture file (AD-6). A shipped version's output never changes: tools/golden-lock.test.ts fails if a locked fixture changes or its version is unregistered, and pnpm golden:update refuses to rewrite it. A version is locked when it first ships to players; v1 stays unlocked until epic-poc-playtest's first release. See README.md.",
+  "shipped": {}
+}

@@ -28,6 +28,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+      # Import boundaries, lockfile supply check, and the AD-3 purity check of core/generator and core/random.
       - run: pnpm lint:deps
       - run: pnpm test
       # Builds all three flavours into apps/client/dist/{dev,playtest,prod} (AD-18).
@@ -40,7 +41,8 @@ jobs:
       - run: pnpm check:budget
       - run: pnpm exec playwright install --with-deps webkit
       # E2E runs against the playtest build, the one deployed to Pages, including the
-      # offline reload (NFR-2), which WebKit's service-worker support handles.
+      # offline reload (NFR-2), which WebKit's service-worker support handles. The
+      # golden-webkit project replays core's golden seeds in WebKit (AD-6).
       - run: pnpm e2e
       - if: failure()
         uses: actions/upload-artifact@v7

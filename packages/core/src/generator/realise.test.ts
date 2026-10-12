@@ -55,6 +55,16 @@ describe('realise: determinism', () => {
   });
 });
 
+describe('realise: recorded versions', () => {
+  it('accepts any positive difficultyModelVersion, records it and realises the same cells', () => {
+    const base = mustRealise(11);
+    const result = realise(11, leaf, spec, { ...versions, difficultyModelVersion: 2 });
+    expect(result.ok && result.value.versions).toEqual({ generatorVersion: 1, difficultyModelVersion: 2, tuningVersion: 1 });
+    expect(result.ok && result.value.cells).toEqual(base.cells);
+    expect(result.ok && result.value.answerIndex).toBe(base.answerIndex);
+  });
+});
+
 describe('realise: variety', () => {
   it('differs across seeds', () => {
     const shapes = new Set<string>();
@@ -143,9 +153,21 @@ describe('realise: bad input returns an error, never throws', () => {
     ['maxValue above int32', () => realise(1, leaf, { ...spec, maxValue: 2 ** 31 }, versions), 'invalid-spec'],
     [
       'unknown generatorVersion',
-      () => realise(1, leaf, spec, { ...versions, generatorVersion: 2 as 1 }),
+      () => realise(1, leaf, spec, { ...versions, generatorVersion: 2 }),
       'unsupported-version',
     ],
+    [
+      'unregistered generatorVersion 99',
+      () => realise(1, leaf, spec, { ...versions, generatorVersion: 99 }),
+      'unsupported-version',
+    ],
+    [
+      'generatorVersion naming an Object.prototype key',
+      () => realise(1, leaf, spec, { ...versions, generatorVersion: 'toString' as unknown as number }),
+      'unsupported-version',
+    ],
+    ['difficultyModelVersion 0', () => realise(1, leaf, spec, { ...versions, difficultyModelVersion: 0 }), 'unsupported-version'],
+    ['fractional difficultyModelVersion', () => realise(1, leaf, spec, { ...versions, difficultyModelVersion: 1.5 }), 'unsupported-version'],
     ['tuningVersion 0', () => realise(1, leaf, spec, { ...versions, tuningVersion: 0 }), 'unsupported-version'],
     ['bigint seed', () => realise(1n as unknown as number, leaf, spec, versions), 'invalid-seed'],
     ['bigint NodeId field', () => realise(1, { tier: 1n as unknown as number, index: 0 }, spec, versions), 'invalid-node-id'],
@@ -154,6 +176,13 @@ describe('realise: bad input returns an error, never throws', () => {
     ['missing spec', () => realise(1, leaf, null as unknown as PuzzleSpec, versions), 'invalid-spec'],
     ['missing versions', () => realise(1, leaf, spec, undefined as unknown as PuzzleVersions), 'unsupported-version'],
   ];
+
+  it('names the registered versions in the unsupported-version message', () => {
+    const result = realise(1, leaf, spec, { ...versions, generatorVersion: 99 });
+    expect(!result.ok && result.error.message).toBe(
+      'this build realises generatorVersion 1, got 99',
+    );
+  });
 
   it.each(cases)('%s', (_name, run, code) => {
     let result: ReturnType<typeof realise> | undefined;

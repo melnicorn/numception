@@ -2,6 +2,7 @@
   "files": [],
   "references": [
     { "path": "./packages/core" },
+    { "path": "./packages/core/test" },
     { "path": "./packages/app" },
     { "path": "./packages/render" },
     { "path": "./packages/ui" },
@@ -11,6 +12,7 @@
     { "path": "./apps/client/tsconfig.node.json" },
     { "path": "./prototypes/renderer-bakeoff/phaser" },
     { "path": "./prototypes/renderer-bakeoff/pixi" },
+    { "path": "./tools/golden-harness" },
     { "path": "./tsconfig.tooling.json" }
   ]
 }

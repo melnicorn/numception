@@ -1,9 +1,11 @@
-import type { DIFFICULTY_MODEL_VERSION } from './difficulty-model-version';
-import type { GENERATOR_VERSION } from './generator-version';
-
-/** The versions a realised puzzle records (AD-6). */
+/**
+ * The versions a realised puzzle records (AD-6). All positive integers.
+ * `generatorVersion` picks the generator: `realise` accepts any registered version
+ * (see `GENERATORS`), not only this build's `GENERATOR_VERSION`, so old puzzles
+ * replay. `difficultyModelVersion` and `tuningVersion` are recorded, not dispatched on.
+ */
 export type PuzzleVersions = {
-  readonly generatorVersion: typeof GENERATOR_VERSION;
-  readonly difficultyModelVersion: typeof DIFFICULTY_MODEL_VERSION;
+  readonly generatorVersion: number;
+  readonly difficultyModelVersion: number;
   readonly tuningVersion: number;
 };

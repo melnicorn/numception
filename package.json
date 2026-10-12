@@ -5,8 +5,11 @@
   "type": "module",
   "scripts": {
     "typecheck": "tsc -b",
-    "lint:deps": "depcruise packages apps/client/src --config .dependency-cruiser.cjs && node tools/check-supply.mjs",
+    "lint:deps": "depcruise packages apps/client/src --config .dependency-cruiser.cjs && node tools/check-supply.mjs && node tools/check-core-purity.mjs",
     "test": "vitest run",
+    "golden:update": "node tools/golden-update.mjs",
+    "golden:harness:build": "vite build --config tools/golden-harness/vite.config.ts",
+    "golden:harness:preview": "vite preview --config tools/golden-harness/vite.config.ts",
     "build": "pnpm --filter @numception/client run build:all",
     "check:flavours": "node tools/check-flavours.mjs",
     "check:budget": "node tools/check-budget.mjs",
@@ -17,6 +20,7 @@
     "@types/node": "~24.19.1",
     "dependency-cruiser": "~18.5.0",
     "typescript": "~6.0.3",
+    "vite": "~8.3.4",
     "vitest": "~5.0.3"
   },
   "engines": {

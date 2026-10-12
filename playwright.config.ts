@@ -10,6 +10,11 @@ const bakeoffURL = `http://localhost:${bakeoffPort}/`;
 const bakeoffPixiPort = 4175;
 const bakeoffPixiURL = `http://localhost:${bakeoffPixiPort}/`;
 
+// Golden-seed harness (AD-6): core's golden comparison built into a static page and
+// run in WebKit, the iOS engine. Served at / whatever BASE_PATH is.
+const goldenPort = 4176;
+const goldenURL = `http://localhost:${goldenPort}/`;
+
 export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 1 : 0,
@@ -46,6 +51,11 @@ export default defineConfig({
         baseURL: bakeoffPixiURL,
       },
     },
+    {
+      name: 'golden-webkit',
+      testDir: 'tools/golden-harness/e2e',
+      use: { ...devices['Desktop Safari'], baseURL: goldenURL },
+    },
   ],
   webServer: [
     {
@@ -66,6 +76,11 @@ export default defineConfig({
         `pnpm --filter @numception/bakeoff-pixi run build && ` +
         `pnpm --filter @numception/bakeoff-pixi run preview --port ${bakeoffPixiPort} --strictPort`,
       url: bakeoffPixiURL,
+      reuseExistingServer: !process.env.CI,
+    },
+    {
+      command: `pnpm run golden:harness:build && pnpm run golden:harness:preview --port ${goldenPort} --strictPort`,
+      url: goldenURL,
       reuseExistingServer: !process.env.CI,
     },
   ],
