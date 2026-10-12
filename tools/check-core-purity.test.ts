@@ -18,7 +18,7 @@ afterAll(() => {
 function tree(files: Record<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), 'numception-purity-'));
   tempDirs.push(root);
-  for (const dir of ['packages/core/src/generator', 'packages/core/src/random']) mkdirSync(join(root, dir), { recursive: true });
+  for (const dir of ['packages/core/src/generator', 'packages/core/src/random', 'packages/core/src/rounds']) mkdirSync(join(root, dir), { recursive: true });
   for (const [path, code] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), code);
@@ -71,6 +71,22 @@ describe('checkCorePurity', () => {
     expect(checkCorePurity(root)).toEqual([
       'packages/core/src/generator/v1/realise-v1.ts:2: Math. is banned in core generation code (AD-3): export const b = Math.random();',
     ]);
+  });
+
+  it('covers the round planner folder', () => {
+    const root = tree({
+      'packages/core/src/rounds/plan-tiers.ts': 'export const a = 1;\nexport const b = Math.floor(2.5);\n',
+      'packages/core/src/rounds/plan-tiers.test.ts': 'Math.random();\n',
+    });
+    expect(checkCorePurity(root)).toEqual([
+      'packages/core/src/rounds/plan-tiers.ts:2: Math. is banned in core generation code (AD-3): export const b = Math.floor(2.5);',
+    ]);
+  });
+
+  it('reports a missing pure folder', () => {
+    const root = tree({});
+    rmSync(join(root, 'packages/core/src/rounds'), { recursive: true });
+    expect(checkCorePurity(root)).toEqual(['packages/core/src/rounds: missing']);
   });
 
   it('exits 1 and prints file:line from the command line', () => {

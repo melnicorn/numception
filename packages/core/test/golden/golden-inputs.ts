@@ -5,7 +5,8 @@ import type { NodeId } from '../../src/generator/node-id';
 import type { Operator } from '../../src/generator/operator';
 import { type SpecRequest, specFor } from '../../src/spec/spec-for';
 import { parseTuning } from '../../src/tuning/parse-tuning';
-import type { GoldenCaseInput, GoldenTunings } from './golden-seeds';
+import type { PlanRequest } from '../../src/rounds/round-plan';
+import type { GoldenCaseInput, GoldenPlanInput, GoldenTunings } from './golden-seeds';
 
 const SEEDS = [0, 1, 2, 7, 42, 1000, 20261011, 0x7fffffff, 0x80000000, 0xffffffff];
 const NODES: NodeId[] = [
@@ -81,6 +82,53 @@ export function goldenInputs(generatorVersion: number, tunings: GoldenTunings): 
         const nodeId = NODES[(i * 7 + (i - (i % SEEDS.length)) / SEEDS.length) % NODES.length] as NodeId;
         return { seed, nodeId, request, spec: spec.value, tuning, versions };
       });
+    });
+  });
+}
+
+const ROOT_SEEDS = [0, 7, 20261012, 0xffffffff];
+
+/** Classic and Tower at each n listed, both operators. */
+function rounds(ns: number[]): PlanRequest[] {
+  return (['classic', 'tower'] as const).flatMap((type) => OPERATORS.flatMap((operator) => ns.map((n) => ({ type, n, operator }))));
+}
+
+/**
+ * Which round-plan requests run under each tuning fixture. `rounds` mirrors the POC
+ * bands of content/tuning/1.json: Classic and Tower at several n and both operators,
+ * a later ordinal, a starting band above 1 and fixed top cells (OQ-4). `small` keeps
+ * the first POC band 1 (1..20, no carries), where Tower `add` is pinned as
+ * `unplannable`; `wide` has one wide band.
+ */
+const PLAN_REQUESTS: { tuning: string; requests: PlanRequest[] }[] = [
+  { tuning: 'rounds', requests: rounds([3, 5, 7, 9]) },
+  {
+    tuning: 'rounds',
+    requests: [
+      { type: 'classic', n: 4, operator: 'add', band: 2 },
+      { type: 'classic', n: 5, operator: 'add', fixedTopCell: { childIndex: 2, value: 40 } },
+      { type: 'tower', n: 4, operator: 'sub', fixedTopCell: { childIndex: 0, value: 12 } },
+    ],
+  },
+  { tuning: 'small', requests: [{ type: 'classic', n: 4, operator: 'sub' }, { type: 'tower', n: 3, operator: 'add' }] },
+  { tuning: 'wide', requests: [{ type: 'classic', n: 6, operator: 'add' }, { type: 'tower', n: 3, operator: 'sub' }] },
+];
+
+/**
+ * The round-plan inputs for `generatorVersion`: each request under its tuning
+ * fixture, versions pinned as for puzzle cases, root seeds cycling through
+ * ROOT_SEEDS and ordinals 0..2 so the round-seed derivation is pinned as well.
+ */
+export function goldenPlanInputs(generatorVersion: number, tunings: GoldenTunings): GoldenPlanInput[] {
+  let next = 0;
+  return PLAN_REQUESTS.flatMap(({ tuning, requests }) => {
+    const parsed = parseTuning(tunings[tuning]);
+    if (!parsed.ok) throw new Error(`tuning fixture "${tuning}": ${parsed.error.message}`);
+    const versions = { generatorVersion, difficultyModelVersion: DIFFICULTY_MODEL_VERSION, tuningVersion: parsed.value.tuningVersion };
+    return requests.map((request) => {
+      const i = next;
+      next += 1;
+      return { rootSeed: ROOT_SEEDS[i % ROOT_SEEDS.length] as number, ordinal: i % 3, request, tuning, versions };
     });
   });
 }

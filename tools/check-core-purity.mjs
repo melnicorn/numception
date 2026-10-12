@@ -2,8 +2,9 @@
 // Determinism check for AD-3: the generator and its PRNG read no ambient
 // randomness, clock, float maths, crypto or locale. Fails on any of
 // `Math.`, `uniformFloat`, `Date.now`, `performance.now`, `new Date`, `crypto.` or
-// `Intl` in the non-test source of packages/core/src/generator/** and
-// packages/core/src/random/**, printing file:line for each.
+// `Intl` in the non-test source of packages/core/src/generator/**,
+// packages/core/src/random/** and packages/core/src/rounds/** (the round planner),
+// printing file:line for each.
 //
 // Comments are skipped (so docs may name what is banned); code and strings are not.
 // `Math.` is banned outright, integer helpers included: node-stream.ts hand-writes
@@ -15,7 +16,7 @@ import { readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import { join, relative, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-export const PURE_DIRS = ['packages/core/src/generator', 'packages/core/src/random'];
+export const PURE_DIRS = ['packages/core/src/generator', 'packages/core/src/random', 'packages/core/src/rounds'];
 
 /** @type {readonly { name: string, pattern: RegExp }[]} */
 export const BANNED = [

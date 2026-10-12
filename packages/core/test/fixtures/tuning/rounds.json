@@ -1,0 +1,16 @@
+{
+  "kind": "TuningConfig",
+  "schemaVersion": 1,
+  "tuningVersion": 5,
+  "generation": {
+    "operators": ["add", "sub"],
+    "n": { "min": 3, "max": 9 },
+    "bands": [
+      { "band": 1, "minValue": 1, "maxValue": 99, "maxCarries": 1 },
+      { "band": 2, "minValue": 10, "maxValue": 199, "maxCarries": 1 },
+      { "band": 3, "minValue": 10, "maxValue": 499, "maxCarries": 2 }
+    ],
+    "distractors": { "nearMissDelta": 2, "nearMissShare": 0.5 },
+    "retries": { "maxAttempts": 100 }
+  }
+}

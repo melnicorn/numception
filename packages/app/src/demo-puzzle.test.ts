@@ -11,9 +11,9 @@ const tuningV1 = {
     operators: ['add', 'sub'],
     n: { min: 3, max: 9 },
     bands: [
-      { band: 1, minValue: 1, maxValue: 20, maxCarries: 0 },
-      { band: 2, minValue: 1, maxValue: 50, maxCarries: 1 },
-      { band: 3, minValue: 5, maxValue: 99, maxCarries: 1 },
+      { band: 1, minValue: 1, maxValue: 99, maxCarries: 1 },
+      { band: 2, minValue: 10, maxValue: 199, maxCarries: 1 },
+      { band: 3, minValue: 10, maxValue: 499, maxCarries: 2 },
       { band: 4, minValue: 10, maxValue: 999, maxCarries: 2 },
     ],
     distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
@@ -52,13 +52,13 @@ describe('demoPuzzle', () => {
 
   it("takes its value range from band 1's maxValue", () => {
     const result = demoPuzzle(tuningV1);
-    expect(result.ok && result.view.maxValue).toBe(20);
-    // The demo puzzle under tuning v1 (band 1: 1..20, no carries).
+    expect(result.ok && result.view.maxValue).toBe(99);
+    // The demo puzzle under tuning v1 (band 1: 1..99, at most one carry).
     expect(result.ok && result.view.cells.map((c) => c.text)).toMatchInlineSnapshot(`
       [
-        "4",
-        "16",
-        "12",
+        "35",
+        "95",
+        "60",
       ]
     `);
   });

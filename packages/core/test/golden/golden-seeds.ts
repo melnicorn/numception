@@ -3,11 +3,14 @@
 // (tools/golden-harness) and `pnpm golden:update`. Pure: no I/O, so it runs
 // unchanged in Node and in a browser page.
 import type { NodeId } from '../../src/generator/node-id';
-import type { PuzzleClamp, PuzzleRoles } from '../../src/generator/puzzle';
+import type { Puzzle, PuzzleClamp, PuzzleRoles } from '../../src/generator/puzzle';
 import type { PuzzleBand, PuzzleSpec } from '../../src/generator/puzzle-spec';
 import type { PuzzleVersions } from '../../src/generator/puzzle-versions';
 import { realise } from '../../src/generator/realise';
 import { serialiseRational } from '../../src/numbers/rational';
+import { deriveSeed } from '../../src/random/derive-seed';
+import type { PlanRequest } from '../../src/rounds/round-plan';
+import { planRound, realiseRoundNode } from '../../src/rounds/round-types';
 import { type SpecRequest, specFor } from '../../src/spec/spec-for';
 import { parseTuning } from '../../src/tuning/parse-tuning';
 import type { TuningConfig } from '../../src/tuning/tuning-config';
@@ -45,12 +48,59 @@ export type GoldenExpected = {
 
 export type GoldenCase = { readonly name: string; readonly input: GoldenCaseInput; readonly expected: GoldenExpected };
 
-/** One fixture file, `generator-v<N>.json`. */
+/**
+ * What a round-plan case plans: round `ordinal` of a run from `rootSeed` (the round
+ * seed is `deriveSeed(rootSeed, ordinal)`), the plan request, a tuning fixture name
+ * and pinned versions (as for puzzle cases).
+ */
+export type GoldenPlanInput = {
+  readonly rootSeed: number;
+  readonly ordinal: number;
+  readonly request: PlanRequest;
+  readonly tuning: string;
+  readonly versions: PuzzleVersions;
+};
+
+/** A planned or lazily realised puzzle in its stable serialised form: the whole record, cells as AD-5 strings. */
+export type GoldenPlanPuzzle = {
+  readonly seed: number;
+  readonly nodeId: NodeId;
+  readonly spec: PuzzleSpec;
+  readonly cells: readonly string[];
+  readonly roles: PuzzleRoles;
+  readonly answerIndex: number;
+  readonly servedBand: number;
+  readonly clamp?: PuzzleClamp;
+  readonly nearMisses: number;
+  readonly versions: PuzzleVersions;
+};
+
+/**
+ * The stable serialised form of a plan: the round seed, every node top-down
+ * (contract and/or planned puzzle), the versions, and leaf (1, 0) realised lazily
+ * in the tuning's highest band (`firstLeaf`, so leaf realisation and its clamp are
+ * pinned too). An expected planning failure is `{ error: 'unplannable' }`.
+ */
+export type GoldenPlanExpected =
+  | {
+      readonly roundSeed: number;
+      readonly tiers: number;
+      readonly startBand: number;
+      readonly nodes: readonly { readonly nodeId: NodeId; readonly contract?: number; readonly puzzle?: GoldenPlanPuzzle }[];
+      readonly firstLeaf: GoldenPlanPuzzle & { readonly band: number };
+      readonly versions: PuzzleVersions;
+    }
+  | { readonly error: string };
+
+export type GoldenPlanCase = { readonly name: string; readonly input: GoldenPlanInput; readonly expected: GoldenPlanExpected };
+
+/** One fixture file, `generator-v<N>.json`: puzzle cases and round-plan cases. */
 export type GoldenSeeds = {
   readonly kind: 'GoldenSeeds';
   readonly schemaVersion: 1;
   readonly generatorVersion: number;
   readonly cases: readonly GoldenCase[];
+  readonly plans: readonly GoldenPlanCase[];
 };
 
 /** Tuning fixtures by name, as loaded JSON (validated per case with `parseTuning`). */
@@ -79,7 +129,101 @@ export function caseName(input: GoldenCaseInput): string {
   return `s${input.seed}/t${input.nodeId.tier}i${input.nodeId.index}/${input.tuning}/${r.operator}n${r.n}b${r.band}${contract}`;
 }
 
-function parseCaseTuning(input: GoldenCaseInput, tunings: GoldenTunings): TuningConfig | string {
+/**
+ * A plan case's name, unique within a fixture:
+ * `r<rootSeed>o<ordinal>/<tuning>/<type>-<operator>n<n>b<band>[f<childIndex>v<value>]`.
+ */
+export function planCaseName(input: GoldenPlanInput): string {
+  const r: Partial<PlanRequest> = isObject(input.request) ? input.request : {};
+  const fixed = r.fixedTopCell === undefined ? '' : `f${r.fixedTopCell.childIndex}v${r.fixedTopCell.value}`;
+  return `r${input.rootSeed}o${input.ordinal}/${input.tuning}/${r.type}-${r.operator}n${r.n}b${r.band ?? 1}${fixed}`;
+}
+
+function serialiseBand(b: PuzzleBand): PuzzleBand {
+  return { band: b.band, minValue: b.minValue, maxValue: b.maxValue, maxCarries: b.maxCarries };
+}
+
+function serialisePlanPuzzle(p: Puzzle): GoldenPlanPuzzle {
+  return {
+    seed: p.seed,
+    nodeId: { tier: p.nodeId.tier, index: p.nodeId.index },
+    spec: {
+      n: p.spec.n,
+      operator: p.spec.operator,
+      band: serialiseBand(p.spec.band),
+      fallbackBands: p.spec.fallbackBands.map(serialiseBand),
+      ...(p.spec.contract === undefined ? {} : { contract: p.spec.contract }),
+      nearMissCount: p.spec.nearMissCount,
+      nearMissDelta: p.spec.nearMissDelta,
+      maxAttempts: p.spec.maxAttempts,
+    },
+    cells: p.cells.map(serialiseRational),
+    roles: { a: p.roles.a, b: p.roles.b, c: p.roles.c },
+    answerIndex: p.answerIndex,
+    servedBand: p.servedBand,
+    ...(p.clamp === undefined ? {} : { clamp: { requestedBand: p.clamp.requestedBand, servedBand: p.clamp.servedBand } }),
+    nearMisses: p.nearMisses,
+    versions: { generatorVersion: p.versions.generatorVersion, difficultyModelVersion: p.versions.difficultyModelVersion, tuningVersion: p.versions.tuningVersion },
+  };
+}
+
+/**
+ * Plans one round-plan case of generatorVersion `fileVersion`'s fixture and returns
+ * its serialised form, or a message saying why it couldn't. As for puzzle cases, the
+ * pinned versions must agree with the fixture and the tuning. `unplannable` is a
+ * result (`{ error: 'unplannable' }`), so expected failures are pinned too; any other
+ * planning error (a mistyped request, say) is a broken case, reported as one.
+ */
+export function planCase(
+  fileVersion: number,
+  input: GoldenPlanInput,
+  tunings: GoldenTunings,
+): { ok: true; value: GoldenPlanExpected } | { ok: false; error: string } {
+  const tuning = parseCaseTuning(input, tunings);
+  if (typeof tuning === 'string') return { ok: false, error: tuning };
+  const versions: unknown = input.versions;
+  if (!isObject(versions)) return { ok: false, error: 'input.versions must be an object' };
+  if (versions.generatorVersion !== fileVersion) {
+    return { ok: false, error: `input generatorVersion ${canonical(versions.generatorVersion)} is not the fixture's v${fileVersion}` };
+  }
+  if (versions.tuningVersion !== tuning.tuningVersion) {
+    return {
+      ok: false,
+      error: `input tuningVersion ${canonical(versions.tuningVersion)} is not tuning fixture "${input.tuning}"'s ${tuning.tuningVersion}`,
+    };
+  }
+  const result = planRound(input.request, tuning, deriveSeed(input.rootSeed, input.ordinal), input.versions);
+  if (!result.ok) {
+    // Only `unplannable` is an outcome worth pinning; any other code means the case itself is wrong.
+    if (result.error.code === 'unplannable') return { ok: true, value: { error: result.error.code } };
+    return { ok: false, error: `${result.error.code}: ${result.error.message}` };
+  }
+  const plan = result.value;
+  const band = tuning.generation.bands.reduce((top, b) => (b.band > top ? b.band : top), 1);
+  const leaf = realiseRoundNode(plan, { tier: 1, index: 0 }, band, tuning);
+  if (!leaf.ok) return { ok: false, error: `leaf (1, 0) in band ${band}: ${leaf.error.code}: ${leaf.error.message}` };
+  return {
+    ok: true,
+    value: {
+      roundSeed: plan.roundSeed,
+      tiers: plan.tiers,
+      startBand: plan.startBand,
+      nodes: plan.nodes.map((node) => ({
+        nodeId: { tier: node.nodeId.tier, index: node.nodeId.index },
+        ...(node.contract === undefined ? {} : { contract: node.contract }),
+        ...(node.puzzle === undefined ? {} : { puzzle: serialisePlanPuzzle(node.puzzle) }),
+      })),
+      firstLeaf: { band, ...serialisePlanPuzzle(leaf.value) },
+      versions: {
+        generatorVersion: plan.versions.generatorVersion,
+        difficultyModelVersion: plan.versions.difficultyModelVersion,
+        tuningVersion: plan.versions.tuningVersion,
+      },
+    },
+  };
+}
+
+function parseCaseTuning(input: { readonly tuning: string }, tunings: GoldenTunings): TuningConfig | string {
   if (!Object.hasOwn(tunings, input.tuning)) return `unknown tuning fixture "${input.tuning}"`;
   const parsed = parseTuning(tunings[input.tuning]);
   return parsed.ok ? parsed.value : `tuning fixture "${input.tuning}": ${parsed.error.message}`;
@@ -163,8 +307,14 @@ function isObject(x: unknown): x is Record<string, unknown> {
 export function compareGoldenSeeds(file: string, fixture: unknown, tunings: GoldenTunings): string[] {
   const fileVersion = versionOfFixtureFile(file);
   if (fileVersion === undefined) return [`${file}: not a generator-v<N>.json fixture name`];
-  if (!isObject(fixture) || fixture.kind !== 'GoldenSeeds' || fixture.schemaVersion !== 1 || !Array.isArray(fixture.cases)) {
-    return [`${file}: not a GoldenSeeds schemaVersion 1 fixture with a cases array`];
+  if (
+    !isObject(fixture) ||
+    fixture.kind !== 'GoldenSeeds' ||
+    fixture.schemaVersion !== 1 ||
+    !Array.isArray(fixture.cases) ||
+    !Array.isArray(fixture.plans)
+  ) {
+    return [`${file}: not a GoldenSeeds schemaVersion 1 fixture with cases and plans arrays`];
   }
   if (fixture.generatorVersion !== fileVersion) {
     return [`${file}: generatorVersion ${String(fixture.generatorVersion)} does not match the file name (v${fileVersion})`];
@@ -182,6 +332,24 @@ export function compareGoldenSeeds(file: string, fixture: unknown, tunings: Gold
     if (isObject(input.nodeId) && c.name !== caseName(input)) problems.push(`${label}: name does not match its inputs (expected "${caseName(input)}")`);
     names.add(c.name);
     const actual = realiseCase(fileVersion, input, tunings);
+    if (!actual.ok) {
+      problems.push(`${label}: ${actual.error}`);
+    } else if (canonical(actual.value) !== canonical(c.expected)) {
+      problems.push(`${label}: expected ${canonical(c.expected)}, got ${canonical(actual.value)}`);
+    }
+  });
+  const planNames = new Set<string>();
+  fixture.plans.forEach((c: unknown, i) => {
+    if (!isObject(c) || typeof c.name !== 'string' || !isObject(c.input) || !isObject(c.expected)) {
+      problems.push(`${file} plan #${i}: needs name, input and expected`);
+      return;
+    }
+    const label = `${file} plan "${c.name}"`;
+    if (planNames.has(c.name)) problems.push(`${label}: duplicate plan name`);
+    planNames.add(c.name);
+    const input = c.input as GoldenPlanInput;
+    if (c.name !== planCaseName(input)) problems.push(`${label}: name does not match its inputs (expected "${planCaseName(input)}")`);
+    const actual = planCase(fileVersion, input, tunings);
     if (!actual.ok) {
       problems.push(`${label}: ${actual.error}`);
     } else if (canonical(actual.value) !== canonical(c.expected)) {
@@ -216,14 +384,28 @@ export function checkGoldenCoverage(registered: readonly number[], fixtureFiles:
   return problems;
 }
 
-/** Builds generatorVersion's fixture by realising each input. Throws if one can't be realised. */
-export function buildGoldenSeeds(generatorVersion: number, inputs: readonly GoldenCaseInput[], tunings: GoldenTunings): GoldenSeeds {
+/**
+ * Builds generatorVersion's fixture by realising each puzzle input and planning each
+ * plan input. Throws if one can't be realised or planned (an expected planning
+ * error, e.g. `unplannable`, is recorded, not thrown).
+ */
+export function buildGoldenSeeds(
+  generatorVersion: number,
+  inputs: readonly GoldenCaseInput[],
+  tunings: GoldenTunings,
+  planInputs: readonly GoldenPlanInput[] = [],
+): GoldenSeeds {
   const cases = inputs.map((input) => {
     const actual = realiseCase(generatorVersion, input, tunings);
     if (!actual.ok) throw new Error(`cannot realise ${caseName(input)} with generatorVersion ${generatorVersion}: ${actual.error}`);
     return { name: caseName(input), input, expected: actual.value };
   });
-  return { kind: 'GoldenSeeds', schemaVersion: 1, generatorVersion, cases };
+  const plans = planInputs.map((input) => {
+    const actual = planCase(generatorVersion, input, tunings);
+    if (!actual.ok) throw new Error(`cannot plan ${planCaseName(input)} with generatorVersion ${generatorVersion}: ${actual.error}`);
+    return { name: planCaseName(input), input, expected: actual.value };
+  });
+  return { kind: 'GoldenSeeds', schemaVersion: 1, generatorVersion, cases, plans };
 }
 
 /**
@@ -277,6 +459,32 @@ export function formatGoldenSeeds(fixture: GoldenSeeds): string {
         },
       },
     });
+  const planLine = (c: GoldenPlanCase): string => {
+    const r = c.input.request;
+    return JSON.stringify({
+      name: c.name,
+      input: {
+        rootSeed: c.input.rootSeed,
+        ordinal: c.input.ordinal,
+        request: {
+          type: r.type,
+          n: r.n,
+          operator: r.operator,
+          ...(r.band === undefined ? {} : { band: r.band }),
+          ...(r.fixedTopCell === undefined ? {} : { fixedTopCell: { childIndex: r.fixedTopCell.childIndex, value: r.fixedTopCell.value } }),
+        },
+        tuning: c.input.tuning,
+        versions: {
+          generatorVersion: c.input.versions.generatorVersion,
+          difficultyModelVersion: c.input.versions.difficultyModelVersion,
+          tuningVersion: c.input.versions.tuningVersion,
+        },
+      },
+      // Built in a fixed key order by planCase (and kept by JSON.parse), so stable as is.
+      expected: c.expected,
+    });
+  };
+  const { plans } = fixture;
   return [
     '{',
     `  "kind": "GoldenSeeds",`,
@@ -284,7 +492,9 @@ export function formatGoldenSeeds(fixture: GoldenSeeds): string {
     `  "generatorVersion": ${fixture.generatorVersion},`,
     '  "cases": [',
     fixture.cases.map((c) => `    ${line(c)}`).join(',\n'),
-    '  ]',
+    '  ],',
+    plans.length === 0 ? '  "plans": []' : '  "plans": [',
+    ...(plans.length === 0 ? [] : [plans.map((c) => `    ${planLine(c)}`).join(',\n'), '  ]']),
     '}',
     '',
   ].join('\n');

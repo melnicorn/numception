@@ -11,7 +11,10 @@ import { realise } from './realise';
 
 const versions = { generatorVersion: 1, difficultyModelVersion: 1, tuningVersion: 1 };
 
-/** The POC bands, as in content/tuning/1.json (tools/generation-content.test.ts runs the real file). */
+/**
+ * The first POC bands (band 1 is tight at n = 9). content/tuning/1.json has since
+ * widened them for round planning; tools/generation-content.test.ts runs the real file.
+ */
 const POC_BANDS: readonly PuzzleBand[] = [
   { band: 1, minValue: 1, maxValue: 20, maxCarries: 0 },
   { band: 2, minValue: 1, maxValue: 50, maxCarries: 1 },

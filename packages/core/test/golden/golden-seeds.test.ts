@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { goldenInputs } from './golden-inputs';
+import { goldenInputs, goldenPlanInputs } from './golden-inputs';
 import {
   buildGoldenSeeds,
   canonical,
@@ -8,7 +8,9 @@ import {
   compareGoldenSeeds,
   formatGoldenSeeds,
   type GoldenCaseInput,
+  type GoldenPlanInput,
   type GoldenSeeds,
+  planCaseName,
   versionOfFixtureFile,
 } from './golden-seeds';
 import { goldenTunings } from './golden-tunings';
@@ -51,8 +53,16 @@ const input: GoldenCaseInput = {
   versions: { generatorVersion: 1, difficultyModelVersion: 1, tuningVersion: 5 },
 };
 
+const planInput: GoldenPlanInput = {
+  rootSeed: 3,
+  ordinal: 1,
+  request: { type: 'classic', n: 4, operator: 'sub' },
+  tuning: 't',
+  versions: { generatorVersion: 1, difficultyModelVersion: 1, tuningVersion: 5 },
+};
+
 function fixture(): GoldenSeeds {
-  return buildGoldenSeeds(1, [input, { ...input, seed: 2 }], tunings);
+  return buildGoldenSeeds(1, [input, { ...input, seed: 2 }], tunings, [planInput]);
 }
 
 /** A deep copy through the formatted text, as a fixture file would be read. */
@@ -93,8 +103,10 @@ describe('compareGoldenSeeds', () => {
     const f = reread(fixture());
     const cases = f.cases.map((c) => ({ ...c, input: { ...c.input, versions: { ...c.input.versions, generatorVersion: 99 } } }));
     const problems = compareGoldenSeeds('generator-v99.json', { ...f, generatorVersion: 99, cases }, tunings);
-    expect(problems).toHaveLength(2);
+    // Two puzzle cases rejected by realise, and the plan (still pinned to v1) by the version check.
+    expect(problems).toHaveLength(3);
     expect(problems[0]).toMatch(/unsupported-version/);
+    expect(problems[2]).toMatch(/plan .*input generatorVersion 1 is not the fixture's v99/);
   });
 
   it('fails on a malformed fixture, an unknown tuning and duplicate names', () => {
@@ -107,6 +119,49 @@ describe('compareGoldenSeeds', () => {
     ]);
     const dup = { ...f, cases: [f.cases[0]!, f.cases[0]!] };
     expect(compareGoldenSeeds('generator-v1.json', dup, tunings)).toEqual(['generator-v1.json case "s1/t1i0/t/addn5b2": duplicate case name']);
+  });
+});
+
+describe('compareGoldenSeeds: round plans', () => {
+  it('pins a plan: round seed, every node, the lazily realised first leaf', () => {
+    const plan = reread(fixture()).plans[0]!;
+    expect(plan.name).toBe('r3o1/t/classic-subn4b1');
+    expect(plan.expected).toMatchObject({ tiers: 2, startBand: 1, firstLeaf: { band: 2 } });
+    expect('nodes' in plan.expected && plan.expected.nodes).toHaveLength(5);
+  });
+
+  it('fails on plan drift, naming the plan', () => {
+    const f = reread(fixture());
+    const p = f.plans[0]!;
+    const drifted = { ...f, plans: [{ ...p, expected: { ...p.expected, roundSeed: 1 } }] };
+    const problems = compareGoldenSeeds('generator-v1.json', drifted, tunings);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/^generator-v1\.json plan "r3o1\/t\/classic-subn4b1": expected .*"roundSeed":1.*, got /);
+  });
+
+  it('fails on a plan name, version or tuning that disagrees with its inputs, and on a missing plans array', () => {
+    const f = reread(fixture());
+    const p = f.plans[0]!;
+    expect(compareGoldenSeeds('generator-v1.json', { ...f, plans: [{ ...p, name: 'x' }] }, tunings)).toEqual([
+      'generator-v1.json plan "x": name does not match its inputs (expected "r3o1/t/classic-subn4b1")',
+    ]);
+    const wrongTuning = { ...p, input: { ...p.input, versions: { ...p.input.versions, tuningVersion: 6 } } };
+    expect(compareGoldenSeeds('generator-v1.json', { ...f, plans: [wrongTuning] }, tunings)[0]).toMatch(/input tuningVersion 6 is not/);
+    expect(compareGoldenSeeds('generator-v1.json', { ...f, plans: [p, p] }, tunings)).toEqual(['generator-v1.json plan "r3o1/t/classic-subn4b1": duplicate plan name']);
+    const { plans: _plans, ...noPlans } = f;
+    expect(compareGoldenSeeds('generator-v1.json', noPlans, tunings)).toHaveLength(1);
+  });
+
+  it('pins an expected planning error as a result', () => {
+    const tower = { ...planInput, request: { type: 'tower', n: 9, operator: 'add' } } as const;
+    const built = reread(buildGoldenSeeds(1, [], tunings, [tower]));
+    expect(built.plans[0]!.expected).toEqual({ error: 'unplannable' });
+    expect(compareGoldenSeeds('generator-v1.json', built, tunings)).toEqual([]);
+    const mistyped = { ...planInput, request: { type: 'classic', n: 4, operator: 'add', band: 9 } } as const;
+    expect(() => buildGoldenSeeds(1, [], tunings, [mistyped])).toThrow(/cannot plan .*invalid-spec/);
+    expect(planCaseName({ ...planInput, request: { type: 'tower', n: 5, operator: 'add', band: 2, fixedTopCell: { childIndex: 1, value: 9 } } })).toBe(
+      'r3o1/t/tower-addn5b2f1v9',
+    );
   });
 });
 
@@ -200,6 +255,14 @@ describe('fixture helpers', () => {
     expect(inputs.length).toBeGreaterThanOrEqual(90);
     expect(new Set(inputs.map((i) => canonical(i))).size).toBe(inputs.length);
     expect(new Set(inputs.map((i) => caseName(i))).size).toBe(inputs.length);
+  });
+
+  it('builds distinct round-plan inputs covering Classic, Tower, both operators and a fixed top cell', () => {
+    const inputs = goldenPlanInputs(1, goldenTunings);
+    expect(inputs.length).toBeGreaterThanOrEqual(20);
+    expect(new Set(inputs.map((i) => planCaseName(i))).size).toBe(inputs.length);
+    expect(new Set(inputs.map((i) => i.request.type))).toEqual(new Set(['classic', 'tower']));
+    expect(inputs.some((i) => i.request.fixedTopCell !== undefined)).toBe(true);
   });
 
   it('covers n 3..9, both operators, several bands, contracts and a clamp', () => {

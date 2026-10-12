@@ -4,7 +4,12 @@
 (seed, NodeId, the request — n, operator, band, contract? — a tuning file from
 `../tuning/`, never `content/`, and the spec `specFor` derives from those two) and
 the expected cells, roles, `answerIndex`, served band, clamp, near-misses and
-versions. `pnpm test` checks them in Node, and the
+versions. Its `plans` section pins round plans the same way: each plan case names a
+root seed and round ordinal (the round seed is `deriveSeed(rootSeed, ordinal)`),
+the plan request (type, n, operator, band?, fixedTopCell?), a tuning file and
+versions, and expects the round seed, every node (contract and/or planned puzzle),
+leaf (1, 0) realised lazily in the tuning's highest band, or `{ "error": <code> }`
+for an expected planning failure. `pnpm test` checks them in Node, and the
 `golden-webkit` Playwright project (`pnpm e2e`) checks them in WebKit. Every
 registered version needs a fixture, and every fixture a registered version.
 

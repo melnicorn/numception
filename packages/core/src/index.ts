@@ -7,6 +7,7 @@ export { err, ok, type Result } from './result/result';
 export { type RandomStream, randomStream } from './random/random-stream';
 export { nextInt } from './random/next-int';
 export { nodeSeed, nodeStream } from './random/node-stream';
+export { deriveSeed } from './random/derive-seed';
 
 export { type Rational, rational, serialiseRational } from './numbers/rational';
 export { displayValue } from './numbers/display-value';
@@ -25,3 +26,14 @@ export type { PuzzleVersions } from './generator/puzzle-versions';
 export { versionsFor } from './generator/versions-for';
 export { realise } from './generator/realise';
 export { nearMissCountFor, type SpecRequest, specFor } from './spec/spec-for';
+
+export {
+  type FixedTopCell,
+  type PlanRequest,
+  ROUND_TYPE_NAMES,
+  type RoundPlan,
+  type RoundPlanNode,
+  type RoundTypeName,
+} from './rounds/round-plan';
+export { childrenOf, nodeCount, parentOf, tierWidth, topNodeId } from './rounds/round-node-id';
+export { planRound, realiseRoundNode, ROUND_TYPES, type RoundType } from './rounds/round-types';
