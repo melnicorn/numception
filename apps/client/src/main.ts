@@ -8,11 +8,14 @@ if (!root) {
 mountTracer(root);
 
 // Dev panel: dev and playtest only. The constant is a literal `false` in prod, so
-// the bundler drops this branch and emits no dev-panel chunk (AD-18).
+// the bundler drops this branch and emits no dev-panel chunk (AD-18). The tuning
+// JSON is imported here too, so prod never bundles it, and passed in explicitly (AD-7).
 if (__NUMCEPTION_DEV_PANEL__) {
   const host = document.createElement('div');
   document.body.append(host);
-  void import('@numception/ui/dev-panel').then(({ mountDevPanel }) => mountDevPanel(host));
+  void Promise.all([import('@numception/ui/dev-panel'), import('../../../content/tuning/1.json')]).then(
+    ([{ mountDevPanel }, tuning]) => mountDevPanel(host, tuning.default),
+  );
 }
 
 // Offline PWA (NFR-2): playtest and prod only. The constant is a literal `false` in

@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks';
+import { PuzzleBlock } from './puzzle-block';
 
 /**
  * Id of the panel region. Also the dev-panel marker that tools/check-flavours.mjs
@@ -28,8 +29,11 @@ const panelStyle = {
   font: '14px system-ui, sans-serif',
 };
 
-/** Empty dev panel shell: a toggle that opens an empty region. Tools arrive in later tickets. */
-export function DevPanel() {
+/**
+ * Dev panel: a toggle that opens the panel region. `tuning` is the tuning JSON the
+ * composition root bundled and passed in (AD-7); the panel never loads it itself.
+ */
+export function DevPanel({ tuning }: { tuning: unknown }) {
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -48,6 +52,7 @@ export function DevPanel() {
           <h2 id={`${DEV_PANEL_ID}-heading`} style={{ margin: 0, fontSize: '14px' }}>
             Dev panel
           </h2>
+          <PuzzleBlock tuning={tuning} />
         </section>
       )}
     </>

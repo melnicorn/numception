@@ -4,7 +4,11 @@
 import { h, render } from 'preact';
 import { DevPanel } from './dev-panel';
 
-/** Renders the dev panel shell into `el`, so callers never import Preact themselves. */
-export function mountDevPanel(el: HTMLElement): void {
-  render(h(DevPanel, null), el);
+/**
+ * Renders the dev panel into `el`, so callers never import Preact themselves.
+ * `tuning` is the bundled tuning JSON, passed through unvalidated: core validates it
+ * (AD-7) and the panel shows any error.
+ */
+export function mountDevPanel(el: HTMLElement, tuning: unknown): void {
+  render(h(DevPanel, { tuning }), el);
 }

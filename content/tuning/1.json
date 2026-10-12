@@ -1,0 +1,9 @@
+{
+  "kind": "TuningConfig",
+  "schemaVersion": 1,
+  "tuningVersion": 1,
+  "generation": {
+    "operators": ["add"],
+    "maxValue": 20
+  }
+}

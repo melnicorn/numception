@@ -5,5 +5,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "pure-rand": "8.4.2",
+    "valibot": "~1.5.0"
   }
 }
