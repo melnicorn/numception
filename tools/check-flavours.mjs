@@ -18,6 +18,8 @@
 //     link or registration code (NFR-2; no service worker while developing).
 //     Every file a PWA build emits, other than sw.js and the Workbox runtime, is
 //     in the sw.js precache manifest (precache = initial download, see check-budget).
+//  7. Dev-panel builds (dev, playtest) contain the e2e test hook (`window.__numception`);
+//     builds without the panel (prod) never mention it.
 //
 // Usage: node tools/check-flavours.mjs [--root <dir>]
 // Exits 1 and prints every finding.
@@ -39,6 +41,12 @@ export const DEV_PANEL_MARKER = 'numception-dev-panel';
 /** Prod must not mention the dev panel at all: no testid, chunk name or import path. */
 const PROD_FORBIDDEN = 'dev-panel';
 const DEV_PANEL_SOURCE = 'packages/ui/src/dev-panel/dev-panel.tsx';
+/**
+ * The e2e test hook's global name (TEST_HOOK_NAME in apps/client/src/test-hook.ts).
+ * Like the dev-panel marker, the check confirms the source still contains it.
+ */
+export const TEST_HOOK_MARKER = '__numception';
+const TEST_HOOK_SOURCE = 'apps/client/src/test-hook.ts';
 const BUILD_GRADLE = 'apps/client/android/app/build.gradle';
 const IOS_BASE_XCCONFIG = 'apps/client/ios/flavour-base.xcconfig';
 /** Emitted by vite-plugin-pwa (generateSW) for PWA flavours only. */
@@ -206,6 +214,11 @@ export function checkFlavours(root) {
     errors.push(`dev panel: marker "${DEV_PANEL_MARKER}" not found in ${DEV_PANEL_SOURCE}`);
   }
 
+  const hookSource = join(root, TEST_HOOK_SOURCE);
+  if (!existsSync(hookSource) || !readFileSync(hookSource, 'utf8').includes(`'${TEST_HOOK_MARKER}'`)) {
+    errors.push(`test hook: marker "${TEST_HOOK_MARKER}" not found in ${TEST_HOOK_SOURCE}`);
+  }
+
   // 2 and 5. Web builds.
   const pageIds = [];
   for (const f of flavours) {
@@ -238,6 +251,14 @@ export function checkFlavours(root) {
           errors.push(`web ${f.name}: ${distRel}/${p} mentions "${PROD_FORBIDDEN}"`);
         }
       }
+    }
+
+    // 7. Test hook.
+    const withHook = files.filter((p) => readFileSync(join(dist, p), 'utf8').includes(TEST_HOOK_MARKER));
+    if (f.devPanel) {
+      if (withHook.length === 0) errors.push(`web ${f.name}: test hook "${TEST_HOOK_MARKER}" not found in ${distRel}`);
+    } else {
+      for (const p of withHook) errors.push(`web ${f.name}: ${distRel}/${p} mentions the test hook "${TEST_HOOK_MARKER}"`);
     }
 
     // 6. PWA.
@@ -309,7 +330,7 @@ function main() {
   }
   console.log(
     `✔ check-flavours: ${Object.keys(FLAVOURS).join(', ')} have distinct ids across table, web and iOS; Android follows the synced config; ` +
-      'dev panel only where enabled; service worker and manifest only in PWA flavours',
+      'dev panel and test hook only where enabled; service worker and manifest only in PWA flavours',
   );
 }
 

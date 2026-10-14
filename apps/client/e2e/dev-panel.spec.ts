@@ -18,8 +18,8 @@ test('dev panel toggle opens and closes the empty panel', async ({ page }) => {
 
   await toggle.click();
   await expect(panel).toHaveCount(0);
-  // The tracer is unaffected.
-  await expect(page.getByTestId('tracer-value')).toHaveText('5/6');
+  // The game is unaffected.
+  await expect(page.locator('#app canvas')).toBeVisible();
 });
 
 /** Opens the dev panel and reads the Puzzle block's cells (placement order) and answer position. */

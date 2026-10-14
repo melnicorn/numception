@@ -13,7 +13,8 @@ export type DomainError =
   | { readonly code: 'invalid-cell'; readonly message: string }
   | { readonly code: 'invalid-bucket-id'; readonly message: string }
   | { readonly code: 'unsupported-version'; readonly message: string }
-  | { readonly code: 'invalid-shape'; readonly message: string };
+  | { readonly code: 'invalid-shape'; readonly message: string }
+  | { readonly code: 'invalid-command'; readonly message: string };
 
 /** Every `DomainError` code. */
 export type DomainErrorCode = DomainError['code'];

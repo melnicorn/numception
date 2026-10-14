@@ -96,5 +96,9 @@ export default defineConfig({
   },
   build: {
     outDir: flavourOutDir(flavour),
+    // The entry chunk carries PixiJS's WebGL renderer and browser environment
+    // statically (so no lazy chunk delays the first puzzle frame): ~525 kB raw,
+    // ~155 kB gzipped. NFR-1's real limit is tools/check-budget.mjs.
+    chunkSizeWarningLimit: 600,
   },
 });

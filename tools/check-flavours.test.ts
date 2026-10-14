@@ -12,6 +12,7 @@ import {
   checkFlavours,
   DEV_PANEL_MARKER,
   MANIFEST_FILE,
+  TEST_HOOK_MARKER,
   pageIdentity,
   precacheUrls,
   parseGradleWiring,
@@ -23,6 +24,7 @@ const script = join(repoRoot, 'tools/check-flavours.mjs');
 const GRADLE = 'apps/client/android/app/build.gradle';
 const BASE_XCCONFIG = 'apps/client/ios/flavour-base.xcconfig';
 const PANEL = 'packages/ui/src/dev-panel/dev-panel.tsx';
+const HOOK = 'apps/client/src/test-hook.ts';
 
 const tempDirs: string[] = [];
 afterAll(() => {
@@ -56,14 +58,16 @@ function fixtureRepo(files: Record<string, string | null> = {}): string {
     [GRADLE]: readFileSync(join(repoRoot, GRADLE), 'utf8'),
     [BASE_XCCONFIG]: readFileSync(join(repoRoot, BASE_XCCONFIG), 'utf8'),
     [PANEL]: readFileSync(join(repoRoot, PANEL), 'utf8'),
+    [HOOK]: readFileSync(join(repoRoot, HOOK), 'utf8'),
   };
   for (const name of ['dev', 'playtest', 'prod'] as const) {
     base[`apps/client/dist/${name}/index.html`] = page(name);
     base[`apps/client/dist/${name}/assets/index-abc.js`] = FLAVOURS[name].devPanel
       ? 'import("./mount-dev-panel-x.js")'
-      : 'console.log("tracer")';
+      : 'console.log("game")';
     if (FLAVOURS[name].devPanel) {
       base[`apps/client/dist/${name}/assets/mount-dev-panel-x.js`] = `const id="${DEV_PANEL_MARKER}";`;
+      base[`apps/client/dist/${name}/assets/test-hook-x.js`] = `const hook="${TEST_HOOK_MARKER}";`;
     }
     if (FLAVOURS[name].pwa) {
       base[`apps/client/dist/${name}/assets/index-abc.js`] += ';navigator.serviceWorker.register("/sw.js")';
@@ -133,6 +137,13 @@ describe('checkFlavours', () => {
     );
     expect(errors).toContain('web prod: dev-panel file apps/client/dist/prod/assets/mount-dev-panel-y.js must not ship');
     expect(errors).toContain('web prod: apps/client/dist/prod/assets/index-abc.js mentions "dev-panel"');
+  });
+
+  it('fails when prod mentions the test hook, or a dev-panel build lacks it', () => {
+    const prod = checkFlavours(fixtureRepo({ 'apps/client/dist/prod/assets/index-abc.js': `window.${TEST_HOOK_MARKER}={};navigator.serviceWorker.register("/sw.js")` }));
+    expect(prod).toContain(`web prod: apps/client/dist/prod/assets/index-abc.js mentions the test hook "${TEST_HOOK_MARKER}"`);
+    const playtest = checkFlavours(fixtureRepo({ 'apps/client/dist/playtest/assets/test-hook-x.js': null }));
+    expect(playtest).toContain(`web playtest: test hook "${TEST_HOOK_MARKER}" not found in apps/client/dist/playtest`);
   });
 
   it('fails when a dev-panel build lacks the marker or chunk', () => {

@@ -5,5 +5,9 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@numception/app": "workspace:*",
+    "pixi.js": "~8.22.0"
   }
 }

@@ -1,6 +1,4 @@
 // Pure, deterministic domain: no I/O, clock, randomness, platform or DOM (AD-1, AD-3).
-export { tracerValue } from './tracer-value';
-
 export type { DomainError, DomainErrorCode } from './result/domain-error';
 export { err, ok, type Result } from './result/result';
 
@@ -49,3 +47,22 @@ export { SHAPES } from './layout/shapes/shapes';
 export { defaultShapeFor } from './layout/default-shape-for';
 export { hitTest } from './layout/hit-test';
 export { focusOrder } from './layout/focus-order';
+
+export type { AppState, DeviceState } from './state/app-state';
+export type { GameState, ProfileKind, ProfileSettings } from './state/game-state';
+export type { Round } from './state/round';
+export { type NodeKey, nodeKey } from './state/node-key';
+export type { Command } from './state/command';
+export type { CommandContext, Ulid } from './state/command-context';
+export type { Envelope } from './state/envelope';
+export type { GameEvent } from './state/game-event';
+export type { StepResult } from './state/step-result';
+export { initialAppState } from './state/initial-app-state';
+export { createProfile } from './state/create-profile';
+export { step } from './state/step';
+
+export { KILN_TOKENS, type KilnTokens } from './view/kiln-tokens';
+export type { NodeCellRef } from './view/node-cell-ref';
+export type { PlayCellVM, PlayVM } from './view/play-vm';
+export { selectView } from './view/select-view';
+export { hitTestView } from './view/hit-test-view';

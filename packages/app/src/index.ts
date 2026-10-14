@@ -1,5 +1,5 @@
 // Imperative shell: store, dispatch, scheduler, pipelines and ports (AD-2).
-export { tracerMessage } from './tracer-message';
+export { createGame, type EntropySource, type Game, type GameListener, type GameOptions } from './game';
 export {
   DEMO_NODE_ID,
   DEMO_SEED,
@@ -18,3 +18,21 @@ export {
   type RoundInspectorView,
 } from './inspect-round';
 export { type RoundInspectorOptions, roundInspectorOptions, type TuningInspectorOptions } from './round-inspector-options';
+
+// For the adapters and the composition root: render and ui may import core only as
+// types (AD-1), so the view and hit-test API they need comes through here.
+export {
+  type Command,
+  type CommandContext,
+  type GameEvent,
+  hitTestView,
+  type KilnTokens,
+  type LayoutPoint,
+  type LayoutPolygon,
+  type NodeCellRef,
+  type NodeId,
+  type PlayCellVM,
+  type PlayVM,
+  parseTuning,
+  type TuningConfig,
+} from '@numception/core';

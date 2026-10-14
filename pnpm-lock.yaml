@@ -227,6 +227,12 @@ importers:
       '@capacitor/ios':
         specifier: ~8.5.3
         version: 8.5.3(@capacitor/core@8.5.3)
+      '@numception/app':
+        specifier: workspace:*
+        version: link:../../packages/app
+      '@numception/render':
+        specifier: workspace:*
+        version: link:../../packages/render
       '@numception/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -270,7 +276,14 @@ importers:
 
   packages/platform-web: {}
 
-  packages/render: {}
+  packages/render:
+    dependencies:
+      '@numception/app':
+        specifier: workspace:*
+        version: link:../app
+      pixi.js:
+        specifier: ~8.22.0
+        version: 8.22.0
 
   packages/ui:
     dependencies:

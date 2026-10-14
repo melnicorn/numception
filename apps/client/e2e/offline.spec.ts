@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { waitForPuzzle } from './play-helpers';
 
 // NFR-2: the playtest build (served by playwright.config.ts) plays fully offline.
 // The service worker precaches every asset on first load; a reload with no network
@@ -6,7 +7,7 @@ import { expect, test } from '@playwright/test';
 
 test('reloads offline from the precache after one online load', async ({ page, context }) => {
   await page.goto('./');
-  await expect(page.getByTestId('tracer-value')).toHaveText('5/6');
+  await waitForPuzzle(page);
 
   // clientsClaim: the first page becomes controlled once the worker activates,
   // which happens only after the precache is complete.
@@ -15,7 +16,9 @@ test('reloads offline from the precache after one online load', async ({ page, c
   await context.setOffline(true);
   try {
     await page.reload();
-    await expect(page.getByTestId('tracer-value')).toHaveText('5/6');
+    const offlineView = await waitForPuzzle(page);
+    expect(offlineView.nodeId).toEqual({ tier: 1, index: 0 });
+    await expect(page.locator('#app canvas')).toBeVisible();
     await expect(page).toHaveTitle('Numception Playtest');
     expect(await page.evaluate(() => navigator.onLine)).toBe(false);
   } finally {
