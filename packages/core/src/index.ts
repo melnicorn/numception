@@ -37,3 +37,6 @@ export {
 } from './rounds/round-plan';
 export { childrenOf, nodeCount, parentOf, tierWidth, topNodeId } from './rounds/round-node-id';
 export { planRound, realiseRoundNode, ROUND_TYPES, type RoundType } from './rounds/round-types';
+
+export type { TapOutcome } from './rules/tap-outcome';
+export { classifyTap } from './rules/classify-tap';

@@ -18,7 +18,7 @@ afterAll(() => {
 function tree(files: Record<string, string>): string {
   const root = mkdtempSync(join(tmpdir(), 'numception-purity-'));
   tempDirs.push(root);
-  for (const dir of ['packages/core/src/generator', 'packages/core/src/random', 'packages/core/src/rounds']) mkdirSync(join(root, dir), { recursive: true });
+  for (const dir of ['packages/core/src/generator', 'packages/core/src/random', 'packages/core/src/rounds', 'packages/core/src/rules']) mkdirSync(join(root, dir), { recursive: true });
   for (const [path, code] of Object.entries(files)) {
     mkdirSync(dirname(join(root, path)), { recursive: true });
     writeFileSync(join(root, path), code);
@@ -71,6 +71,15 @@ describe('checkCorePurity', () => {
     expect(checkCorePurity(root)).toEqual([
       'packages/core/src/generator/v1/realise-v1.ts:2: Math. is banned in core generation code (AD-3): export const b = Math.random();',
     ]);
+  });
+
+  it('covers the core rules folder', () => {
+    const root = tree({
+      'packages/core/src/rules/classify-tap.ts': 'export const a = 1;\nexport const t = Date.now();\n',
+    });
+    const problems = checkCorePurity(root);
+    expect(problems).toHaveLength(1);
+    expect(problems[0]).toMatch(/^packages\/core\/src\/rules\/classify-tap\.ts:2: /);
   });
 
   it('covers the round planner folder', () => {

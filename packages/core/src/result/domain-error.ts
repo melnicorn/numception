@@ -10,6 +10,7 @@ export type DomainError =
   | { readonly code: 'unrealisable'; readonly message: string }
   | { readonly code: 'invalid-request'; readonly message: string }
   | { readonly code: 'unplannable'; readonly message: string }
+  | { readonly code: 'invalid-cell'; readonly message: string }
   | { readonly code: 'unsupported-version'; readonly message: string };
 
 /** Every `DomainError` code. */
