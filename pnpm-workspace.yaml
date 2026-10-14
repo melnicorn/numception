@@ -2,3 +2,9 @@ packages:
   - packages/*
   - apps/*
   - prototypes/renderer-bakeoff/*
+
+# Install scripts of these bmad-dash dependencies are not run (pnpm 11 blocks them by default).
+allowBuilds:
+  onnxruntime-node: false
+  protobufjs: false
+  sharp: false
