@@ -38,5 +38,25 @@ export function selectView(state: AppState, _tuning: TuningConfig): PlayVM | nul
   if (view === undefined || !shapeId.ok) return null;
   const puzzle = roundPuzzle(round, nodeId);
   const extra = beatViews(round, view, SHAPES[shapeId.value], beat, puzzle?.answerIndex ?? null);
-  return { ...view, blurred: state.pauseReasons.includes('blur'), presentation: { ...view.presentation, ...extra } };
+  const blurred = state.pauseReasons.includes('blur');
+  const shown: PlayVM = { ...view, blurred, presentation: { ...view.presentation, ...extra } };
+  return blurred ? hideValues(shown) : shown;
+}
+
+/**
+ * A veiled board shows no values (AD-17, AD-8): play time is stopped while paused,
+ * so the numbers must not be readable then, or a player could work out the answer
+ * off the clock. Every numeral (cells, the solved answer, the parent drawn around
+ * the puzzle) is blanked; geometry stays, so the first tap still hit-tests and only
+ * lifts the veil. A pause completes any beat first, so there are no beat views here.
+ */
+function hideValues(view: PlayVM): PlayVM {
+  const blank = <T extends { readonly text: string }>(cell: T): T => ({ ...cell, text: '' });
+  return {
+    ...view,
+    cells: view.cells.map(blank),
+    ...(view.context === undefined
+      ? {}
+      : { context: { ...view.context, parent: { ...view.context.parent, cells: view.context.parent.cells.map(blank) } } }),
+  };
 }

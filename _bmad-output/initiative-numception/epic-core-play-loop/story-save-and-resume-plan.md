@@ -143,6 +143,8 @@ deferred:
 
 - Playtest feedback 2026-10-14 (user, iPhone): the grey veil read as "disabled", so it was unclear that a tap continues. A centred play button (accent fill, cream triangle; `render/src/resume-button.ts`) now sits on the veil. It's a glyph, not words, because numbers are the only text on the play view (DESIGN). Any tap anywhere still lifts the veil.
 
+- Playtest feedback 2026-10-14 (user): numbers were still readable (faded) under the veil, which "defeats the purpose of pausing": play time is stopped while paused (AD-17), so a readable board lets the answer be worked out off the clock, which skews response times (AD-8). `selectView` now blanks every numeral (cells and the parent context) while `blurred`, keeping geometry so the first tap still only lifts the veil. Core test in `pause.test.ts`. This also covers entry 5's "hide cell values while blurred" for the accessible tree, which reads the same view.
+
 ## Plan Change Log
 
 ## Review Triage Log

@@ -67,6 +67,22 @@ function started(): Play {
 const types = (events: readonly GameEvent[]) => events.map((e) => e.type);
 
 describe('step: Pause and Resume (AD-17)', () => {
+  it('a veiled board shows no values: every numeral is blank while blurred, and returns once the veil lifts', () => {
+    const play = started();
+    const before = selectView(play.state, tuning);
+    expect(before?.cells.some((c) => c.text !== '')).toBe(true);
+    play.do({ type: 'Pause', reason: 'lifecycle' });
+    play.do({ type: 'Resume', reason: 'lifecycle' });
+    const veiled = selectView(play.state, tuning);
+    expect(veiled?.blurred).toBe(true);
+    expect(veiled?.cells.every((c) => c.text === '')).toBe(true);
+    expect(veiled?.context?.parent.cells.every((c) => c.text === '') ?? true).toBe(true);
+    // Geometry is kept, so the first tap still hit-tests.
+    expect(veiled?.cells.map((c) => c.polygon)).toEqual(before?.cells.map((c) => c.polygon));
+    play.do({ type: 'TapCell', nodeId: veiled!.nodeId, cellIndex: 0 });
+    expect(selectView(play.state, tuning)?.cells.map((c) => c.text)).toEqual(before?.cells.map((c) => c.text));
+  });
+
   it('Pause lifecycle adds lifecycle and blur, sorted; Resume lifecycle leaves blur; duplicates change nothing', () => {
     const play = started();
     expect(play.do({ type: 'Pause', reason: 'lifecycle' })).toEqual([{ type: 'Paused', reason: 'lifecycle', pauseReasons: ['blur', 'lifecycle'] }]);

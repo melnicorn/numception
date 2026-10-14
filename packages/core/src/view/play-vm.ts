@@ -78,7 +78,9 @@ export type PresentationVM = {
  *   the same geometry.
  * - `inputLocked`: a beat is running; taps are dropped, so `hitTest` is null.
  * - `blurred`: the board is veiled after a lifecycle pause (AD-17); render draws a
- *   soft veil over it. Taps still hit-test: the first one only lifts the veil.
+ *   soft veil and a play button over it, and every cell's `text` is blank so no
+ *   value is readable while play time is stopped. Taps still hit-test: the first
+ *   one only lifts the veil.
  */
 export type PlayVM = {
   readonly nodeId: NodeId;
