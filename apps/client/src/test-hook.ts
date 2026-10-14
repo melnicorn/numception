@@ -1,7 +1,7 @@
 // The dev and playtest test hook (`window.__numception`): read-only access for the
 // e2e specs. Installed only behind `__NUMCEPTION_DEV_PANEL__`, so prod never ships
 // it; tools/check-flavours.mjs checks the marker below is absent from prod builds.
-import { type Game, type GameEvent, type LayoutPoint, type PauseReason, type PlayVM, puzzleInView, type SaveWriterStats } from '@numception/app';
+import { type Game, type GameEvent, type HapticKind, type LayoutPoint, type PauseReason, type PlayVM, puzzleInView, type SaveWriterStats } from '@numception/app';
 import type { Renderer, RendererStats } from '@numception/render';
 import type { CueCall } from './recording-audio';
 
@@ -31,6 +31,8 @@ export type TestHook = {
   readonly roles: () => PuzzleRolesView | null;
   /** Every sound cue the feedback director played since boot, oldest first (a copy). */
   readonly cues: () => readonly CueCall[];
+  /** Every haptic impact the feedback director asked for since boot, oldest first (a copy). */
+  readonly haptics: () => readonly HapticKind[];
 };
 
 export type PuzzleRolesView = { readonly operator: 'add' | 'sub'; readonly a: number; readonly b: number; readonly c: number; readonly answerIndex: number };
@@ -40,6 +42,7 @@ export type TestHookExtras = {
   readonly mountedView: PlayVM | null;
   readonly saves: () => SaveWriterStats | null;
   readonly cues: () => readonly CueCall[];
+  readonly haptics: () => readonly HapticKind[];
 };
 
 /** Installs the hook on `window`. */
@@ -57,6 +60,7 @@ export function installTestHook(game: Game, renderer: Renderer, extras: TestHook
     pauseReasons: () => [...game.getState().pauseReasons],
     saves: () => extras.saves(),
     cues: () => structuredClone([...extras.cues()]),
+    haptics: () => [...extras.haptics()],
     roles: () => {
       const puzzle = puzzleInView(game.getState());
       return puzzle === undefined ? null : { operator: puzzle.spec.operator, ...puzzle.roles, answerIndex: puzzle.answerIndex };

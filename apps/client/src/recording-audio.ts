@@ -1,4 +1,4 @@
-import type { AudioPort, CueId, CueParams } from '@numception/app';
+import type { AudioPort, CueId, CueParams, HapticKind, HapticsPort } from '@numception/app';
 
 /** One `play` the feedback director made. */
 export type CueCall = { readonly cue: CueId; readonly params?: CueParams };
@@ -14,6 +14,19 @@ export function recordingAudio(inner: AudioPort, log: CueCall[]): AudioPort {
     play(cue, params) {
       log.push(params === undefined ? { cue } : { cue, params: { ...params } });
       inner.play(cue, params);
+    },
+  };
+}
+
+/**
+ * Wraps `inner` so every `impact` is also appended to `log` (dev and playtest only:
+ * on the web the haptics port is a no-op, so the specs check what the director asked for).
+ */
+export function recordingHaptics(inner: HapticsPort, log: HapticKind[]): HapticsPort {
+  return {
+    impact(kind) {
+      log.push(kind);
+      inner.impact(kind);
     },
   };
 }

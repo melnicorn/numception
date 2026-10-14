@@ -1,11 +1,10 @@
 import type { GameEvent } from '@numception/core';
 import type { AudioPort, CueId, CueParams } from './audio-port';
 import { DEFAULT_FEEDBACK_FLAGS, type FeedbackFlags } from './feedback-flags';
-import type { HapticsPort } from './haptics-port';
+import type { HapticKind, HapticsPort } from './haptics-port';
 
 export type FeedbackDirectorOptions = {
   readonly audio: AudioPort;
-  /** Wired now, used from entry 3 (haptics). */
   readonly haptics: HapticsPort;
   readonly flags?: FeedbackFlags;
 };
@@ -61,14 +60,25 @@ export function cuesFor(events: readonly GameEvent[]): readonly Cue[] {
 }
 
 /**
+ * The haptic impacts for one batch of events, in order (FR-41): a light tap on each
+ * `PuzzleSolved`, nothing else (no haptics on misses, wrong taps or transitions).
+ * A batch that pauses for the lifecycle plays nothing, as for the cues.
+ */
+export function hapticsFor(events: readonly GameEvent[]): readonly HapticKind[] {
+  if (events.some((e) => e.type === 'Paused' && e.reason === 'lifecycle')) return [];
+  return events.flatMap((e) => (e.type === 'PuzzleSolved' ? ['light' as const] : []));
+}
+
+/**
  * Creates the feedback director (AD-16): the only place events turn into
- * `AudioPort` (and, from entry 3, `HapticsPort`) calls, gated by the effects and
- * music flags. A lifecycle pause suspends the audio output; the resume resumes it.
+ * `AudioPort` and `HapticsPort` calls, the cues gated by the effects (and music)
+ * flags and the impacts by the haptics flag. A lifecycle pause suspends the audio
+ * output; the resume resumes it.
  */
 export function createFeedbackDirector(options: FeedbackDirectorOptions): FeedbackDirector {
-  const { audio } = options;
+  const { audio, haptics } = options;
   let flags = options.flags ?? DEFAULT_FEEDBACK_FLAGS;
-  audio.setEnabled(flags);
+  audio.setEnabled({ effects: flags.effects, music: flags.music });
 
   return {
     handle(events) {
@@ -76,17 +86,19 @@ export function createFeedbackDirector(options: FeedbackDirectorOptions): Feedba
         if (event.type === 'Paused' && event.reason === 'lifecycle') audio.suspend();
         if (event.type === 'Resumed' && event.reason === 'lifecycle') audio.resume();
       }
-      if (!flags.effects) return;
-      for (const { cue, params } of cuesFor(events)) {
-        if (params === undefined) audio.play(cue);
-        else audio.play(cue, params);
+      if (flags.effects) {
+        for (const { cue, params } of cuesFor(events)) {
+          if (params === undefined) audio.play(cue);
+          else audio.play(cue, params);
+        }
       }
+      if (flags.haptics) for (const kind of hapticsFor(events)) haptics.impact(kind);
     },
     unlock: () => audio.unlock(),
     flags: () => flags,
     setFlags(next) {
-      flags = { effects: next.effects, music: next.music };
-      audio.setEnabled(flags);
+      flags = { effects: next.effects, music: next.music, haptics: next.haptics };
+      audio.setEnabled({ effects: flags.effects, music: flags.music });
     },
   };
 }

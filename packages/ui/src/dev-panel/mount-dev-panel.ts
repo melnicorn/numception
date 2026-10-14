@@ -9,7 +9,7 @@ import { DevPanel } from './dev-panel';
  * Renders the dev panel into `el`, so callers never import Preact themselves.
  * `tunings` maps each bundled tuning's version (e.g. `"1"`) to its JSON, passed
  * through unvalidated: core validates it (AD-7) and the panel shows any error.
- * `feedback` reads and sets the sound flags (the Sound block).
+ * `feedback` reads and sets the feedback flags: sound effects, music, haptics (the Sound block).
  */
 export function mountDevPanel(el: HTMLElement, tunings: Readonly<Record<string, unknown>>, feedback?: FeedbackControls): void {
   render(h(DevPanel, feedback === undefined ? { tunings } : { tunings, feedback }), el);

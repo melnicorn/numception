@@ -4,7 +4,7 @@ import { type FeedbackFlags, type FeedbackFlagStore, parseFeedbackFlags } from '
 export type FeedbackFlagStorage = Pick<Storage, 'getItem' | 'setItem'>;
 
 /**
- * The dev feedback flags (effects, music) in localStorage, one key per flavour
+ * The dev feedback flags (effects, music, haptics) in localStorage, one key per flavour
  * `appId`. Dev flags only: entry 4 moves them into the profile settings. Missing,
  * malformed or unreadable storage reads as the defaults; a failed write is dropped.
  */
@@ -21,7 +21,7 @@ export function webFeedbackFlags(appId: string, storage: () => FeedbackFlagStora
     },
     write(flags) {
       try {
-        storage()?.setItem(key, JSON.stringify({ effects: flags.effects, music: flags.music }));
+        storage()?.setItem(key, JSON.stringify({ effects: flags.effects, music: flags.music, haptics: flags.haptics }));
       } catch {
         // Private mode or quota: the flags last this session only.
       }

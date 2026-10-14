@@ -283,16 +283,24 @@ describe('webFeedbackFlags', () => {
   it('reads the defaults until written, then what was written, per appId', () => {
     const storage = memory();
     const store = webFeedbackFlags('app.numception.dev', () => storage);
-    expect(store.read()).toEqual({ effects: true, music: false });
-    store.write({ effects: false, music: false });
-    expect(store.read()).toEqual({ effects: false, music: false });
-    expect(webFeedbackFlags('app.numception.playtest', () => storage).read()).toEqual({ effects: true, music: false });
+    expect(store.read()).toEqual({ effects: true, music: false, haptics: true });
+    store.write({ effects: false, music: false, haptics: true });
+    expect(store.read()).toEqual({ effects: false, music: false, haptics: true });
+    expect(webFeedbackFlags('app.numception.playtest', () => storage).read()).toEqual({ effects: true, music: false, haptics: true });
+    store.write({ effects: true, music: false, haptics: false });
+    expect(store.read()).toEqual({ effects: true, music: false, haptics: false });
+  });
+
+  it('reads flags stored before haptics existed with haptics on', () => {
+    const storage = memory();
+    storage.map.set('numception:feedback-flags:a', JSON.stringify({ effects: false, music: false }));
+    expect(webFeedbackFlags('a', () => storage).read()).toEqual({ effects: false, music: false, haptics: true });
   });
 
   it('reads malformed or unreadable storage as the defaults, and drops failed writes', () => {
     const storage = memory();
     storage.map.set('numception:feedback-flags:a', '{not json');
-    expect(webFeedbackFlags('a', () => storage).read()).toEqual({ effects: true, music: false });
+    expect(webFeedbackFlags('a', () => storage).read()).toEqual({ effects: true, music: false, haptics: true });
     const broken: FeedbackFlagStorage = {
       getItem: () => {
         throw new Error('denied');
@@ -302,8 +310,8 @@ describe('webFeedbackFlags', () => {
       },
     };
     const store = webFeedbackFlags('a', () => broken);
-    expect(store.read()).toEqual({ effects: true, music: false });
-    expect(() => store.write({ effects: false, music: false })).not.toThrow();
-    expect(webFeedbackFlags('a', () => null).read()).toEqual({ effects: true, music: false });
+    expect(store.read()).toEqual({ effects: true, music: false, haptics: true });
+    expect(() => store.write({ effects: false, music: false, haptics: true })).not.toThrow();
+    expect(webFeedbackFlags('a', () => null).read()).toEqual({ effects: true, music: false, haptics: true });
   });
 });

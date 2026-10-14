@@ -5,7 +5,9 @@ const labelStyle = { display: 'block', margin: '4px 0' };
 
 /**
  * Dev panel block: the feedback flags (dev flags until entry 4 moves them into
- * profile settings). "Sound effects" gates every cue; "Music" has no content yet.
+ * profile settings). "Sound effects" gates every cue; "Music" has no content yet;
+ * "Haptics" gates the solve taps (felt in the native shell only; on the web the
+ * haptics port is a no-op).
  */
 export function SoundBlock({ feedback }: { feedback: FeedbackControls }) {
   const [flags, setFlags] = useState<FeedbackFlags>(() => feedback.get());
@@ -25,6 +27,14 @@ export function SoundBlock({ feedback }: { feedback: FeedbackControls }) {
           onChange={(e) => update({ ...flags, effects: (e.currentTarget as HTMLInputElement).checked })}
         />{' '}
         Sound effects
+      </label>
+      <label style={labelStyle}>
+        <input
+          type="checkbox"
+          checked={flags.haptics}
+          onChange={(e) => update({ ...flags, haptics: (e.currentTarget as HTMLInputElement).checked })}
+        />{' '}
+        Haptics
       </label>
       <label style={{ ...labelStyle, color: '#666' }}>
         <input type="checkbox" checked={flags.music} disabled /> Music (none yet)

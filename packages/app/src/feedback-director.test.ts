@@ -1,9 +1,9 @@
 import type { GameEvent, NodeId } from '@numception/core';
 import { describe, expect, it } from 'vitest';
 import type { AudioChannels, AudioPort, CueId, CueParams } from './audio-port';
-import { createFeedbackDirector, cuesFor, solveStep } from './feedback-director';
+import { createFeedbackDirector, cuesFor, hapticsFor, solveStep } from './feedback-director';
 import { DEFAULT_FEEDBACK_FLAGS, parseFeedbackFlags } from './feedback-flags';
-import { noHaptics } from './haptics-port';
+import { type HapticKind, type HapticsPort, noHaptics } from './haptics-port';
 
 type Call =
   | { readonly fn: 'play'; readonly cue: CueId; readonly params?: CueParams }
@@ -20,6 +20,11 @@ function recordingAudio(): { audio: AudioPort; calls: Call[] } {
     resume: () => calls.push({ fn: 'resume' }),
   };
   return { audio, calls };
+}
+
+function recordingHaptics(): { haptics: HapticsPort; impacts: HapticKind[] } {
+  const impacts: HapticKind[] = [];
+  return { haptics: { impact: (kind) => impacts.push(kind) }, impacts };
 }
 
 const node = (tier: number, index = 0): NodeId => ({ tier, index });
@@ -62,7 +67,59 @@ describe('cuesFor', () => {
   });
 });
 
+describe('hapticsFor', () => {
+  it.each<[string, readonly GameEvent[], readonly HapticKind[]]>([
+    ['PuzzleSolved', [solved(1)], ['light']],
+    ['two solves in one batch (a collapse)', [solved(1), { type: 'RoundCollapsed', roundId: 'r', nodeId: node(2) }, solved(2)], ['light', 'light']],
+    ['SoftMiss', [{ type: 'SoftMiss', nodeId: node(1), ...tap }], []],
+    ['WrongTap', [{ type: 'WrongTap', nodeId: node(1), ...tap }], []],
+    [
+      'a round change',
+      [
+        { type: 'RoundCompleted', roundId: 'r', roundOrdinal: 0 },
+        { type: 'RoundStarted', roundId: 's', roundOrdinal: 1 },
+      ],
+      [],
+    ],
+    ['RoundCollapsed', [{ type: 'RoundCollapsed', roundId: 'r', nodeId: node(2) }], []],
+    ['a lifecycle pause', [solved(1), { type: 'Paused', reason: 'lifecycle', pauseReasons: ['lifecycle'] }], []],
+  ])('%s', (_name, events, expected) => {
+    expect(hapticsFor(events)).toEqual(expected);
+  });
+});
+
 describe('createFeedbackDirector', () => {
+  it('taps a light impact once per solve, haptics on by default, and nothing for other events', () => {
+    const { audio } = recordingAudio();
+    const { haptics, impacts } = recordingHaptics();
+    const director = createFeedbackDirector({ audio, haptics });
+    director.handle([solved(1)]);
+    director.handle([{ type: 'SoftMiss', nodeId: node(1), ...tap }]);
+    director.handle([{ type: 'WrongTap', nodeId: node(1), ...tap }]);
+    director.handle([
+      { type: 'RoundCompleted', roundId: 'r', roundOrdinal: 0 },
+      { type: 'RoundStarted', roundId: 's', roundOrdinal: 1 },
+    ]);
+    director.handle([solved(2)]);
+    expect(impacts).toEqual(['light', 'light']);
+  });
+
+  it('taps nothing with haptics off, independently of the sound effects', () => {
+    const { audio, calls } = recordingAudio();
+    const { haptics, impacts } = recordingHaptics();
+    const director = createFeedbackDirector({ audio, haptics, flags: { effects: true, music: false, haptics: false } });
+    director.handle([solved(1)]);
+    expect(impacts).toEqual([]);
+    expect(plays(calls)).toHaveLength(1);
+    director.setFlags({ effects: false, music: false, haptics: true });
+    director.handle([solved(1)]);
+    expect(impacts).toEqual(['light']);
+    expect(plays(calls)).toHaveLength(1);
+    expect(director.flags()).toEqual({ effects: false, music: false, haptics: true });
+    // The audio port hears its channels only.
+    expect(calls.at(-1)).toEqual({ fn: 'setEnabled', channels: { effects: false, music: false } });
+  });
+
   it('plays each batch’s cues on the audio port, effects on by default', () => {
     const { audio, calls } = recordingAudio();
     const director = createFeedbackDirector({ audio, haptics: noHaptics });
@@ -78,14 +135,14 @@ describe('createFeedbackDirector', () => {
 
   it('plays nothing with effects off, and again once they are back on', () => {
     const { audio, calls } = recordingAudio();
-    const director = createFeedbackDirector({ audio, haptics: noHaptics, flags: { effects: false, music: false } });
+    const director = createFeedbackDirector({ audio, haptics: noHaptics, flags: { effects: false, music: false, haptics: true } });
     director.handle([solved(1), { type: 'SoftMiss', nodeId: node(1), ...tap }]);
     expect(plays(calls)).toEqual([]);
-    director.setFlags({ effects: true, music: false });
+    director.setFlags({ effects: true, music: false, haptics: true });
     expect(calls.at(-1)).toEqual({ fn: 'setEnabled', channels: { effects: true, music: false } });
     director.handle([solved(1)]);
     expect(plays(calls)).toHaveLength(1);
-    director.setFlags({ effects: false, music: true });
+    director.setFlags({ effects: false, music: true, haptics: true });
     director.handle([solved(1)]);
     expect(plays(calls)).toHaveLength(1);
   });
@@ -101,8 +158,10 @@ describe('createFeedbackDirector', () => {
   });
 
   it('parses stored flags, defaulting what is missing or malformed', () => {
-    expect(parseFeedbackFlags({ effects: false })).toEqual({ effects: false, music: false });
+    expect(parseFeedbackFlags({ effects: false })).toEqual({ effects: false, music: false, haptics: true });
     expect(parseFeedbackFlags('junk')).toEqual(DEFAULT_FEEDBACK_FLAGS);
-    expect(parseFeedbackFlags({ effects: 'no', music: true })).toEqual({ effects: true, music: true });
+    expect(parseFeedbackFlags({ effects: 'no', music: true })).toEqual({ effects: true, music: true, haptics: true });
+    expect(parseFeedbackFlags({ effects: true, music: false, haptics: false })).toEqual({ effects: true, music: false, haptics: false });
+    expect(parseFeedbackFlags({ effects: true, music: false, haptics: 'off' }).haptics).toBe(true);
   });
 });

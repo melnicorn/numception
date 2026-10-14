@@ -4,6 +4,8 @@ import {
   createGame,
   type FeedbackControls,
   createSaveWriter,
+  type HapticKind,
+  type HapticsPort,
   createScheduler,
   loadSave,
   loadThemeCatalog,
@@ -18,7 +20,7 @@ import {
 import { webAudio, webFeedbackFlags, webLifecycle, webStorage } from '@numception/platform-web';
 import { createRenderer } from '@numception/render';
 import { mountGuideLine } from '@numception/ui';
-import { type CueCall, recordingAudio } from './recording-audio';
+import { type CueCall, recordingAudio, recordingHaptics } from './recording-audio';
 import { webEntropy } from './web-entropy';
 
 const root = document.getElementById('app');
@@ -26,16 +28,30 @@ if (!root) {
   throw new Error('Missing #app root element');
 }
 
-// Sound (FR-41, AD-16): procedural Web Audio behind the AudioPort, haptics a no-op
-// until entry 3, and the one FeedbackDirector mapping events to them, gated by the
-// effects and music flags (dev flags in localStorage for now; entry 4 moves them
-// into profile settings). Dev and playtest record every cue the director plays, for
-// the e2e specs (the test hook's `cues`).
+// Sound and haptics (FR-41, AD-16): procedural Web Audio behind the AudioPort, the
+// Capacitor Haptics plugin behind the HapticsPort inside a native shell (a no-op on
+// the web: the iOS PWA has no haptics API), and the one FeedbackDirector mapping
+// events to them, gated by the effects, music and haptics flags (dev flags in
+// localStorage for now; entry 4 moves them into profile settings). Dev and playtest
+// record every cue and impact the director asks for, for the e2e specs (the test
+// hook's `cues` and `haptics`).
 const cueLog: CueCall[] = [];
+const hapticLog: HapticKind[] = [];
+/** The haptics adapter: a no-op until (and unless) the native one has loaded. */
+let hapticsAdapter: HapticsPort = noHaptics;
+const haptics: HapticsPort = { impact: (kind) => hapticsAdapter.impact(kind) };
+if (isNativeShell()) {
+  // Loaded on demand, so the web and PWA entry never carries the plugin.
+  void import('@numception/platform-native')
+    .then(({ capacitorHaptics }) => {
+      hapticsAdapter = capacitorHaptics();
+    })
+    .catch((error: unknown) => console.warn('Haptics failed to load', error));
+}
 const feedbackFlags = webFeedbackFlags(__NUMCEPTION_APP_ID__);
 const director = createFeedbackDirector({
   audio: __NUMCEPTION_DEV_PANEL__ ? recordingAudio(webAudio(), cueLog) : webAudio(),
-  haptics: noHaptics,
+  haptics: __NUMCEPTION_DEV_PANEL__ ? recordingHaptics(haptics, hapticLog) : haptics,
   flags: feedbackFlags.read(),
 });
 const feedbackControls: FeedbackControls = {
@@ -175,7 +191,7 @@ async function boot(el: HTMLElement, activeTuning: TuningConfig, tunings: Tuning
   // Test hook: dev and playtest only (the constant is a literal `false` in prod, AD-18).
   if (__NUMCEPTION_DEV_PANEL__) {
     void import('./test-hook').then(({ installTestHook }) =>
-      installTestHook(game, renderer, { mountedView, saves: () => writer?.stats() ?? null, cues: () => cueLog }),
+      installTestHook(game, renderer, { mountedView, saves: () => writer?.stats() ?? null, cues: () => cueLog, haptics: () => hapticLog }),
     );
   }
   try {
@@ -230,7 +246,11 @@ if (__NUMCEPTION_PWA__ && 'serviceWorker' in navigator && !isNativeShell()) {
   });
 }
 
-/** True inside a Capacitor native shell (its bridge defines `window.Capacitor` before scripts run). */
+/**
+ * True inside a Capacitor native shell: `Capacitor.isNativePlatform()`, read through
+ * the global the bridge defines before scripts run, so the web entry need not
+ * bundle @capacitor/core.
+ */
 function isNativeShell(): boolean {
   const cap = (globalThis as { Capacitor?: { isNativePlatform?: () => boolean } }).Capacitor;
   return cap?.isNativePlatform?.() === true;

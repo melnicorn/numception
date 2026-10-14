@@ -15,8 +15,10 @@
   "dependencies": {
     "@capacitor/android": "~8.5.3",
     "@capacitor/core": "~8.5.3",
+    "@capacitor/haptics": "~8.0.2",
     "@capacitor/ios": "~8.5.3",
     "@numception/app": "workspace:*",
+    "@numception/platform-native": "workspace:*",
     "@numception/platform-web": "workspace:*",
     "@numception/render": "workspace:*",
     "@numception/ui": "workspace:*"

@@ -29,6 +29,7 @@ export {
   cuesFor,
   type FeedbackDirector,
   type FeedbackDirectorOptions,
+  hapticsFor,
   solveStep,
 } from './feedback-director';
 export {
