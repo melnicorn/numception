@@ -3,7 +3,7 @@ title: 'Motion, theme and feedback settings'
 type: 'feature'
 ticket: '4'
 created: '2026-10-14'
-status: 'done'
+status: done
 baseline_revision: '2d4d765a7266cbb69df976e7ff7aa36905f3e9ae'
 route: 'full'
 route_source: 'auto'
