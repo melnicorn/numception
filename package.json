@@ -8,6 +8,7 @@
     "lint:deps": "depcruise packages apps/client/src --config .dependency-cruiser.cjs && node tools/check-supply.mjs && node tools/check-core-purity.mjs",
     "test": "vitest run",
     "bench:generator": "vitest run --config tools/bench/vitest.bench.config.ts",
+    "nightly:check": "vitest run --config tools/nightly/vitest.nightly.config.ts",
     "golden:update": "node tools/golden-update.mjs",
     "golden:harness:build": "vite build --config tools/golden-harness/vite.config.ts",
     "golden:harness:preview": "vite preview --config tools/golden-harness/vite.config.ts",

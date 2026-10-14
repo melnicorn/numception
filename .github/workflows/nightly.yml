@@ -1,0 +1,34 @@
+name: Nightly
+
+# FR-1 / AD-19: 100,000 puzzles per n and enabled operator, plus sampled Classic
+# and Tower rounds, judged by an independent brute-force checker.
+on:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  uniqueness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        n: [3, 4, 5, 6, 7, 8, 9]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: pnpm/action-setup@v6
+        with:
+          version: 11
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm nightly:check
+        env:
+          NIGHTLY_N: ${{ matrix.n }}
+          NIGHTLY_COUNT: '100000'
