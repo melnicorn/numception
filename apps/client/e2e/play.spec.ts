@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { expect, test } from '@playwright/test';
 import {
   answerCell,
@@ -16,6 +17,10 @@ import {
   waitForPuzzle,
   waitIdle,
 } from './play-helpers';
+
+
+/** The bundled tuning's presentation durations, so the test follows tuning changes. */
+const PRESENTATION = JSON.parse(readFileSync(new URL('../../../content/tuning/1.json', import.meta.url), 'utf8')).presentation as { firstCollapseMs: number };
 
 // The play-loop tracer on the playtest build (playwright.config.ts serves FLAVOUR=playtest):
 // a tap travels render -> app -> core -> app -> render.
@@ -176,7 +181,8 @@ test('the solve, collapse and round crossfade are drawn: mid-beat frames carry f
   const third = await view(page);
   await clickUnit(page, answerCell(third).labelPoint);
   const collapsing = await waitBeat(page, 'collapse', 0.15, 0.6);
-  expect(collapsing.presentation.durationMs).toBe(3000);
+  // The first collapse is never stretched by Calm (FR-9).
+  expect(collapsing.presentation.durationMs).toBe(PRESENTATION.firstCollapseMs);
   expect(collapsing.presentation.from?.nodeId).toEqual({ tier: 1, index: 2 });
   expect(collapsing.presentation.from?.solvedAnswer).not.toBeNull();
   expect(collapsing.presentation.to?.nodeId).toEqual({ tier: 2, index: 0 });
