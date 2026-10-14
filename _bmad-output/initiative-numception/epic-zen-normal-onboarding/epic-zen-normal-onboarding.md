@@ -43,3 +43,4 @@ Mode rules, scoring and guide state. Not difficulty easing (epic-adaptive-diffic
 ## Notes
 
 - Waits on epic-core-play-loop because: it needs the play loop and presentation timeline.
+- Carried over: 2026-10-14 from epic-themes-and-feedback. When Normal arrives, add its FR-41 cues to the FeedbackDirector cue map: rising combo build, power-down thud with a heavier haptic, and the Kid profile's soft hum with no bass.

@@ -1,0 +1,106 @@
+# epic-themes-and-feedback — agreed children in build order. Table order is the build order; id is not.
+# User priority 2026-10-14: experience themes, sound and haptics early on the iPhone.
+
+[[entry]]
+id = 1
+type = "story"
+title = "Theme data and a new theme each round"
+description = "Turns the hard-wired Kiln tokens into validated theme data (content/themes/kiln.json and moonwater.json against a ThemeTokens schema covering the DESIGN role grammar, mode tag, font stack, line width and join, inset), records a themeId on each round chosen by core.selectPresentation(state, tuning, catalogIds, rng) (AD-15) with no repeat over the Zen pool, returning { themeId } for now (save-format bump), feeds PlayVM.theme from the catalogue, and makes the round-start beat a whole-frame theme change (surface, tiles and lines all shift, passing through a mid-luminance frame on a light/dark change, by retuning roundTransitionMs in a new tuning version, AD-7) so a new round reads as new; Moonwater's halo is drawn from entry 6, so no filter glow here."
+verify = "On the iPhone, consecutive rounds alternate between Kiln and Moonwater with a visible whole-screen theme change, and core tests show no consecutive repeat and the theme surviving save and reload; hitl step: the user confirms the round change now reads as a new round."
+covers = ["CAP-11"]
+after = ["3.6"]
+hitl = true
+risk = "medium"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-15-themes-and-transitions-are-data-core-chooses-them", "_bmad-output/initiative-numception/ux-numception/DESIGN.md", "_bmad-output/initiative-numception/ux-numception/mockups/theme-transitions-1.html"]
+
+[[entry]]
+id = 2
+type = "story"
+title = "Sound through a feedback director"
+description = "Adds AD-16 AudioPort and HapticsPort with no-op adapters, a FeedbackDirector in app mapping core events to cues gated by effects and music flags the dev panel sets (effects on, music off; entry 4 moves them into profile settings), and a procedural Web Audio adapter in platform-web (no audio files) for solve tones stepping down one note per tier, the soft-miss click, a soft Zen wrong-tap tone and the theme-transition whoosh; Web Audio only, setting navigator.audioSession.type = 'ambient' where available, on the assumption that WKWebView maps Web Audio to the ambient session so the iOS mute switch silences it, resumed on first tap and suspended on pause."
+verify = "In the playtest build each solve plays a tone one note lower per tier and toggling effects off silences them; on the iPhone the mute switch silences the game in both the Safari PWA and the Capacitor app; hitl step: the user checks the sounds and the mute switch on the device."
+covers = ["CAP-17"]
+after = [1]
+hitl = true
+risk = "medium"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-16-platform-capabilities-are-ports-one-feedback-director", "_bmad-output/initiative-numception/architecture-numception/research-stack-versions.md"]
+
+[[entry]]
+id = 3
+type = "story"
+title = "Haptics on the iPhone"
+description = "Adds @capacitor/haptics 8.0.x behind the HapticsPort in platform-native and the Capacitor shell (the iOS PWA has no haptics API, so the web adapter is a no-op), a light impact on solve and none on soft miss or transitions, gated by a dev-panel haptics flag that entry 4 moves into profile settings."
+verify = "In the Capacitor playtest app on the iPhone each solve gives a light tap that the dev-panel toggle turns off; hitl step: the user feels it on the device."
+covers = ["CAP-17"]
+after = [2]
+hitl = true
+risk = "low"
+
+[[entry]]
+id = 4
+type = "story"
+title = "Motion, theme and feedback settings"
+description = "Adds the AD-21 settings as core state and commands \u2014 adds minimal to the existing motion setting with the effective level the lower of the setting and OS Reduce Motion (read through an AccessibilityPrefsPort) and exposed on the view model for DOM surfaces, Minimal turning zooms into cuts and the theme change into a crossfade of at least 400 ms and stopping looping animation; themeSelection randomize or playlist with a playlist; and effects, music and haptics replacing the dev-panel flags from entries 2 and 3 \u2014 with a save-format migration and dev-panel controls; epic-profiles-and-controls builds its control surface on these commands."
+verify = "Core tests cover each setting and the migration, playlist order is followed without consecutive repeats, and a WebKit e2e with reducedMotion 'reduce' shows zooms as cuts and the round change as a crossfade of at least 400 ms."
+covers = ["CAP-11"]
+after = [3]
+hitl = false
+risk = "medium"
+
+[[entry]]
+id = 5
+type = "story"
+title = "Calm transition library"
+description = "Moves theme changes onto registered transition data in content/transitions (id, calm or intense tag, on-tap or after-tap, maxFlashesPerSecond, audio cue), extending entry 1's selectPresentation to also pick and store a transitionId by mode and effective motion, and implements the calm set \u2014 fade, token interpolation in OKLCH, ripple from the tap point and snow or embers \u2014 passing dark to light through a mid-luminance frame."
+verify = "Core tests show Zen and Calm only ever pick calm transitions and Minimal always a crossfade, and on the iPhone successive rounds use different calm transitions; hitl step: the user rates the transitions."
+covers = ["CAP-11"]
+after = [4]
+hitl = true
+risk = "medium"
+references = ["_bmad-output/initiative-numception/ux-numception/mockups/theme-transitions-1.html", "_bmad-output/initiative-numception/ux-numception/mockups/theme-transitions-2-nature.html"]
+
+[[entry]]
+id = 6
+type = "story"
+title = "Washi Ink and the Normal themes with cheap glow"
+description = "Adds Washi Ink and the three Normal themes (Vector Noir, Overdrive Bloom, Obsidian Facet) as data with their materials and mode tags, so selectPresentation filters by the round's mode (AD-24) and epic-zen-normal-onboarding gets Normal themes without changes, and a cheap glow technique (stacked strokes or a glow layer baked to a texture, no per-frame filters) used by every glow theme including Moonwater's halo, with a dev-panel option to include Normal themes in the Zen rotation until Normal mode exists."
+verify = "With the dev-panel override on, all six themes appear on the iPhone, every glow theme holds 60 fps sustained over 35 s per the bake-off method (recorded in the measurements file), and numerals never glow; hitl step: the user rates the looks."
+covers = ["CAP-11"]
+after = [5, "1.3"]
+hitl = true
+risk = "high"
+references = ["prototypes/renderer-bakeoff/measurements.md"]
+
+[[entry]]
+id = 7
+type = "story"
+title = "Flash budget and theme safety checks in CI"
+description = "Adds the AD-23 FlashBudget in render that every luminance change passes through (at most 3 per second from all sources) and CI checks that every theme meets the DESIGN contrast floors and keeps error, solved and combo stops apart under deutan and protan simulation, including the OKLCH-interpolated combo-heat steps and the Kid power cut (timer-line-dimmed at least 3:1 against every background it crosses), and that no transition plus concurrent effects can exceed the flash cap."
+verify = "CI fails on a theme edited below a contrast floor, on a colour-vision collision, or on a transition whose flash rate plus effects exceeds 3 per second, and passes on the shipped themes."
+covers = ["CAP-11"]
+after = [6]
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-23-flash-budget"]
+
+[[entry]]
+id = 8
+type = "story"
+title = "Intense transitions"
+description = "Implements the intense transitions (zoom-hide, radiate, crystal fracture with at most 150 shards) as transition data reachable only in Normal at Full motion, with a dev-panel override to preview them before Normal mode exists, all within the flash budget."
+verify = "Core tests show intense transitions never reach Zen, Calm or Minimal, with the override on the iPhone shows each one within the flash budget, and all six themes and transitions run in the playtest PWA offline; hitl step: the user previews each intense transition on the iPhone."
+covers = ["CAP-11"]
+after = [7]
+hitl = true
+risk = "medium"
+
+[[entry]]
+id = 9
+type = "story"
+title = "Refactor sweep"
+description = "Cleans up what the plans and reviews of this epic deferred; scope is set when it starts."
+verify = "CI stays green and every deferred cleanup item is closed or moved to a new story."
+covers = []
+after = [1, 2, 3, 4, 5, 6, 7, 8]
+hitl = false
+risk = "low"
