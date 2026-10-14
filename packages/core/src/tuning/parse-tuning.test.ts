@@ -18,7 +18,7 @@ const generation = {
   retries: { maxAttempts: 100 },
 };
 
-const presentation = { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25 };
+const presentation = { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25, softMissMs: 600 };
 
 const valid = { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 1, generation, presentation };
 
@@ -139,6 +139,8 @@ describe('parseTuning', () => {
     ['fractional collapseMs', withPresentation({ collapseMs: 1200.5 }), 'presentation.collapseMs'],
     ['firstCollapseMs over a minute', withPresentation({ firstCollapseMs: 60_001 }), 'presentation.firstCollapseMs'],
     ['calmMotionScale 0', withPresentation({ calmMotionScale: 0 }), 'presentation.calmMotionScale'],
+    ['fractional softMissMs', withPresentation({ softMissMs: 600.5 }), 'presentation.softMissMs'],
+    ['missing softMissMs', { ...valid, presentation: { ...presentation, softMissMs: undefined } }, 'presentation.softMissMs'],
     ['missing advanceMs', { ...valid, presentation: { ...presentation, advanceMs: undefined } }, 'presentation.advanceMs'],
     ['unknown presentation key', withPresentation({ zoomMs: 1 }), 'presentation.zoomMs'],
   ];

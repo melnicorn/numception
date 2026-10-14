@@ -23,6 +23,8 @@ export type ProfileSettings = {
  *   Presentation beats and `responseMs` are measured on it, never on wall time.
  * - `firstCollapseSeen`: set once the profile's first collapse has started, so
  *   later collapses run at `collapseMs` (epic Notes).
+ * - `softMissLineSeen`: set by the profile's first soft miss, which shows the
+ *   guide line "Tap the answer" once (FR-4); later soft misses only pulse.
  */
 export type GameState = {
   readonly profileId: string;
@@ -32,6 +34,7 @@ export type GameState = {
   readonly roundOrdinal: number;
   readonly clockMs: number;
   readonly firstCollapseSeen: boolean;
+  readonly softMissLineSeen: boolean;
   readonly rounds: {
     readonly activeRoundId: string | null;
     readonly byId: Readonly<Record<string, Round>>;

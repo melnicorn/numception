@@ -27,3 +27,12 @@ export function beatDuration(
   if (kind === 'collapse') return firstCollapse ? p.firstCollapseMs : p.collapseMs;
   return Math.round(p[BEAT_KEY[kind]] * (motion === 'calm' ? p.calmMotionScale : 1));
 }
+
+/**
+ * How long the soft-miss cue runs, integer ms (FR-4): `softMissMs`, times
+ * `calmMotionScale` at Calm motion, rounded. Not a beat: input stays open.
+ */
+export function softMissDuration(tuning: TuningConfig, motion: ProfileSettings['motion']): number {
+  const p = tuning.presentation;
+  return Math.round(p.softMissMs * (motion === 'calm' ? p.calmMotionScale : 1));
+}

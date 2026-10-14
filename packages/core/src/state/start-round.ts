@@ -44,6 +44,8 @@ export function startRound(
     shownAtMs,
     nextRoundId: null,
     previousTop: null,
+    softMiss: null,
+    guideLine: false,
   };
   return serveNode(round, first, tuning);
 }

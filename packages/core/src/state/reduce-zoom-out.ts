@@ -28,6 +28,6 @@ export function reduceZoomOut(state: AppState): StepResult {
   const inView = round.viewPath[round.viewPath.length - 1];
   if (inView === undefined || round.viewPath.length < 2) return reject(state, COMMAND, invalid('the top has no parent to zoom out to'));
   if (!isPlayable(round, inView)) return reject(state, COMMAND, invalid('an overview is already in view'));
-  const zoomed = { ...round, viewPath: round.viewPath.slice(0, -1), shownAtMs: null };
+  const zoomed = { ...round, viewPath: round.viewPath.slice(0, -1), shownAtMs: null, softMiss: null };
   return { state: withGame(state, withRound(game, zoomed)), events: [] };
 }

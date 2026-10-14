@@ -20,11 +20,27 @@
       body {
         box-sizing: border-box;
         padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+        display: flex;
+        flex-direction: column;
+      }
+      /*
+       * The guide-line slot (DESIGN play-view zones: above the puzzle). A band the
+       * board never uses, so the line can never sit over a cell at any viewport.
+       */
+      #guide {
+        flex: none;
+        height: 64px;
+        display: flex;
+        align-items: flex-end;
+        justify-content: center;
+        padding: 0 16px;
+        pointer-events: none;
       }
       /* The game surface only: the dev panel's text stays selectable. */
       #app {
         width: 100%;
-        height: 100%;
+        flex: 1;
+        min-height: 0;
         touch-action: none;
         -webkit-user-select: none;
         user-select: none;
@@ -33,6 +49,7 @@
     </style>
   </head>
   <body>
+    <div id="guide"></div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

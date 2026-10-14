@@ -13,6 +13,7 @@ import type { GameState } from './game-state';
 import { initialAppState } from './initial-app-state';
 import type { Round } from './round';
 import { roundPuzzle } from './round-puzzle';
+import { selectView } from '../view/select-view';
 import { step } from './step';
 
 /** Band 1 of content/tuning/1.json at n = 3, with its presentation section (tools/round-content.test.ts uses the real file). */
@@ -27,7 +28,7 @@ const parsed = parseTuning({
     distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
     retries: { maxAttempts: 100 },
   },
-  presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25 },
+  presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25, softMissMs: 600 },
 });
 if (!parsed.ok) throw new Error(parsed.error.message);
 const tuning: TuningConfig = parsed.value;
@@ -244,17 +245,6 @@ describe('step: TapCell and the solve beat', () => {
     expect(r.events).toEqual([expect.objectContaining({ type: 'WrongTap', responseMs: 250 })]);
   });
 
-  it('a soft miss emits SoftMiss with responseMs and changes nothing else', () => {
-    // Classic + has no soft-miss cell, so build a − puzzle in view by hand.
-    const play = started();
-    const leaf = round(play.state).puzzles['1.0'] as Puzzle;
-    const subLeaf: Puzzle = { ...leaf, spec: { ...leaf.spec, operator: 'sub' }, roles: { a: 0, b: 1, c: 2 }, answerIndex: 2 };
-    const state = patchRound(play.state, { puzzles: { '1.0': subLeaf } });
-    const r = step(state, { command: { type: 'TapCell', nodeId: { tier: 1, index: 0 }, cellIndex: 1 }, ctx: ctx(1) }, tuning);
-    expect(r.state).toBe(state);
-    expect(r.events).toEqual([{ type: 'SoftMiss', roundId: 'id-0-b', nodeId: { tier: 1, index: 0 }, cellIndex: 1, responseMs: 0 }]);
-  });
-
   it('responseMs is Tick time: wall-clock nowMs does not count, and only Ticks after the puzzle was shown do', () => {
     const play = started();
     // ctx(i).nowMs moves ~1 s per dispatch; no Tick, so no play time passes.
@@ -427,15 +417,15 @@ describe('step: round flow', () => {
     ]);
   });
 
-  it('alternates Classic and Tower: rounds 0, 2 are Classic, 1, 3 are Tower', () => {
+  it('cycles Classic +, Tower +, Classic −, Tower −, then repeats', () => {
     const play = started();
-    const types: string[] = [round(play.state).type];
-    for (const puzzles of [4, 13, 4]) {
+    const kinds: string[] = [`${round(play.state).type} ${round(play.state).plan.operator}`];
+    for (const puzzles of [4, 13, 4, 13]) {
       for (let k = 0; k < puzzles; k += 1) play.solve();
-      types.push(round(play.state).type);
+      kinds.push(`${round(play.state).type} ${round(play.state).plan.operator}`);
     }
-    expect(types).toEqual(['classic', 'tower', 'classic', 'tower']);
-    expect(game(play.state).roundOrdinal).toBe(3);
+    expect(kinds).toEqual(['classic add', 'tower add', 'classic sub', 'tower sub', 'classic add']);
+    expect(game(play.state).roundOrdinal).toBe(4);
   });
 
   it('uses firstCollapseMs only for the first collapse, then collapseMs; Full motion is unscaled', () => {
@@ -460,6 +450,139 @@ describe('step: round flow', () => {
       { kind: 'collapse', durationMs: 1200 },
       { kind: 'advance', durationMs: 400 },
     ]);
+  });
+});
+
+/** A game played up to round 2 (Classic −), idle on its first leaf. */
+function inSubRound(): Play {
+  const play = started();
+  for (let k = 0; k < 17; k += 1) play.solve();
+  expect(round(play.state).plan).toMatchObject({ type: 'classic', operator: 'sub' });
+  return play;
+}
+
+function tapRole(state: AppState, role: 'a' | 'b' | 'c'): Command {
+  const puzzle = puzzleInView(state);
+  return { type: 'TapCell', nodeId: puzzle.nodeId, cellIndex: puzzle.roles[role] };
+}
+
+describe('step: − rounds and the soft miss (FR-4)', () => {
+  it('a soft miss changes no puzzle state and locks nothing; it cues the pulse and arrow, and the first raises the guide line', () => {
+    const play = inSubRound();
+    play.tick(300);
+    const before = round(play.state);
+    const clockMs = game(play.state).clockMs;
+    const puzzle = puzzleInView(play.state);
+    expect(game(play.state).softMissLineSeen).toBe(false);
+
+    const events = play.do(tapRole(play.state, 'b'));
+    expect(events).toEqual([{ type: 'SoftMiss', roundId: before.roundId, nodeId: puzzle.nodeId, cellIndex: puzzle.roles.b, responseMs: 300 }]);
+    const r = round(play.state);
+    // Puzzle state is untouched, and no beat runs: input stays open.
+    const { softMiss, guideLine, ...rest } = r;
+    const { softMiss: _s, guideLine: _g, ...restBefore } = before;
+    expect(rest).toEqual(restBefore);
+    expect(r.presentation.kind).toBe('idle');
+    // Calm: 600 × 1.25.
+    expect(softMiss).toEqual({ nodeId: puzzle.nodeId, cellIndex: puzzle.roles.b, answerIndex: puzzle.answerIndex, startedAtMs: clockMs, durationMs: 750 });
+    expect(guideLine).toBe(true);
+    expect(game(play.state).softMissLineSeen).toBe(true);
+
+    let vm = selectView(play.state, tuning);
+    expect(vm).toMatchObject({ inputLocked: false, softMiss: { cellIndex: puzzle.roles.b, answerIndex: puzzle.answerIndex, progress: 0 }, guideLine: 'Tap the answer' });
+    play.tick(375);
+    expect(selectView(play.state, tuning)?.softMiss?.progress).toBe(0.5);
+    // Its end: Tick clears the cue; the guide line stays up until the next correct tap.
+    play.tick(375);
+    expect(round(play.state).softMiss).toBeNull();
+    vm = selectView(play.state, tuning);
+    expect(vm?.softMiss).toBeUndefined();
+    expect(vm?.guideLine).toBe('Tap the answer');
+
+    // `a` is a wrong tap: nothing changes.
+    const unchanged = play.state;
+    expect(play.do(tapRole(play.state, 'a')).map((e) => e.type)).toEqual(['WrongTap']);
+    expect(play.state).toBe(unchanged);
+
+    // The correct tap solves as usual and takes the guide line down.
+    expect(play.do(tapAnswer(play.state)).map((e) => e.type)).toEqual(['PuzzleSolved']);
+    expect(round(play.state).guideLine).toBe(false);
+    expect(selectView(play.state, tuning)?.guideLine).toBeUndefined();
+    play.settle();
+    expect(round(play.state).solved).toEqual(['1.0']);
+  });
+
+  it('later soft misses pulse and point only: no guide line, in this round or the next', () => {
+    const play = inSubRound();
+    play.do(tapRole(play.state, 'b'));
+    play.solve();
+    play.do(tapRole(play.state, 'b'));
+    expect(round(play.state).softMiss).not.toBeNull();
+    expect(round(play.state).guideLine).toBe(false);
+    expect(selectView(play.state, tuning)?.guideLine).toBeUndefined();
+    // A second soft miss mid-cue restarts it.
+    play.tick(100);
+    play.do(tapRole(play.state, 'b'));
+    expect(round(play.state).softMiss?.startedAtMs).toBe(game(play.state).clockMs);
+    // Round 3 (Tower −): still only the cue.
+    play.solve();
+    play.solve();
+    play.solve();
+    expect(round(play.state).plan).toMatchObject({ type: 'tower', operator: 'sub' });
+    play.do(tapRole(play.state, 'b'));
+    expect(round(play.state).softMiss).not.toBeNull();
+    expect(round(play.state).guideLine).toBe(false);
+  });
+
+  it('a correct tap mid-cue solves at once and ends the cue', () => {
+    const play = inSubRound();
+    play.do(tapRole(play.state, 'b'));
+    play.tick(100);
+    expect(play.do(tapAnswer(play.state)).map((e) => e.type)).toEqual(['PuzzleSolved']);
+    expect(round(play.state)).toMatchObject({ softMiss: null, guideLine: false, presentation: { kind: 'solve' } });
+  });
+
+  it('in a + puzzle, tapping b is a wrong tap', () => {
+    const play = started();
+    const before = play.state;
+    expect(play.do(tapRole(play.state, 'b')).map((e) => e.type)).toEqual(['WrongTap']);
+    expect(play.state).toBe(before);
+  });
+
+  it('a pause ends the cue; the veiled board shows no guide line, which comes back once the veil lifts', () => {
+    const play = inSubRound();
+    play.do(tapRole(play.state, 'b'));
+    play.do({ type: 'Pause', reason: 'lifecycle' });
+    expect(round(play.state)).toMatchObject({ softMiss: null, guideLine: true });
+    expect(selectView(play.state, tuning)?.softMiss).toBeUndefined();
+    play.do({ type: 'Resume', reason: 'lifecycle' });
+    expect(selectView(play.state, tuning)).toMatchObject({ blurred: true });
+    expect(selectView(play.state, tuning)?.guideLine).toBeUndefined();
+    // The first tap only lifts the veil; the line is still pending, so it is back.
+    expect(play.do(tapAnswer(play.state)).map((e) => e.type)).toEqual(['BlurCleared']);
+    expect(selectView(play.state, tuning)).toMatchObject({ blurred: false, guideLine: 'Tap the answer' });
+  });
+
+  it('the cue belongs to the puzzle tapped: navigating away clears it, and it is never drawn on another node', () => {
+    const play = inSubRound();
+    const leaf = nodeInView(play.state);
+    play.do(tapRole(play.state, 'b'));
+    expect(play.do({ type: 'ZoomOut' })).toEqual([]);
+    expect(round(play.state).softMiss).toBeNull();
+    expect(selectView(play.state, tuning)?.softMiss).toBeUndefined();
+    play.do({ type: 'EnterPuzzle', nodeId: { tier: 1, index: 1 } });
+    expect(nodeInView(play.state)).toEqual({ tier: 1, index: 1 });
+    play.do(tapRole(play.state, 'b'));
+    play.do({ type: 'ZoomOut' });
+    play.do({ type: 'EnterPuzzle', nodeId: leaf });
+    expect(round(play.state).softMiss).toBeNull();
+    // A cue left on another node (it cannot happen through step) is not shown here.
+    play.do(tapRole(play.state, 'b'));
+    const cue = round(play.state).softMiss;
+    if (cue === null) throw new Error('no cue');
+    const moved = patchRound(play.state, { softMiss: { ...cue, nodeId: { tier: 1, index: 2 } } });
+    expect(selectView(moved, tuning)?.softMiss).toBeUndefined();
+    expect(selectView(play.state, tuning)?.softMiss).toMatchObject({ cellIndex: cue.cellIndex });
   });
 });
 

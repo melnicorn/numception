@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import type { TuningConfig } from '../tuning/tuning-config';
-import { beatDuration } from './beat-duration';
+import { beatDuration, softMissDuration } from './beat-duration';
 
 const tuning = {
-  presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25 },
+  presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25, softMissMs: 600 },
 } as TuningConfig;
 
 describe('beatDuration', () => {
@@ -27,5 +27,10 @@ describe('beatDuration', () => {
   it('never scales a collapse, so FR-9 (≤ 3 s first, ≤ 1.2 s later) holds at Calm too', () => {
     expect(beatDuration('collapse', tuning, 'calm', true)).toBe(3000);
     expect(beatDuration('collapse', tuning, 'calm', false)).toBe(1200);
+  });
+
+  it('runs the soft-miss cue for softMissMs, scaled at Calm', () => {
+    expect(softMissDuration(tuning, 'full')).toBe(600);
+    expect(softMissDuration(tuning, 'calm')).toBe(750);
   });
 });

@@ -30,6 +30,7 @@ export function checkGameState(x: unknown): DomainError | undefined {
   if (!isCount(x.roundOrdinal)) return bad('.roundOrdinal must be a non-negative integer');
   if (!isCount(x.clockMs)) return bad('.clockMs must be a non-negative integer');
   if (typeof x.firstCollapseSeen !== 'boolean') return bad('.firstCollapseSeen must be a boolean');
+  if (typeof x.softMissLineSeen !== 'boolean') return bad('.softMissLineSeen must be a boolean');
   const rounds = x.rounds;
   if (!isRecord(rounds) || !isRecord(rounds.byId)) return bad('.rounds must hold byId');
   const activeId = rounds.activeRoundId;
@@ -44,6 +45,11 @@ export function checkGameState(x: unknown): DomainError | undefined {
   if (!isRecord(p) || !PRESENTATION_KINDS.includes(p.kind as string) || !isCount(p.startedAtMs) || !isCount(p.durationMs)) {
     return bad('active round .presentation is malformed');
   }
+  const cue = round.softMiss;
+  if (cue !== null && (!isRecord(cue) || !isRecord(cue.nodeId) || !isCount(cue.cellIndex) || !isCount(cue.answerIndex) || !isCount(cue.startedAtMs) || !isCount(cue.durationMs))) {
+    return bad('active round .softMiss must be null or a cue');
+  }
+  if (typeof round.guideLine !== 'boolean') return bad('active round .guideLine must be a boolean');
   return undefined;
 }
 

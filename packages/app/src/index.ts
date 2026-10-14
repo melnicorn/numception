@@ -53,6 +53,9 @@ export {
   type PlayVM,
   type PresentationVM,
   parseTuning,
+  type Puzzle,
+  puzzleInView,
+  type SoftMissVM,
   tapCommand,
   type TuningConfig,
 } from '@numception/core';

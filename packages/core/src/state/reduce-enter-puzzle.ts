@@ -44,6 +44,7 @@ export function reduceEnterPuzzle(state: AppState, nodeId: unknown, tuning: Tuni
   const entered = {
     ...served.value,
     viewPath: [...round.viewPath, { tier: nodeId.tier, index: nodeId.index }],
+    softMiss: null,
     presentation: idleAt(game.clockMs),
     shownAtMs: game.clockMs,
   };

@@ -38,4 +38,11 @@ describe('drawKey', () => {
     expect(drawKey({ ...vm, inputLocked: true })).toBe(drawKey(vm));
     expect(drawKey({ ...vm, presentation: { ...vm.presentation, durationMs: 5 } })).toBe(drawKey(vm));
   });
+
+  it('redraws every step of a soft-miss cue, but not for the guide line (DOM text)', () => {
+    const cue = (progress: number): PlayVM => ({ ...vm, softMiss: { cellIndex: 0, answerIndex: 0, progress } });
+    expect(drawKey(cue(0.2))).not.toBe(drawKey(cue(0.3)));
+    expect(drawKey(cue(0.2))).not.toBe(drawKey(vm));
+    expect(drawKey({ ...vm, guideLine: 'Tap the answer' })).toBe(drawKey(vm));
+  });
 });

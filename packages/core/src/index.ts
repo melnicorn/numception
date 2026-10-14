@@ -46,7 +46,8 @@ export { playOrder } from './rounds/play-order';
 export { pathFromTop } from './rounds/path-from-top';
 
 export type { Presentation, PresentationKind } from './presentation/presentation';
-export { beatDuration } from './presentation/beat-duration';
+export type { SoftMissCue } from './presentation/soft-miss-cue';
+export { beatDuration, softMissDuration } from './presentation/beat-duration';
 
 export type { TapOutcome } from './rules/tap-outcome';
 export { classifyTap } from './rules/classify-tap';
@@ -78,6 +79,7 @@ export { createProfile } from './state/create-profile';
 export { step } from './state/step';
 export { nextRoundRequest } from './state/next-round-request';
 export { completePresentation } from './state/complete-presentation';
+export { puzzleInView } from './state/puzzle-in-view';
 
 export { SAVE_FORMAT_VERSION } from './save/save-format-version';
 export type { SaveDocument, SavePayload } from './save/save-document';
@@ -93,8 +95,8 @@ export { checkGameState } from './save/check-game-state';
 
 export { KILN_TOKENS, type KilnTokens } from './view/kiln-tokens';
 export type { NodeCellRef } from './view/node-cell-ref';
-export type { CameraVM, PlayCellVM, PlayContextVM, PlayVM, PresentationVM } from './view/play-vm';
+export type { CameraVM, PlayCellVM, PlayContextVM, PlayVM, PresentationVM, SoftMissVM } from './view/play-vm';
 export type { CameraRect } from './view/camera-rect';
 export { tapCommand } from './view/tap-command';
-export { selectView } from './view/select-view';
+export { GUIDE_LINE_TEXT, selectView } from './view/select-view';
 export { hitTestView } from './view/hit-test-view';

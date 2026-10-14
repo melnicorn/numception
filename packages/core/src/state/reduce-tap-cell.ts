@@ -1,4 +1,5 @@
 import type { NodeId } from '../generator/node-id';
+import { softMissDuration } from '../presentation/beat-duration';
 import type { DomainError } from '../result/domain-error';
 import { classifyTap } from '../rules/classify-tap';
 import type { TuningConfig } from '../tuning/tuning-config';
@@ -29,7 +30,13 @@ function invalid(message: string): DomainError {
  * - `correct`: `PuzzleSolved` now, and a `solve` beat starts; its end (on `Tick`)
  *   applies the solve and moves on (`endBeat`). A tap solving the top reserves the
  *   next round's id, `ctx.entropy.ids[0]`.
- * - `wrong` / `softMiss`: emits `WrongTap` / `SoftMiss` and changes nothing else.
+ * - `wrong`: emits `WrongTap` and changes nothing else.
+ * - `softMiss` (− puzzles: `b`, a valid reading `a − c = b`): never a wrong tap.
+ *   `SoftMiss`; no puzzle state changes and no beat starts, so input stays open.
+ *   The round's soft-miss cue (re)starts now for `softMissDuration` (the tapped
+ *   cell pulses, a ghost arrow points at the answer). The profile's first one
+ *   also sets `softMissLineSeen` and raises the guide line, which a correct tap
+ *   takes down again.
  *
  * Every verdict carries `responseMs`: the profile's Tick time since the puzzle was
  * shown. A tap with no active round, on a node not in view, on an overview or on
@@ -58,10 +65,23 @@ export function reduceTapCell(
   const responseMs = game.clockMs - (round.shownAtMs ?? game.clockMs);
   const tap = { roundId: round.roundId, nodeId: inView, cellIndex: command.cellIndex, responseMs };
   if (outcome.value === 'wrong') return { state, events: [{ type: 'WrongTap', ...tap }] };
-  if (outcome.value === 'softMiss') return { state, events: [{ type: 'SoftMiss', ...tap }] };
+  if (outcome.value === 'softMiss') {
+    const cue = {
+      nodeId: inView,
+      cellIndex: command.cellIndex,
+      answerIndex: puzzle.answerIndex,
+      startedAtMs: game.clockMs,
+      durationMs: softMissDuration(tuning, game.settings.motion),
+    };
+    const first = !game.softMissLineSeen;
+    const cued = { ...round, softMiss: cue, guideLine: round.guideLine || first };
+    return { state: withGame(state, withRound({ ...game, softMissLineSeen: true }, cued)), events: [{ type: 'SoftMiss', ...tap }] };
+  }
 
   const solving = {
     ...round,
+    softMiss: null,
+    guideLine: false,
     presentation: beatAt('solve', game.clockMs, tuning, game),
     nextRoundId: inView.tier === round.plan.tiers ? ctx.entropy.ids[0] : null,
   };

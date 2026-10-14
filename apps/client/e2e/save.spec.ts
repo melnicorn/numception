@@ -47,9 +47,10 @@ test('saves into the flavour database after the first command', async ({ page })
 test('a reload mid-round restores the same puzzle and solved cells, and the first frame is that puzzle', async ({ page }) => {
   await page.goto('./');
   const first = await waitForPuzzle(page);
-  const answers = [answerCell(first).text];
-  const second = await solve(page);
-  answers.push(answerCell(second).text);
+  expect(first.nodeId).toEqual({ tier: 1, index: 0 });
+  const answers = [(await answerCell(page)).text];
+  await solve(page);
+  answers.push((await answerCell(page)).text);
   const before = await solve(page);
   expect(before.nodeId).toEqual({ tier: 1, index: 2 });
   expect(before.context?.parent.cells.filter((c) => c.state === 'solved').map((c) => c.text)).toEqual(answers);
@@ -58,18 +59,20 @@ test('a reload mid-round restores the same puzzle and solved cells, and the firs
   await page.reload();
   const after = await waitForPuzzle(page);
   expect(after).toEqual(before);
+  const beforeAnswer = (await answerCell(page)).text;
   const mounted = await page.evaluate(() => (window as unknown as { __numception: SaveHook }).__numception.mountedView());
   expect(mounted).toEqual(before);
   expect(mounted?.kind).toBe('puzzle');
   // The restored round plays on.
   const next = await solve(page);
   expect(next.nodeId).toEqual({ tier: 2, index: 0 });
-  expect(next.cells.map((c) => c.text)).toEqual([...answers, answerCell(before).text]);
+  expect(next.cells.map((c) => c.text)).toEqual([...answers, beforeAnswer]);
 });
 
 test('backgrounding mid-beat completes the beat and pauses; on return the board is veiled and the first tap only unblurs', async ({ page }) => {
   await page.goto('./');
-  const first = await waitForPuzzle(page);
+  await waitForPuzzle(page);
+  const firstAnswer = await answerCell(page);
   const clearInk = (await frameInk(page)).ink;
   const written = (await saves(page))?.written ?? 0;
 
@@ -85,7 +88,7 @@ test('backgrounding mid-beat completes the beat and pauses; on return the board 
     Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => 'hidden' });
     Object.defineProperty(document, 'hidden', { configurable: true, get: () => true });
     document.dispatchEvent(new Event('visibilitychange'));
-  }, answerCell(first).labelPoint);
+  }, firstAnswer.labelPoint);
 
   expect(await solvedCount(page)).toBe(1);
   expect(await pauseReasons(page)).toEqual(['blur', 'lifecycle']);
@@ -110,7 +113,7 @@ test('backgrounding mid-beat completes the beat and pauses; on return the board 
   expect(Math.abs(r - 161) + Math.abs(g - 78) + Math.abs(b - 54)).toBeLessThan(40);
 
   // The first tap, even on the answer, only lifts the veil.
-  await clickUnit(page, answerCell(veiled).labelPoint);
+  await clickUnit(page, (await answerCell(page)).labelPoint);
   await expect.poll(async () => (await view(page)).blurred).toBe(false);
   expect(await solvedCount(page)).toBe(1);
   const log = await eventLog(page);

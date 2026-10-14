@@ -1,7 +1,7 @@
 // The dev and playtest test hook (`window.__numception`): read-only access for the
 // e2e specs. Installed only behind `__NUMCEPTION_DEV_PANEL__`, so prod never ships
 // it; tools/check-flavours.mjs checks the marker below is absent from prod builds.
-import type { Game, GameEvent, LayoutPoint, PauseReason, PlayVM, SaveWriterStats } from '@numception/app';
+import { type Game, type GameEvent, type LayoutPoint, type PauseReason, type PlayVM, puzzleInView, type SaveWriterStats } from '@numception/app';
 import type { Renderer, RendererStats } from '@numception/render';
 
 /** The hook's global name; also the marker tools/check-flavours.mjs looks for. */
@@ -22,7 +22,15 @@ export type TestHook = {
   readonly pauseReasons: () => readonly PauseReason[];
   /** The save writer's counters, or null when this session does not save. */
   readonly saves: () => SaveWriterStats | null;
+  /**
+   * The puzzle in view's operator and cell roles (a + b = c or a − b = c; c is the
+   * answer, and in − the soft-miss cell is b), or null on an overview. The play
+   * view never carries the answer, so the specs read it here.
+   */
+  readonly roles: () => PuzzleRolesView | null;
 };
+
+export type PuzzleRolesView = { readonly operator: 'add' | 'sub'; readonly a: number; readonly b: number; readonly c: number; readonly answerIndex: number };
 
 /** What the composition root hands the hook besides the game and renderer. */
 export type TestHookExtras = { readonly mountedView: PlayVM | null; readonly saves: () => SaveWriterStats | null };
@@ -41,6 +49,10 @@ export function installTestHook(game: Game, renderer: Renderer, extras: TestHook
     mountedView: () => structuredClone(extras.mountedView),
     pauseReasons: () => [...game.getState().pauseReasons],
     saves: () => extras.saves(),
+    roles: () => {
+      const puzzle = puzzleInView(game.getState());
+      return puzzle === undefined ? null : { operator: puzzle.spec.operator, ...puzzle.roles, answerIndex: puzzle.answerIndex };
+    },
   };
   Object.defineProperty(window, TEST_HOOK_NAME, { value: Object.freeze(hook), writable: false, configurable: false });
 }

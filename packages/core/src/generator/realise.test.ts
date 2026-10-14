@@ -74,7 +74,7 @@ describe('realise: recorded versions', () => {
   });
 
   it('accepts the versions built from a tuning config', () => {
-    const tuning: TuningConfig = { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 4, generation: { operators: ['add'], n: { min: 3, max: 3 }, bands: [{ band: 1, ranges: [{ nMin: 3, nMax: 3, minValue: 1, maxValue: 20, maxCarries: 0 }] }], distractors: { nearMissDelta: 1, nearMissShare: 0 }, retries: { maxAttempts: 1 } }, presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25 } };
+    const tuning: TuningConfig = { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 4, generation: { operators: ['add'], n: { min: 3, max: 3 }, bands: [{ band: 1, ranges: [{ nMin: 3, nMax: 3, minValue: 1, maxValue: 20, maxCarries: 0 }] }], distractors: { nearMissDelta: 1, nearMissShare: 0 }, retries: { maxAttempts: 1 } }, presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25, softMissMs: 600 } };
     const result = realise(1, leaf, spec, versionsFor(tuning));
     expect(result.ok && result.value.versions).toEqual({ generatorVersion: 1, difficultyModelVersion: 1, tuningVersion: 4 });
   });

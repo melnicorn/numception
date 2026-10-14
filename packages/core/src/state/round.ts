@@ -1,6 +1,7 @@
 import type { NodeId } from '../generator/node-id';
 import type { Puzzle } from '../generator/puzzle';
 import type { Presentation } from '../presentation/presentation';
+import type { SoftMissCue } from '../presentation/soft-miss-cue';
 import type { RoundPlan, RoundTypeName } from '../rounds/round-plan';
 import type { NodeKey } from './node-key';
 
@@ -24,6 +25,11 @@ import type { NodeKey } from './node-key';
  * - `previousTop`: the solved top puzzle of the round this one followed, null for
  *   a session's first round. View data only (AD-13): the completed round is
  *   dropped, and the `roundStart` crossfade draws its top fading out.
+ * - `softMiss`: the soft-miss cue running (FR-4), or null. Transient view data:
+ *   it changes no puzzle state, locks nothing, belongs to the puzzle tapped
+ *   (`nodeId`; navigating away clears it), and `Tick` clears it once it ends.
+ * - `guideLine`: the guide line "Tap the answer" is up, from the profile's first
+ *   soft miss until the next correct tap.
  */
 export type Round = {
   readonly roundId: string;
@@ -39,4 +45,6 @@ export type Round = {
   readonly shownAtMs: number | null;
   readonly nextRoundId: string | null;
   readonly previousTop: Puzzle | null;
+  readonly softMiss: SoftMissCue | null;
+  readonly guideLine: boolean;
 };

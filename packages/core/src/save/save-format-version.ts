@@ -6,5 +6,7 @@
  * - 0: the bare `GameState` (entries 1 to 3 kept it only in memory; synthetic).
  * - 1: `{ game: GameState }`, so later fields (the AD-8 ratings checkpoint) sit
  *   beside the game rather than inside it.
+ * - 2: the game gains `softMissLineSeen` and each round its soft-miss cue
+ *   (`softMiss`) and `guideLine` (ticket 6, FR-4).
  */
-export const SAVE_FORMAT_VERSION = 1;
+export const SAVE_FORMAT_VERSION = 2;

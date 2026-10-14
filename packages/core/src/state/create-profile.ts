@@ -18,6 +18,7 @@ export function createProfile(kind: ProfileKind, ctx: CommandContext): GameState
     roundOrdinal: 0,
     clockMs: 0,
     firstCollapseSeen: false,
+    softMissLineSeen: false,
     rounds: { activeRoundId: null, byId: {} },
   };
 }

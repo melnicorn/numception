@@ -365,7 +365,7 @@ Resolved by the PRD (2026-10-09) and removed from this list: POC test platform (
 4. Music and the pack audio slot (reserved, not committed).
 5. Typefaces: licensed self-hosted webfonts / Android fallbacks for the Apple faces.
 6. Transition and solve-beat durations (collapse defaults in FR-9: ≤ 3 s first, ≤ 1.2 s later).
-7. Visuals not designed: `zen-constellation`, `point-stream`, `normal-unlock`, `soft-miss`, `parent-gate`, `level-pin`, and v1 `streak-light`, `streak-freeze`, `home-tree`, `ripple-hint`, `dot-face`, `rapid-fire-totem`.
+7. Visuals not designed: `zen-constellation`, `point-stream`, `normal-unlock`, `parent-gate`, `level-pin`, and v1 `streak-light`, `streak-freeze`, `home-tree`, `ripple-hint`, `dot-face`, `rapid-fire-totem`. (`soft-miss` is built without a mockup; see the DESIGN.md `soft-miss` component row.)
 8. Zoom gesture: pinch in addition to tap-to-enter? (PRD OQ-8)
 9. Operator mixing within a round.
 10. Landscape on phone; tablet/web breakpoints (PRD OQ-14).

@@ -29,6 +29,7 @@ import { paintView } from './paint-view';
 import type { RenderPort } from './render-port';
 import { resumeButton } from './resume-button';
 import { ScenePool } from './scene-pool';
+import { ARROW_WIDTH_PX, arrowAlpha, ghostArrow, pulseLook } from './soft-miss-motion';
 import { contextTransform, fitRect, idleTransform, nestTransform, shapeBox, toScreen, toUnit, type ViewTransform } from './view-transform';
 
 /** Taps within this many CSS px of a shared edge are no-ops (DESIGN: "a few px"). */
@@ -197,6 +198,32 @@ export function createRenderer(options: RendererOptions): Renderer {
     } else {
       paintContext(vm, rest, 1, false);
       paintView(pool, vm, rest, rest, settled(vm, 1), width);
+    }
+    // The soft-miss cue (FR-4) over the idle board: the tapped cell pulses once in
+    // `soft-miss` and a ghost arrow points to the answer. Nothing else dims.
+    const cue = vm.softMiss;
+    if (cue !== undefined) {
+      const tapped = vm.cells[cue.cellIndex];
+      const answer = vm.cells[cue.answerIndex];
+      const color = hex(theme.softMiss);
+      if (tapped !== undefined) {
+        const look = pulseLook(cue.progress, theme.lineWidth);
+        const flat = tapped.polygon.flatMap((pt) => toScreen(rest, pt));
+        const pulse = pool.takeGraphics().poly(flat).fill({ color, alpha: look.washAlpha });
+        pulse.poly(flat).stroke({ width: look.width, color, alpha: look.alpha, join: 'round' });
+      }
+      const arrow = tapped === undefined || answer === undefined ? null : ghostArrow(toScreen(rest, tapped.labelPoint), toScreen(rest, answer.labelPoint));
+      const alpha = arrowAlpha(cue.progress);
+      if (arrow !== null && alpha > 0) {
+        pool
+          .takeGraphics()
+          .moveTo(...arrow.tail)
+          .lineTo(...arrow.tip)
+          .moveTo(...arrow.left)
+          .lineTo(...arrow.tip)
+          .lineTo(...arrow.right)
+          .stroke({ width: ARROW_WIDTH_PX, color, alpha, cap: 'round', join: 'round' });
+      }
     }
     // After a lifecycle pause (AD-17): a veil over the whole board until the first tap.
     if (vm.blurred) {

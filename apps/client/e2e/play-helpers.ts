@@ -27,13 +27,20 @@ export type View = {
   };
   /** The parent drawn around the puzzle (entry 9); absent at the round's top. */
   context?: { parent: View; cellIndex: number; camera: Rect };
+  /** The soft-miss cue while it runs (FR-4). */
+  softMiss?: { cellIndex: number; answerIndex: number; progress: number };
+  /** The guide line text while up (DOM, not canvas). */
+  guideLine?: string;
 };
 
 export type Rect = { x: number; y: number; width: number; height: number };
 
 export type HookEvent = { type: string; nodeId?: NodeId; roundOrdinal?: number };
 
-type Hook = { view(): View | null; pagePoint(p: Point): Point | null; events(): HookEvent[] };
+/** The puzzle in view's roles (test hook): a + b = c or a − b = c; c is the answer, b the − soft-miss cell. */
+export type Roles = { operator: 'add' | 'sub'; a: number; b: number; c: number; answerIndex: number };
+
+type Hook = { view(): View | null; pagePoint(p: Point): Point | null; events(): HookEvent[]; roles(): Roles | null };
 
 /** Every event the hook has seen, in full. */
 export async function eventLog(page: Page): Promise<HookEvent[]> {
@@ -67,13 +74,23 @@ export async function clickUnit(page: Page, point: Point): Promise<void> {
   await page.mouse.click(at?.[0] ?? 0, at?.[1] ?? 0);
 }
 
-/** The answer cell of a + puzzle: the one whose value is the sum of the others. */
-export function answerCell(v: View): CellView {
-  const values = v.cells.map((c) => Number(c.text));
-  const total = values.reduce((a, b) => a + b, 0);
-  const answer = v.cells.find((c) => Number(c.text) * 2 === total);
-  expect(answer, `no answer among ${values.join(', ')}`).toBeDefined();
-  return answer as CellView;
+/** The puzzle in view's roles, from the test hook (null on an overview). */
+export async function roles(page: Page): Promise<Roles | null> {
+  return page.evaluate(() => (window as unknown as { __numception: Hook }).__numception.roles());
+}
+
+/** The cell of the puzzle in view with role `role` (default the answer, c), by the hook's answer index; works for + and −. */
+export async function roleCell(page: Page, role: 'a' | 'b' | 'c' = 'c'): Promise<CellView> {
+  const [r, v] = await Promise.all([roles(page), view(page)]);
+  expect(r, 'no puzzle in view').not.toBeNull();
+  const cell = v.cells[role === 'c' ? (r as Roles).answerIndex : (r as Roles)[role]];
+  expect(cell, `no ${role} cell`).toBeDefined();
+  return cell as CellView;
+}
+
+/** The answer cell of the puzzle in view. */
+export async function answerCell(page: Page): Promise<CellView> {
+  return roleCell(page, 'c');
 }
 
 /** How many `PuzzleSolved` events the hook has seen. */
@@ -97,7 +114,7 @@ export async function solve(page: Page): Promise<View> {
   const v = await waitIdle(page);
   expect(v.kind).toBe('puzzle');
   const before = await solvedCount(page);
-  await clickUnit(page, answerCell(v).labelPoint);
+  await clickUnit(page, (await answerCell(page)).labelPoint);
   await expect.poll(() => solvedCount(page)).toBe(before + 1);
   return waitIdle(page);
 }

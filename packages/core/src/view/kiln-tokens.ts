@@ -16,6 +16,8 @@ export type KilnTokens = {
   readonly solvedNumber: string;
   /** The press acknowledgement's colour. */
   readonly press: string;
+  /** DESIGN `soft-miss`: the soft-miss pulse and ghost arrow (FR-4; never red). */
+  readonly softMiss: string;
   readonly fontFamily: string;
   readonly fontWeight: '500';
   /** The DESIGN hero sizes at n = 3 in a 375-wide frame, px. */
@@ -27,6 +29,8 @@ export type KilnTokens = {
   readonly operatorTier2SizePx: number;
   /** The tier-2 operator's strength until its tier opens (DESIGN operator-cell: 25–45%; mock ~32%). */
   readonly operatorDimAlpha: number;
+  /** `typography.guide`: the onboarding guide line (DOM, AD-13), px. */
+  readonly guideSizePx: number;
 };
 
 /** Kiln, the default Zen and first-run theme (DESIGN.md). */
@@ -42,6 +46,7 @@ export const KILN_TOKENS: KilnTokens = Object.freeze({
   solvedFill: '#A14E36',
   solvedNumber: '#F6F0E8',
   press: '#AC644E',
+  softMiss: '#AC644E',
   fontFamily: "Futura, 'Century Gothic', sans-serif",
   fontWeight: '500',
   numberSizePx: 44,
@@ -49,4 +54,5 @@ export const KILN_TOKENS: KilnTokens = Object.freeze({
   numberSolvedSizePx: 58,
   operatorTier2SizePx: 38,
   operatorDimAlpha: 0.32,
+  guideSizePx: 24,
 });

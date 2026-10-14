@@ -3,11 +3,25 @@ import { SHAPES } from '../layout/shapes/shapes';
 import type { Presentation } from '../presentation/presentation';
 import { activeRound } from '../state/active-round';
 import type { AppState } from '../state/app-state';
+import type { NodeId } from '../generator/node-id';
+import type { Round } from '../state/round';
+import { sameNode } from '../state/same-node';
 import { roundPuzzle } from '../state/round-puzzle';
 import type { TuningConfig } from '../tuning/tuning-config';
 import { beatViews } from './beat-views';
 import { type NestedPresentation, nodeView } from './node-view';
-import type { PlayVM } from './play-vm';
+import type { PlayVM, SoftMissVM } from './play-vm';
+
+/** The guide line a profile's first soft miss raises (FR-4). */
+export const GUIDE_LINE_TEXT = 'Tap the answer';
+
+/** The round's soft-miss cue at play time `clockMs`, or undefined when none is running. */
+function softMissAt(cue: Round['softMiss'], nodeId: NodeId, clockMs: number): SoftMissVM | undefined {
+  if (cue === null || cue.durationMs <= 0 || !sameNode(cue.nodeId, nodeId)) return undefined;
+  const progress = (clockMs - cue.startedAtMs) / cue.durationMs;
+  if (progress >= 1) return undefined;
+  return { cellIndex: cue.cellIndex, answerIndex: cue.answerIndex, progress: Math.max(0, progress) };
+}
 
 /** The beat's progress at play time `clockMs`, 0..1; idle (and zero-length beats) are 1. */
 function timing(p: Presentation, clockMs: number): NestedPresentation {
@@ -22,7 +36,8 @@ function timing(p: Presentation, clockMs: number): NestedPresentation {
  * `inputLocked` and `presentation` come from the round's timeline at the profile's
  * Tick time; `presentation` also carries what the running beat draws (`beatViews`:
  * the tapped answer, `from` / `to` views and the camera). `blurred` is the `blur`
- * pause reason (AD-17). Null before a round
+ * pause reason (AD-17). `softMiss` is the round's soft-miss cue while it runs
+ * and `guideLine` its guide line while up (FR-4). Null before a round
  * exists. `tuning` is the active config (AD-13's signature); this build reads
  * nothing from it yet.
  */
@@ -39,7 +54,15 @@ export function selectView(state: AppState, _tuning: TuningConfig): PlayVM | nul
   const puzzle = roundPuzzle(round, nodeId);
   const extra = beatViews(round, view, SHAPES[shapeId.value], beat, puzzle?.answerIndex ?? null);
   const blurred = state.pauseReasons.includes('blur');
-  const shown: PlayVM = { ...view, blurred, presentation: { ...view.presentation, ...extra } };
+  const softMiss = view.kind === 'puzzle' ? softMissAt(round.softMiss, nodeId, game.clockMs) : undefined;
+  const shown: PlayVM = {
+    ...view,
+    blurred,
+    presentation: { ...view.presentation, ...extra },
+    ...(softMiss === undefined || blurred ? {} : { softMiss }),
+    // The veiled board's first tap only unblurs, so the line waits until the veil lifts.
+    ...(round.guideLine && !blurred ? { guideLine: GUIDE_LINE_TEXT } : {}),
+  };
   return blurred ? hideValues(shown) : shown;
 }
 

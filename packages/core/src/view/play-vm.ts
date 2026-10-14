@@ -70,6 +70,14 @@ export type PresentationVM = {
 };
 
 /**
+ * The soft-miss cue running (FR-4): the tapped cell `cellIndex` pulses once in
+ * Kiln `soft-miss` and a ghost arrow points from it to the answer `answerIndex`;
+ * `progress` runs 0..1 over the cue's Tick time. It is never a wrong tap: no
+ * red, the board never dims, input stays open.
+ */
+export type SoftMissVM = { readonly cellIndex: number; readonly answerIndex: number; readonly progress: number };
+
+/**
  * The play view (AD-13), ready to draw. Adapters read only this; every rule
  * decision is an explicit field (`kind`, cell `state` and `enters`, `inputLocked`).
  *
@@ -101,4 +109,12 @@ export type PlayVM = {
   readonly theme: KilnTokens;
   /** The parent drawn around the node in view (`PlayContextVM`); absent for the round's top. */
   readonly context?: PlayContextVM;
+  /** The soft-miss cue while it runs (`SoftMissVM`); absent otherwise, and while blurred. */
+  readonly softMiss?: SoftMissVM;
+  /**
+   * The guide line text, for the DOM (AD-13: never drawn on the canvas): "Tap the
+   * answer", up from the profile's first soft miss until the next correct tap;
+   * absent while blurred (the veil's first tap only unblurs), back once it lifts.
+   */
+  readonly guideLine?: string;
 };

@@ -11,6 +11,7 @@ import {
 } from '@numception/app';
 import { webLifecycle, webStorage } from '@numception/platform-web';
 import { createRenderer } from '@numception/render';
+import { mountGuideLine } from '@numception/ui';
 import { webEntropy } from './web-entropy';
 
 const root = document.getElementById('app');
@@ -75,6 +76,9 @@ async function boot(el: HTMLElement, activeTuning: TuningConfig): Promise<void> 
     },
   });
   game.subscribe((view) => renderer.render(view));
+  // The guide-line slot, a band above the board (DOM, AD-13; index.html): core decides the line; ui shows it.
+  const guideSlot = document.getElementById('guide');
+  if (guideSlot !== null) mountGuideLine(guideSlot, game);
   scheduler.dispatch(session.restore === null ? { type: 'StartSession' } : { type: 'StartSession', restore: session.restore });
   // A restore core refused (it never should: it parsed) falls back to a new session.
   if (game.getView() === null) scheduler.dispatch({ type: 'StartSession' });

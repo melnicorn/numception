@@ -26,7 +26,7 @@ export type Scheduler = {
   readonly resume: (reason: PauseReason) => readonly GameEvent[];
   /** Core's `AppState.pauseReasons` (the one set, AD-17). */
   readonly pauseReasons: () => ReadonlySet<PauseReason>;
-  /** Whether a frame is requested (a beat is running and nothing pauses). */
+  /** Whether a frame is requested (a beat or a soft-miss cue is running and nothing pauses). */
   readonly running: () => boolean;
   readonly destroy: () => void;
 };
@@ -40,7 +40,8 @@ export type Scheduler = {
  * the blur-clearing first tap).
  *
  * Choice (documented per the plan): the frame loop runs only while a beat is
- * running (`PlayVM.inputLocked`), so an idle board costs no frames and no
+ * running (`PlayVM.inputLocked`) or a soft-miss cue is (`PlayVM.softMiss`, which
+ * locks nothing but animates), so an idle board costs no frames and no
  * re-renders. Idle play time still counts: it is flushed as one Tick just before
  * every command dispatched through `dispatch` (and before a pause), so a tap's
  * `responseMs` covers the whole wait. Commands must go through `dispatch`, not
@@ -82,7 +83,7 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
     handle = null;
   }
 
-  /** Follows core's pause set, then requests a frame while a beat runs and nothing pauses. */
+  /** Follows core's pause set, then requests a frame while a beat or soft-miss cue runs and nothing pauses. */
   function sync(): void {
     if (destroyed) return;
     const nowPaused = isPaused();
@@ -95,7 +96,8 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
       }
     }
     if (paused || handle !== null) return;
-    if (game.getView()?.inputLocked === true) handle = frames.request(frame);
+    const view = game.getView();
+    if (view !== null && (view.inputLocked || view.softMiss !== undefined)) handle = frames.request(frame);
   }
 
   const unsubscribe = game.subscribe(() => sync());

@@ -10,6 +10,7 @@ import {
   parentToView,
   pixelAt,
   regionInk,
+  roles,
   solve,
   solvedCount,
   view,
@@ -44,7 +45,10 @@ test('opens straight onto a Classic n = 3 + puzzle on a canvas, with no other UI
     expect(cell.text).toMatch(/^\d+$/);
     expect(cell.state).toBe('unsolved');
   }
-  answerCell(first);
+  expect((await roles(page))?.operator).toBe('add');
+  expect(Number(first.cells[(await roles(page))?.answerIndex ?? -1]?.text)).toBe(
+    first.cells.reduce((sum, c) => sum + Number(c.text), 0) / 2,
+  );
 
   const canvas = page.locator('#app canvas');
   await expect(canvas).toHaveCount(1);
@@ -61,8 +65,9 @@ test('a tap on the answer shows the next puzzle; the operator centre and a wrong
   await page.goto('./');
   const first = await waitForPuzzle(page);
 
+  const answer = await answerCell(page);
   await clickUnit(page, first.operator.labelPoint);
-  const wrong = first.cells.find((c) => c.index !== answerCell(first).index);
+  const wrong = first.cells.find((c) => c.index !== answer.index);
   if (wrong === undefined) throw new Error('no wrong cell');
   await clickUnit(page, wrong.labelPoint);
   await expect.poll(() => events(page)).toContain('WrongTap');
@@ -72,7 +77,7 @@ test('a tap on the answer shows the next puzzle; the operator centre and a wrong
   expect((await events(page)).filter((t) => t !== 'ProfileCreated' && t !== 'RoundStarted')).toEqual(['WrongTap']);
 
   // A right-click on the answer is not a tap.
-  const at = await page.evaluate((p) => (window as unknown as { __numception: { pagePoint(q: number[]): number[] } }).__numception.pagePoint(p), answerCell(first).labelPoint);
+  const at = await page.evaluate((p) => (window as unknown as { __numception: { pagePoint(q: number[]): number[] } }).__numception.pagePoint(p), answer.labelPoint);
   await page.mouse.click(at[0] ?? 0, at[1] ?? 0, { button: 'right' });
   await page.waitForTimeout(100);
   expect(await view(page)).toEqual(first);
@@ -89,7 +94,7 @@ test('three solves lead to the tier-2 puzzle of their answers, and solving it st
   for (let leaf = 0; leaf < 3; leaf += 1) {
     const v = await view(page);
     expect(v.nodeId).toEqual({ tier: 1, index: leaf });
-    answers.push(answerCell(v).text);
+    answers.push((await answerCell(page)).text);
     await solve(page);
   }
   const top = await view(page);
@@ -106,8 +111,8 @@ test('three solves lead to the tier-2 puzzle of their answers, and solving it st
 
 test('a tap during the solve beat is dropped: the board is locked until the beat ends', async ({ page }) => {
   await page.goto('./');
-  const first = await waitForPuzzle(page);
-  const answer = answerCell(first);
+  await waitForPuzzle(page);
+  const answer = await answerCell(page);
   // Both taps go to the canvas in one synchronous task, so no frame (and no Tick)
   // can run between them: the second one always lands during the solve beat.
   const locked = await page.evaluate((point) => {
@@ -169,17 +174,16 @@ test('the solve, collapse and round crossfade are drawn: mid-beat frames carry f
   expect(idle.ink).toBeGreaterThan(0.05);
 
   // Solve: the tapped answer fires at once.
-  const first = await view(page);
-  await clickUnit(page, answerCell(first).labelPoint);
+  const firstAnswer = await answerCell(page);
+  await clickUnit(page, firstAnswer.labelPoint);
   const solving = await waitBeat(page, 'solve', 0, 1);
-  expect(solving.presentation.cellIndex).toBe(answerCell(first).index);
+  expect(solving.presentation.cellIndex).toBe(firstAnswer.index);
   await waitIdle(page);
   await solve(page);
 
   // The third leaf's solve collapses the round into the tier-2 puzzle: the first
   // collapse is the long one, so the frame is sampled well inside it.
-  const third = await view(page);
-  await clickUnit(page, answerCell(third).labelPoint);
+  await clickUnit(page, (await answerCell(page)).labelPoint);
   const collapsing = await waitBeat(page, 'collapse', 0.15, 0.6);
   // The first collapse is never stretched by Calm (FR-9).
   expect(collapsing.presentation.durationMs).toBe(PRESENTATION.firstCollapseMs);
@@ -197,7 +201,7 @@ test('the solve, collapse and round crossfade are drawn: mid-beat frames carry f
   expect(top.nodeId).toEqual({ tier: 2, index: 0 });
 
   // The top's solve crossfades into the next round.
-  await clickUnit(page, answerCell(top).labelPoint);
+  await clickUnit(page, (await answerCell(page)).labelPoint);
   const crossfading = await waitBeat(page, 'roundStart', 0, 1);
   expect(crossfading.presentation.from?.nodeId).toEqual({ tier: 2, index: 0 });
   expect(crossfading.presentation.to?.nodeId).toEqual({ tier: 1, index: 0 });
@@ -222,6 +226,7 @@ test('a puzzle sits inside its parent: the parent outline and siblings are drawn
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./');
   const first = await waitForPuzzle(page);
+  const firstAnswer = (await answerCell(page)).text;
   expect(first.context?.parent.nodeId).toEqual({ tier: 2, index: 0 });
   expect(first.context?.parent.kind).toBe('overview');
   expect(first.context?.cellIndex).toBe(0);
@@ -256,7 +261,7 @@ test('a puzzle sits inside its parent: the parent outline and siblings are drawn
   const next = await solve(page);
   expect(next.nodeId).toEqual({ tier: 1, index: 1 });
   expect(next.context?.cellIndex).toBe(1);
-  expect(next.context?.parent.cells[0]?.text).toBe(answerCell(first).text);
+  expect(next.context?.parent.cells[0]?.text).toBe(firstAnswer);
   expect(next.context?.parent.cells[0]?.state).toBe('solved');
 });
 
@@ -325,3 +330,27 @@ test('a real lost WebGL context is rebuilt from the latest view once restored', 
   const next = await solve(page);
   expect(next.nodeId).toEqual({ tier: 1, index: 1 });
 });
+
+for (const size of [
+  { width: 1280, height: 720 },
+  { width: 390, height: 844 },
+]) {
+  test(`the guide-line slot is a band above the board that no cell reaches (${size.width}×${size.height})`, async ({ page }) => {
+    await page.setViewportSize(size);
+    await page.goto('./');
+    const first = await waitForPuzzle(page);
+    const slot = await page.getByRole('status').boundingBox();
+    const band = await page.locator('#guide').boundingBox();
+    if (slot === null || band === null) throw new Error('no guide slot');
+    // The band holds a 24 px guide line (line-height 1.3).
+    expect(band.height).toBeGreaterThanOrEqual(32);
+    expect(slot.y + slot.height).toBeLessThanOrEqual(band.y + band.height + 0.5);
+    // Every cell of the puzzle and of the parent drawn around it lies below the band.
+    const points = [
+      ...first.cells.flatMap((c) => c.polygon),
+      ...(first.context?.parent.cells.flatMap((c) => c.polygon.map((p) => parentToView(first, p))) ?? []),
+    ];
+    const ys = await Promise.all(points.map(async (p) => (await pageOf(page, p))[1]));
+    expect(Math.min(...ys)).toBeGreaterThanOrEqual(band.y + band.height);
+  });
+}

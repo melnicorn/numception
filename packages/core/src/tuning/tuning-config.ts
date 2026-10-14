@@ -144,6 +144,9 @@ const durationMs = () => int(0, MAX_PRESENTATION_MS);
  * - `calmMotionScale`: the multiplier applied at Calm motion to every beat except
  *   collapses (which keep FR-9's caps at every Motion level). A float because it's
  *   a tuning weight; durations are rounded to integer ms.
+ * - `softMissMs`: the soft-miss cue (FR-4: the tapped cell's pulse and the ghost
+ *   arrow to the answer). Not a beat: input stays open while it runs. Scaled by
+ *   `calmMotionScale` at Calm motion.
  */
 const PresentationSchema = v.strictObject({
   solveMs: durationMs(),
@@ -152,6 +155,7 @@ const PresentationSchema = v.strictObject({
   collapseMs: durationMs(),
   roundTransitionMs: durationMs(),
   calmMotionScale: v.pipe(v.number(), v.minValue(0.25), v.maxValue(4)),
+  softMissMs: durationMs(),
 });
 
 /**

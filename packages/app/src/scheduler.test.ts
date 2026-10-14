@@ -1,4 +1,4 @@
-import { type CommandContext, parseTuning } from '@numception/core';
+import { type CommandContext, parseTuning, puzzleInView, type TuningConfig } from '@numception/core';
 import { describe, expect, it } from 'vitest';
 import { createGame, type Game } from './game';
 import { createScheduler, type FrameLoop } from './scheduler';
@@ -14,7 +14,7 @@ const parsed = parseTuning({
     distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
     retries: { maxAttempts: 100 },
   },
-  presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25 },
+  presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25, softMissMs: 600 },
 });
 if (!parsed.ok) throw new Error(parsed.error.message);
 const tuning = parsed.value;
@@ -28,7 +28,7 @@ function fixedEntropy() {
 }
 
 /** A manual clock and frame loop: `frame(ms)` advances the clock and runs the pending frame. */
-function harness() {
+function harness(config: TuningConfig = tuning) {
   let clock = 1000;
   let pending: (() => void) | null = null;
   let nextHandle = 1;
@@ -41,7 +41,7 @@ function harness() {
       pending = null;
     },
   };
-  const game = createGame({ tuning, entropy: fixedEntropy(), now: () => 0 });
+  const game = createGame({ tuning: config, entropy: fixedEntropy(), now: () => 0 });
   const dispatched: number[] = [];
   const realDispatch = game.dispatch;
   const spied: Game = {
@@ -173,5 +173,31 @@ describe('createScheduler', () => {
     h.advance(100);
     h.game.dispatch({ type: 'Tick', elapsedMs: 1 });
     expect(h.hasFrame()).toBe(false);
+  });
+
+  it('runs frames while a soft-miss cue runs (it locks nothing), and stops when it ends', () => {
+    const sub = { ...tuning, generation: { ...tuning.generation, operators: ['add', 'sub'] as typeof tuning.generation.operators } };
+    const h = harness(sub);
+    h.scheduler.dispatch({ type: 'StartSession' });
+    const puzzle = () => {
+      const p = puzzleInView(h.game.getState());
+      if (p === undefined) throw new Error('no puzzle');
+      return p;
+    };
+    // Rounds 0 (Classic +) and 1 (Tower +), then round 2 is Classic −.
+    for (let k = 0; k < 17; k += 1) {
+      h.scheduler.dispatch({ type: 'TapCell', nodeId: puzzle().nodeId, cellIndex: puzzle().answerIndex });
+      while (h.hasFrame()) h.frame(100);
+    }
+    expect(puzzle().spec.operator).toBe('sub');
+    const events = h.scheduler.dispatch({ type: 'TapCell', nodeId: puzzle().nodeId, cellIndex: puzzle().roles.b });
+    expect(events.map((e) => e.type)).toEqual(['SoftMiss']);
+    expect(h.game.getView()).toMatchObject({ inputLocked: false, softMiss: { progress: 0 } });
+    expect(h.scheduler.running()).toBe(true);
+    h.frame(375);
+    expect(h.game.getView()?.softMiss?.progress).toBe(0.5);
+    h.frame(375);
+    expect(h.game.getView()?.softMiss).toBeUndefined();
+    expect(h.scheduler.running()).toBe(false);
   });
 });
