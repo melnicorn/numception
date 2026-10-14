@@ -27,6 +27,7 @@ import { isPrimaryPress } from './is-primary-press';
 import { blendScale, sizingTransform } from './numeral-size';
 import { paintView } from './paint-view';
 import type { RenderPort } from './render-port';
+import { resumeButton } from './resume-button';
 import { ScenePool } from './scene-pool';
 import { contextTransform, fitRect, idleTransform, nestTransform, shapeBox, toScreen, toUnit, type ViewTransform } from './view-transform';
 
@@ -198,7 +199,17 @@ export function createRenderer(options: RendererOptions): Renderer {
       paintView(pool, vm, rest, rest, settled(vm, 1), width);
     }
     // After a lifecycle pause (AD-17): a veil over the whole board until the first tap.
-    if (vm.blurred) pool.takeGraphics().rect(0, 0, width, height).fill({ color: hex(theme.surface), alpha: BLUR_VEIL_ALPHA });
+    if (vm.blurred) {
+      pool.takeGraphics().rect(0, 0, width, height).fill({ color: hex(theme.surface), alpha: BLUR_VEIL_ALPHA });
+      // A play button so the veil reads as "tap to continue", not "disabled" (any tap still lifts it).
+      const button = resumeButton(width, height);
+      pool
+        .takeGraphics()
+        .circle(button.center[0], button.center[1], button.radius)
+        .fill({ color: hex(theme.solvedFill) })
+        .poly(button.triangle.flat())
+        .fill({ color: hex(theme.solvedNumber) });
+    }
     pool.end();
   }
 

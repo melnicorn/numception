@@ -141,6 +141,8 @@ deferred:
 - **Test hook:** adds `mountedView()` (the view the canvas mounted with, i.e. the first frame), `pauseReasons()` and `saves()`.
 - **Tests:** core `save/*.test.ts` (round-trip, checksum, truncated JSON, too-new, v0 migration, multi-step path and gap) and `state/pause.test.ts`; app `slot-storage.test.ts` (A/B, torn and checksum fallback, corrupt untouched, too-new, `loadAll`, device written only on change) and `save-writer.test.ts` (order, single-flight latest-wins, backoff retry, urgent save cutting the backoff, kill-mid-write of a slot and of the device record then reload, batching, loadSave outcomes including recovery from the snapshots); platform-web `web-lifecycle.test.ts` (no IndexedDB unit test: no fake-indexeddb dependency was added; the e2e covers the real adapter); e2e `save.spec.ts` (flavour database, reload restores the same view and first frame, background mid-beat then return with veil and blur-only tap).
 
+- Playtest feedback 2026-10-14 (user, iPhone): the grey veil read as "disabled", so it was unclear that a tap continues. A centred play button (accent fill, cream triangle; `render/src/resume-button.ts`) now sits on the veil. It's a glyph, not words, because numbers are the only text on the play view (DESIGN). Any tap anywhere still lifts the veil.
+
 ## Plan Change Log
 
 ## Review Triage Log
