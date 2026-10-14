@@ -1,7 +1,8 @@
 // Generation under the bundled tuning (AD-7, AD-19, NFR-1): 1,000 puzzles per n and
 // operator, spread across every band of content/tuning/1.json, each with exactly
 // one valid triple, and none slower than 10 ms to realise on a laptop. The CI
-// benchmark gate (p95 per node) is a later entry; this is the generous ceiling.
+// benchmark gate (p95 per node) is tools/bench/generator.bench-test.ts; this is the
+// generous ceiling.
 //
 // Timing: a single wall-clock sample can catch a GC pause or a busy test worker,
 // so the slowest few inputs are re-timed and judged by their best of 5 runs (the

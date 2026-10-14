@@ -1,8 +1,8 @@
 // Round planning under the bundled tuning (FR-2, AD-4, AD-7): Classic and Tower
 // rounds for every n 3..9 and both operators, 50 round ordinals each, all plan and
 // pass the round-consistency check at every tier; a Tower plan at n 9 stays under
-// 50 ms on a laptop. The CI benchmark gate (round plan ≤ 50 ms) is a later entry;
-// this is the laptop ceiling.
+// 50 ms on a laptop. The CI benchmark gate (round plan ≤ 50 ms) is
+// tools/bench/generator.bench-test.ts; this is the laptop ceiling.
 //
 // Timing: as in generation-content.test.ts, the slowest few plans are re-timed and
 // judged by their best of 5 runs, so a GC pause or a busy worker doesn't fail it.

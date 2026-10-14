@@ -6,6 +6,6 @@
     "allowJs": true,
     "checkJs": true
   },
-  "include": ["vitest.config.ts", "playwright.config.ts", "tools/*.ts", "tools/*.mjs", "tools/*.cjs"],
+  "include": ["vitest.config.ts", "playwright.config.ts", "tools/*.ts", "tools/*.mjs", "tools/*.cjs", "tools/bench/*.ts", "tools/bench/*.mjs"],
   "references": [{ "path": "./apps/client/tsconfig.node.json" }, { "path": "./packages/core" }]
 }
