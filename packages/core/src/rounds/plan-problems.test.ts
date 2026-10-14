@@ -12,7 +12,7 @@ const parsed = parseTuning({
   generation: {
     operators: ['add', 'sub'],
     n: { min: 3, max: 9 },
-    bands: [{ band: 1, minValue: 1, maxValue: 99, maxCarries: 1 }],
+    bands: [{ band: 1, ranges: [{ nMin: 3, nMax: 9, minValue: 1, maxValue: 99, maxCarries: 1 }] }],
     distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
     retries: { maxAttempts: 100 },
   },

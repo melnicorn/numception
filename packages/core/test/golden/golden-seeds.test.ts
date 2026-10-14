@@ -26,8 +26,8 @@ const tunings = {
       operators: ['add', 'sub'],
       n: { min: 3, max: 9 },
       bands: [
-        { band: 1, minValue: 1, maxValue: 20, maxCarries: 0 },
-        { band: 2, minValue: 5, maxValue: 99, maxCarries: 1 },
+        { band: 1, ranges: [{ nMin: 3, nMax: 9, minValue: 1, maxValue: 20, maxCarries: 0 }] },
+        { band: 2, ranges: [{ nMin: 3, nMax: 9, minValue: 5, maxValue: 99, maxCarries: 1 }] },
       ],
       distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
       retries: { maxAttempts: 20 },

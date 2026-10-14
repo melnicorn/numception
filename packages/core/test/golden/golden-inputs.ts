@@ -94,8 +94,9 @@ function rounds(ns: number[]): PlanRequest[] {
 }
 
 /**
- * Which round-plan requests run under each tuning fixture. `rounds` mirrors the POC
- * bands of content/tuning/1.json: Classic and Tower at several n and both operators,
+ * Which round-plan requests run under each tuning fixture. `rounds` mirrors the
+ * earlier single-range POC bands of content/tuning/1.json (band 1 1..99 at every n;
+ * kept as one range so its plans stay pinned): Classic and Tower at several n and both operators,
  * a later ordinal, a starting band above 1 and fixed top cells (OQ-4). `small` keeps
  * the first POC band 1 (1..20, no carries), where Tower `add` is pinned as
  * `unplannable`; `wide` has one wide band.

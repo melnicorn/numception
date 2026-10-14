@@ -5,8 +5,14 @@ const generation = {
   operators: ['add', 'sub'],
   n: { min: 3, max: 9 },
   bands: [
-    { band: 1, minValue: 1, maxValue: 20, maxCarries: 0 },
-    { band: 2, minValue: 10, maxValue: 999, maxCarries: 2 },
+    {
+      band: 1,
+      ranges: [
+        { nMin: 3, nMax: 5, minValue: 1, maxValue: 20, maxCarries: 0 },
+        { nMin: 6, nMax: 9, minValue: 1, maxValue: 50, maxCarries: 1 },
+      ],
+    },
+    { band: 2, ranges: [{ nMin: 3, nMax: 9, minValue: 10, maxValue: 999, maxCarries: 2 }] },
   ],
   distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
   retries: { maxAttempts: 100 },
@@ -19,7 +25,19 @@ function withGeneration(patch: Record<string, unknown>): unknown {
 }
 
 function withBand1(patch: Record<string, unknown>): unknown {
-  return withGeneration({ bands: [{ ...generation.bands[0], ...patch }] });
+  return withGeneration({ bands: [{ ...generation.bands[0], ...patch }, generation.bands[1]] });
+}
+
+/** Band 1 with its first range (n 3..5) patched. */
+function withRange1(patch: Record<string, unknown>): unknown {
+  const [first, second] = generation.bands[0]!.ranges;
+  return withBand1({ ranges: [{ ...first, ...patch }, second] });
+}
+
+/** Band 2 with its ranges replaced by `ranges` (each [nMin, nMax]). */
+function withBand2Ranges(...ranges: [number, number][]): unknown {
+  const bands = [generation.bands[0], { band: 2, ranges: ranges.map(([nMin, nMax]) => ({ nMin, nMax, minValue: 10, maxValue: 999, maxCarries: 2 })) }];
+  return withGeneration({ bands });
 }
 
 /** The issues of a config that must fail, or a marker if it parsed. */
@@ -36,9 +54,11 @@ describe('parseTuning', () => {
   it.each([
     ['add only', withGeneration({ operators: ['add'] })],
     ['sub only', withGeneration({ operators: ['sub'] })],
-    ['a single n', withGeneration({ n: { min: 9, max: 9 } })],
-    ['the smallest band, 1..3', withBand1({ minValue: 1, maxValue: 3 })],
-    ['the largest band ceiling, 2^31 − 1', withBand1({ minValue: 1, maxValue: 0x7fffffff })],
+    ['a single n', withGeneration({ n: { min: 9, max: 9 }, bands: [{ band: 1, ranges: [{ nMin: 9, nMax: 9, minValue: 1, maxValue: 99, maxCarries: 1 }] }] })],
+    ['the smallest range, 1..3', withRange1({ minValue: 1, maxValue: 3 })],
+    ['the largest range ceiling, 2^31 − 1', withRange1({ minValue: 1, maxValue: 0x7fffffff })],
+    ['one range per n', withBand2Ranges([3, 3], [4, 4], [5, 5], [6, 6], [7, 7], [8, 8], [9, 9])],
+    ['ranges matching a narrower n range', withGeneration({ n: { min: 4, max: 6 }, bands: [{ band: 1, ranges: [{ nMin: 4, nMax: 6, minValue: 1, maxValue: 20, maxCarries: 0 }] }] })],
     ['nearMissShare 0', withGeneration({ distractors: { nearMissDelta: 1, nearMissShare: 0 } })],
     ['nearMissShare 1', withGeneration({ distractors: { nearMissDelta: 1, nearMissShare: 1 } })],
     ['maxAttempts 1000', withGeneration({ retries: { maxAttempts: 1000 } })],
@@ -73,15 +93,29 @@ describe('parseTuning', () => {
       withGeneration({ bands: [generation.bands[0], { ...generation.bands[1], band: 3 }] }),
       'generation.bands',
     ],
-    ['bands not starting at 1', withBand1({ band: 2 }), 'generation.bands'],
+    ['bands not starting at 1', withGeneration({ bands: [{ ...generation.bands[0], band: 2 }] }), 'generation.bands'],
     ['bands out of order', withGeneration({ bands: [{ ...generation.bands[0], band: 2 }, { ...generation.bands[1], band: 1 }] }), 'generation.bands'],
-    ['maxValue below minValue + 2', withBand1({ minValue: 5, maxValue: 6 }), 'generation.bands.0.maxValue'],
-    ['minValue 0', withBand1({ minValue: 0 }), 'generation.bands.0.minValue'],
-    ['maxValue above 2^31 − 1', withBand1({ maxValue: 2 ** 31 }), 'generation.bands.0.maxValue'],
-    ['fractional maxValue', withBand1({ maxValue: 10.5 }), 'generation.bands.0.maxValue'],
-    ['negative maxCarries', withBand1({ maxCarries: -1 }), 'generation.bands.0.maxCarries'],
     ['band 0', withBand1({ band: 0 }), 'generation.bands.0.band'],
     ['unknown band key', withBand1({ weight: 1 }), 'generation.bands.0.weight'],
+    ['the old flat band shape', withBand1({ minValue: 1 }), 'generation.bands.0.minValue'],
+    ['no ranges', withBand1({ ranges: [] }), 'generation.bands.0.ranges'],
+    ['missing ranges', withGeneration({ bands: [{ band: 1 }] }), 'generation.bands.0.ranges'],
+    // per-n ranges
+    ['maxValue below minValue + 2', withRange1({ minValue: 5, maxValue: 6 }), 'generation.bands.0.ranges.0.maxValue'],
+    ['minValue 0', withRange1({ minValue: 0 }), 'generation.bands.0.ranges.0.minValue'],
+    ['maxValue above 2^31 − 1', withRange1({ maxValue: 2 ** 31 }), 'generation.bands.0.ranges.0.maxValue'],
+    ['fractional maxValue', withRange1({ maxValue: 10.5 }), 'generation.bands.0.ranges.0.maxValue'],
+    ['negative maxCarries', withRange1({ maxCarries: -1 }), 'generation.bands.0.ranges.0.maxCarries'],
+    ['unknown range key', withRange1({ weight: 1 }), 'generation.bands.0.ranges.0.weight'],
+    ['nMin 2', withRange1({ nMin: 2 }), 'generation.bands.0.ranges.0.nMin'],
+    ['nMax 10', withBand2Ranges([3, 10]), 'generation.bands.1.ranges.0.nMax'],
+    ['nMax below nMin', withBand2Ranges([3, 5], [7, 6], [7, 9]), 'generation.bands.1.ranges.1.nMax'],
+    ['a gap in n (3–5 and 7–9)', withBand2Ranges([3, 5], [7, 9]), 'generation.bands.1.ranges'],
+    ['overlapping n (3–6 and 5–9)', withBand2Ranges([3, 6], [5, 9]), 'generation.bands.1.ranges'],
+    ['ranges out of n order', withBand2Ranges([6, 9], [3, 5]), 'generation.bands.1.ranges'],
+    ['ranges starting above n.min', withBand2Ranges([4, 9]), 'generation.bands'],
+    ['ranges ending below n.max', withBand2Ranges([3, 5], [6, 8]), 'generation.bands'],
+    ['ranges running past n.max', withGeneration({ n: { min: 3, max: 8 } }), 'generation.bands'],
     // distractors and retries
     ['nearMissShare 1.5', withGeneration({ distractors: { nearMissDelta: 2, nearMissShare: 1.5 } }), 'generation.distractors.nearMissShare'],
     ['negative nearMissShare', withGeneration({ distractors: { nearMissDelta: 2, nearMissShare: -0.1 } }), 'generation.distractors.nearMissShare'],
@@ -112,9 +146,15 @@ describe('parseTuning', () => {
   });
 
   it('explains the cross-field rules', () => {
-    expect(issuesOf(withBand1({ minValue: 5, maxValue: 6 }))[0]).toMatch(/at least minValue \+ 2/);
+    expect(issuesOf(withRange1({ minValue: 5, maxValue: 6 }))[0]).toMatch(/at least minValue \+ 2/);
     expect(issuesOf(withGeneration({ n: { min: 6, max: 5 } }))[0]).toMatch(/at least n\.min/);
-    expect(issuesOf(withBand1({ band: 2 }))[0]).toMatch(/contiguously from 1/);
+    expect(issuesOf(withGeneration({ bands: [{ ...generation.bands[0], band: 2 }] }))[0]).toMatch(/contiguously from 1/);
+    expect(issuesOf(withBand2Ranges([3, 5], [7, 9]))[0]).toMatch(/the ranges of band 2 must be ordered by n, with no gap or overlap/);
+    expect(issuesOf(withBand2Ranges([3, 6], [5, 9]))[0]).toMatch(/the ranges of band 2 must be ordered by n, with no gap or overlap/);
+    expect(issuesOf(withBand2Ranges([3, 5], [6, 6], [7, 9], [4, 4]))[0]).toMatch(/the ranges of band 2 .*no gap or overlap/);
+    expect(issuesOf(withRange1({ nMax: 4 }))[0]).toMatch(/^generation\.bands\.0\.ranges: the ranges of band 1 .*no gap or overlap/);
+    expect(issuesOf(withBand2Ranges([4, 9]))[0]).toMatch(/the ranges of band 2 must cover n 3\.\.9 exactly/);
+    expect(issuesOf(withGeneration({ n: { min: 3, max: 8 } }))[0]).toMatch(/the ranges of bands 1, 2 must cover n 3\.\.8 exactly/);
     expect(issuesOf(withGeneration({ operators: ['sub', 'sub'] }))[0]).toMatch(/must not repeat/);
   });
 });

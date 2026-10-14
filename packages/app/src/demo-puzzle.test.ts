@@ -11,20 +11,50 @@ const tuningV1 = {
     operators: ['add', 'sub'],
     n: { min: 3, max: 9 },
     bands: [
-      { band: 1, minValue: 1, maxValue: 99, maxCarries: 1 },
-      { band: 2, minValue: 10, maxValue: 199, maxCarries: 1 },
-      { band: 3, minValue: 10, maxValue: 499, maxCarries: 2 },
-      { band: 4, minValue: 10, maxValue: 999, maxCarries: 2 },
+      {
+        band: 1,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 1, maxValue: 20, maxCarries: 1 },
+          { nMin: 5, nMax: 6, minValue: 1, maxValue: 30, maxCarries: 1 },
+          { nMin: 7, nMax: 8, minValue: 1, maxValue: 60, maxCarries: 1 },
+          { nMin: 9, nMax: 9, minValue: 1, maxValue: 99, maxCarries: 1 },
+        ],
+      },
+      {
+        band: 2,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 1, maxValue: 50, maxCarries: 1 },
+          { nMin: 5, nMax: 6, minValue: 5, maxValue: 99, maxCarries: 1 },
+          { nMin: 7, nMax: 9, minValue: 10, maxValue: 199, maxCarries: 1 },
+        ],
+      },
+      {
+        band: 3,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 5, maxValue: 99, maxCarries: 1 },
+          { nMin: 5, nMax: 6, minValue: 10, maxValue: 199, maxCarries: 2 },
+          { nMin: 7, nMax: 9, minValue: 10, maxValue: 499, maxCarries: 2 },
+        ],
+      },
+      {
+        band: 4,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 10, maxValue: 199, maxCarries: 2 },
+          { nMin: 5, nMax: 6, minValue: 10, maxValue: 499, maxCarries: 2 },
+          { nMin: 7, nMax: 9, minValue: 10, maxValue: 999, maxCarries: 2 },
+        ],
+      },
     ],
     distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
     retries: { maxAttempts: 100 },
   },
 };
 
-/** tuningV1 with band 1's maxValue replaced. */
+/** tuningV1 with the maxValue of band 1's n = 3 range (its first) replaced. */
 function withBand1Max(maxValue: number): typeof tuningV1 {
   const [band1, ...rest] = tuningV1.generation.bands;
-  return { ...tuningV1, generation: { ...tuningV1.generation, bands: [{ ...band1!, maxValue }, ...rest] } };
+  const [range, ...ranges] = band1!.ranges;
+  return { ...tuningV1, generation: { ...tuningV1.generation, bands: [{ ...band1!, ranges: [{ ...range!, maxValue }, ...ranges] }, ...rest] } };
 }
 
 describe('demoPuzzle', () => {
@@ -52,13 +82,13 @@ describe('demoPuzzle', () => {
 
   it("takes its value range from band 1's maxValue", () => {
     const result = demoPuzzle(tuningV1);
-    expect(result.ok && result.view.maxValue).toBe(99);
-    // The demo puzzle under tuning v1 (band 1: 1..99, at most one carry).
+    expect(result.ok && result.view.maxValue).toBe(20);
+    // The demo puzzle under tuning v1 (band 1 at n 3: 1..20, at most one carry).
     expect(result.ok && result.view.cells.map((c) => c.text)).toMatchInlineSnapshot(`
       [
-        "35",
-        "95",
-        "60",
+        "3",
+        "10",
+        "7",
       ]
     `);
   });
@@ -100,7 +130,8 @@ describe('demoPuzzle', () => {
   });
 
   it("returns specFor's error when the tuning's n range excludes 3", () => {
-    const noThree = { ...tuningV1, generation: { ...tuningV1.generation, n: { min: 4, max: 9 } } };
+    const bands = [{ band: 1, ranges: [{ nMin: 4, nMax: 9, minValue: 1, maxValue: 99, maxCarries: 1 }] }];
+    const noThree = { ...tuningV1, generation: { ...tuningV1.generation, n: { min: 4, max: 9 }, bands } };
     const result = demoPuzzle(noThree);
     expect(!result.ok && result.error.code).toBe('invalid-spec');
   });

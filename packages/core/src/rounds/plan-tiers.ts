@@ -17,6 +17,13 @@ import { childNodeId, compareTopDown, topNodeId } from './round-node-id';
 /** Plan-time realisations of one upper-tier node before falling back to its parent. */
 export const NODE_PLAN_ATTEMPTS = 16;
 
+/**
+ * Realisations an unconstrained top may draw in all. Draws holding a cell below
+ * the children's contract floor are discarded without counting toward
+ * NODE_PLAN_ATTEMPTS (they can never plan), up to this many draws in total.
+ */
+export const TOP_DRAW_LIMIT = 256;
+
 /** Candidate top puzzles searched for a fixed top cell (OQ-4). */
 export const FIXED_TOP_ATTEMPTS = 64;
 
@@ -140,20 +147,41 @@ function planUpper(ctx: Context, node: NodeId, contract: number): Outcome {
 
 const LEAF_RULE = `every leaf contract must realise in band ${LEAF_CHECK_BAND}`;
 
-/** Plans the top node, unconstrained in the starting band, and everything below it. */
+/**
+ * Plans the top node, unconstrained in the starting band, and everything below it:
+ * up to NODE_PLAN_ATTEMPTS counted draws (an unrealisable draw counts and moves on to
+ * the next stream, as in planUpper; a draw below the contract floor doesn't count),
+ * within TOP_DRAW_LIMIT draws in all.
+ */
 function planFreeTop(ctx: Context, top: NodeId): Outcome {
   const spec = specAt(ctx, ctx.startBand);
   if (!spec.ok) return hard(spec.error);
-  for (let attempt = 0; attempt < NODE_PLAN_ATTEMPTS; attempt += 1) {
+  const floor = contractFloor(ctx.operator, top.tier - 1);
+  let counted = 0;
+  let unrealisable = 0;
+  let lastUnrealisable = '';
+  for (let attempt = 0; attempt < TOP_DRAW_LIMIT && counted < NODE_PLAN_ATTEMPTS; attempt += 1) {
     const result = realise(attemptSeed(ctx.roundSeed, attempt), top, spec.value, ctx.versions);
     if (!result.ok) {
-      return result.error.code === 'unrealisable' ? fail(`the top puzzle is unrealisable in start band ${ctx.startBand}: ${result.error.message}`) : hard(result.error);
+      if (result.error.code !== 'unrealisable') return hard(result.error);
+      // As in planUpper: an unrealisable draw spends an attempt; the next has its own stream.
+      counted += 1;
+      unrealisable += 1;
+      lastUnrealisable = result.error.message;
+      continue;
     }
+    // A top with a cell below the floor can never plan: discard it uncounted.
+    if (result.value.cells.some((c) => c.n < floor)) continue;
+    counted += 1;
     const children = planChildren(ctx, top, result.value);
     if (children.ok) return { ok: true, nodes: [{ nodeId: top, puzzle: result.value }, ...children.nodes] };
     if (children.hard) return children;
   }
-  return fail(`none of ${NODE_PLAN_ATTEMPTS} top puzzles had every child plannable (${LEAF_RULE})`);
+  if (counted === 0) return fail(`none of ${TOP_DRAW_LIMIT} top puzzles had every cell at least ${floor}, the smallest contract tier ${top.tier - 1} can take`);
+  if (unrealisable === counted) return fail(`the top puzzle is unrealisable in start band ${ctx.startBand} (${counted} attempts): ${lastUnrealisable}`);
+  const realised = counted - unrealisable;
+  const skipped = unrealisable === 0 ? '' : `; ${unrealisable} more were unrealisable`;
+  return fail(`none of ${realised} top puzzles with every cell at least ${floor} had every child plannable (${LEAF_RULE}${skipped})`);
 }
 
 /**
@@ -207,7 +235,7 @@ function planFixedTop(ctx: Context, top: NodeId, childIndex: number, value: numb
  *
  * A node with an unplannable child is re-planned from its next attempt seed; when
  * its attempts run out the failure falls back to its parent, and at the top it is
- * `unplannable`. Every loop is bounded (NODE_PLAN_ATTEMPTS, FIXED_TOP_ATTEMPTS, n).
+ * `unplannable`. Every loop is bounded (NODE_PLAN_ATTEMPTS, TOP_DRAW_LIMIT, FIXED_TOP_ATTEMPTS, n).
  *
  * Pure and deterministic (AD-3): same inputs, same plan. Never throws on bad input.
  */

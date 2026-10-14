@@ -10,7 +10,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { parseTuning, type Puzzle, realise, specFor, versionsFor } from '../packages/core/src/index.ts';
+import { deriveSeed, parseTuning, planRound, type Puzzle, realise, realiseRoundNode, specFor, versionsFor } from '../packages/core/src/index.ts';
 import { TUNING_DIR } from './tuning-content.mjs';
 
 const parsed = parseTuning(JSON.parse(readFileSync(join(TUNING_DIR, '1.json'), 'utf8')));
@@ -72,6 +72,51 @@ describe('generation under content/tuning/1.json', () => {
         best = Math.min(best, performance.now() - started);
       }
       expect(best).toBeLessThan(10);
+    }
+  });
+});
+
+// Number ranges depend on puzzle size (epic Notes, 2026-10-14): new players start at
+// n = 3, so band 1 there keeps easy numbers. Checked on realised puzzles, not just on
+// the tuning's declared range, so a resolution bug in specFor would show up here.
+describe('band 1 at n 3 under content/tuning/1.json stays within 1..20', () => {
+  const EASY_MAX = 20;
+  const SAMPLE = 10_000;
+
+  it.each(tuning.generation.operators)('%s: 10,000 band-1 puzzles, every value in 1..20', (operator) => {
+    const spec = specFor(tuning, { n: 3, operator, band: 1 });
+    if (!spec.ok) throw new Error(spec.error.message);
+    expect(spec.value.band.maxValue).toBeLessThanOrEqual(EASY_MAX);
+    for (let i = 0; i < SAMPLE; i += 1) {
+      const result = realise((i * 2654435761) >>> 0, { tier: 1 + (i % 3), index: i }, spec.value, versions);
+      expect(result.ok, result.ok ? '' : result.error.message).toBe(true);
+      if (!result.ok) continue;
+      expect(result.value.servedBand).toBe(1);
+      for (const c of result.value.cells) {
+        expect(c.n).toBeGreaterThanOrEqual(1);
+        expect(c.n).toBeLessThanOrEqual(EASY_MAX);
+      }
+    }
+  });
+
+  it.each(tuning.generation.operators)('%s: Classic and Tower rounds at n 3, every planned cell and band-1 leaf in 1..20', (operator) => {
+    for (const type of ['classic', 'tower'] as const) {
+      for (let ordinal = 0; ordinal < 100; ordinal += 1) {
+        const plan = planRound({ type, n: 3, operator }, tuning, deriveSeed(20261014, ordinal), versions);
+        expect(plan.ok, plan.ok ? '' : plan.error.message).toBe(true);
+        if (!plan.ok) continue;
+        const values: number[] = [];
+        for (const node of plan.value.nodes) {
+          if (node.puzzle) values.push(...node.puzzle.cells.map((c) => c.n));
+          else {
+            const leaf = realiseRoundNode(plan.value, node.nodeId, 1, tuning);
+            expect(leaf.ok, leaf.ok ? '' : leaf.error.message).toBe(true);
+            if (leaf.ok) values.push(...leaf.value.cells.map((c) => c.n));
+          }
+        }
+        expect(Math.min(...values)).toBeGreaterThanOrEqual(1);
+        expect(Math.max(...values)).toBeLessThanOrEqual(EASY_MAX);
+      }
     }
   });
 });

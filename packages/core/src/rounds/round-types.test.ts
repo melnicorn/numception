@@ -5,6 +5,7 @@ import { deriveSeed } from '../random/derive-seed';
 import { specFor } from '../spec/spec-for';
 import { parseTuning } from '../tuning/parse-tuning';
 import type { TuningConfig } from '../tuning/tuning-config';
+import { attemptSeed } from './attempt-seed';
 import { roundPlanProblems } from './plan-problems';
 import type { PlanRequest, RoundPlan } from './round-plan';
 import { planRound, realiseRoundNode, ROUND_TYPES } from './round-types';
@@ -18,10 +19,39 @@ const TUNING_JSON = {
     operators: ['add', 'sub'],
     n: { min: 3, max: 9 },
     bands: [
-      { band: 1, minValue: 1, maxValue: 99, maxCarries: 1 },
-      { band: 2, minValue: 10, maxValue: 199, maxCarries: 1 },
-      { band: 3, minValue: 10, maxValue: 499, maxCarries: 2 },
-      { band: 4, minValue: 10, maxValue: 999, maxCarries: 2 },
+      {
+        band: 1,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 1, maxValue: 20, maxCarries: 1 },
+          { nMin: 5, nMax: 6, minValue: 1, maxValue: 30, maxCarries: 1 },
+          { nMin: 7, nMax: 8, minValue: 1, maxValue: 60, maxCarries: 1 },
+          { nMin: 9, nMax: 9, minValue: 1, maxValue: 99, maxCarries: 1 },
+        ],
+      },
+      {
+        band: 2,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 1, maxValue: 50, maxCarries: 1 },
+          { nMin: 5, nMax: 6, minValue: 5, maxValue: 99, maxCarries: 1 },
+          { nMin: 7, nMax: 9, minValue: 10, maxValue: 199, maxCarries: 1 },
+        ],
+      },
+      {
+        band: 3,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 5, maxValue: 99, maxCarries: 1 },
+          { nMin: 5, nMax: 6, minValue: 10, maxValue: 199, maxCarries: 2 },
+          { nMin: 7, nMax: 9, minValue: 10, maxValue: 499, maxCarries: 2 },
+        ],
+      },
+      {
+        band: 4,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 10, maxValue: 199, maxCarries: 2 },
+          { nMin: 5, nMax: 6, minValue: 10, maxValue: 499, maxCarries: 2 },
+          { nMin: 7, nMax: 9, minValue: 10, maxValue: 999, maxCarries: 2 },
+        ],
+      },
     ],
     distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
     retries: { maxAttempts: 100 },
@@ -112,10 +142,10 @@ describe('RoundType.realise (lazy leaves, AD-4)', () => {
   });
 
   it('realises a leaf in the requested band, recording a clamp when that band cannot host the contract', () => {
-    // Bands 2..4 start at 10, so a contract below 10 is served by band 1.
+    // At n 7..9 bands 2..4 start at 10, so a contract below 10 is served by band 1.
     let seen = { hosted: false, clamped: false };
     for (let ordinal = 0; ordinal < 20 && !(seen.hosted && seen.clamped); ordinal += 1) {
-      const q = plan({ type: 'classic', n: 4, operator: 'sub' }, deriveSeed(3, ordinal));
+      const q = plan({ type: 'classic', n: 7, operator: 'sub' }, deriveSeed(3, ordinal));
       for (const leaf of q.nodes.filter((x) => x.nodeId.tier === 1)) {
         const result = realiseRoundNode(q, leaf.nodeId, 3, tuning);
         expect(result.ok).toBe(true);
@@ -134,12 +164,12 @@ describe('RoundType.realise (lazy leaves, AD-4)', () => {
   });
 
   it("serves the planner's own band-1 puzzle when the requested band and those between can't host the contract", () => {
-    // Bands 2..4 start at 10, so a leaf contract below 10 forces the band-1 fallback.
+    // At n 7..9 bands 2..4 start at 10, so a leaf contract below 10 forces the band-1 fallback.
     let checked = 0;
     for (let ordinal = 0; ordinal < 20; ordinal += 1) {
-      const q = plan({ type: 'tower', n: 5, operator: 'add' }, deriveSeed(4, ordinal));
+      const q = plan({ type: 'tower', n: 7, operator: 'add' }, deriveSeed(4, ordinal));
       for (const leaf of q.nodes.filter((x) => x.nodeId.tier === 1 && x.contract! < 10)) {
-        const spec = specFor(tuning, { n: 5, operator: 'add', band: 1, contract: leaf.contract! });
+        const spec = specFor(tuning, { n: 7, operator: 'add', band: 1, contract: leaf.contract! });
         if (!spec.ok) throw new Error(spec.error.message);
         // Exactly the planner's check: the leaf's fresh stream, the band-1 spec.
         const planned = realise(q.roundSeed, leaf.nodeId, spec.value, versions);
@@ -222,7 +252,8 @@ describe('bad requests', () => {
   });
 
   it('reports an operator or n the tuning does not enable as a spec error', () => {
-    const subOnly = tuningOf({ ...TUNING_JSON, generation: { ...TUNING_JSON.generation, operators: ['sub'], n: { min: 3, max: 6 } } });
+    const bands = [{ band: 1, ranges: [{ nMin: 3, nMax: 6, minValue: 1, maxValue: 99, maxCarries: 1 }] }];
+    const subOnly = tuningOf({ ...TUNING_JSON, generation: { ...TUNING_JSON.generation, operators: ['sub'], n: { min: 3, max: 6 }, bands } });
     expect(planRound({ type: 'classic', n: 4, operator: 'add' }, subOnly, seed, versions)).toMatchObject({ ok: false, error: { code: 'invalid-spec' } });
     expect(planRound({ type: 'classic', n: 7, operator: 'sub' }, subOnly, seed, versions)).toMatchObject({ ok: false, error: { code: 'invalid-spec' } });
   });
@@ -245,8 +276,8 @@ describe('unplannable tunings', () => {
       generation: {
         ...TUNING_JSON.generation,
         bands: [
-          { band: 1, minValue: 1, maxValue: 3, maxCarries: 0 },
-          { band: 2, minValue: 1, maxValue: 99, maxCarries: 1 },
+          { band: 1, ranges: [{ nMin: 3, nMax: 9, minValue: 1, maxValue: 3, maxCarries: 0 }] },
+          { band: 2, ranges: [{ nMin: 3, nMax: 9, minValue: 1, maxValue: 99, maxCarries: 1 }] },
         ],
       },
     });
@@ -256,22 +287,72 @@ describe('unplannable tunings', () => {
         const result = planRound({ type, n: 4, operator, band: 2 }, cramped, 12345, versions);
         expect(Date.now() - started).toBeLessThan(1000);
         expect(result).toMatchObject({ ok: false, error: { code: 'unplannable' } });
-        if (!result.ok) expect(result.error.message).toMatch(/top puzzles had every child plannable \(every leaf contract must realise in band 1\)/);
+        if (!result.ok) expect(result.error.message).toMatch(/top puzzles with every cell at least \d+ had every child plannable \(every leaf contract must realise in band 1\)/);
       }
     }
   });
 
   it('says so when the top itself is unrealisable in the start band', () => {
-    const tooNarrow = tuningOf({ ...TUNING_JSON, generation: { ...TUNING_JSON.generation, bands: [{ band: 1, minValue: 1, maxValue: 6, maxCarries: 0 }] } });
+    const tooNarrow = tuningOf({ ...TUNING_JSON, generation: { ...TUNING_JSON.generation, bands: [{ band: 1, ranges: [{ nMin: 3, nMax: 9, minValue: 1, maxValue: 6, maxCarries: 0 }] }] } });
     const result = planRound({ type: 'classic', n: 9, operator: 'add' }, tooNarrow, 1, versions);
     expect(result).toMatchObject({ ok: false, error: { code: 'unplannable' } });
     if (!result.ok) expect(result.error.message).toMatch(/the top puzzle is unrealisable in start band 1/);
   });
 
+  it('discards top draws with a cell below the contract floor without spending an attempt', () => {
+    // Tower add at n 3 in 1..20: only about 1 top in 8 has both addends >= 7 (the
+    // tier-2 floor), so 16 counted draws would leave about 1 round in 8 unplannable.
+    const easy = tuningOf({
+      ...TUNING_JSON,
+      generation: { ...TUNING_JSON.generation, bands: [{ band: 1, ranges: [{ nMin: 3, nMax: 9, minValue: 1, maxValue: 20, maxCarries: 1 }] }] },
+    });
+    for (let ordinal = 0; ordinal < 100; ordinal += 1) {
+      const result = planRound({ type: 'tower', n: 3, operator: 'add' }, easy, deriveSeed(5, ordinal), versions);
+      expect(result.ok, result.ok ? '' : result.error.message).toBe(true);
+      if (result.ok) expect(roundPlanProblems(result.value, easy)).toEqual([]);
+    }
+  });
+
+  it('moves on to the next top draw when one is unrealisable, as for lower tiers', () => {
+    // One realisation attempt per draw at n 7 in 1..30: some top draws are unrealisable.
+    const tight = tuningOf({
+      ...TUNING_JSON,
+      generation: {
+        ...TUNING_JSON.generation,
+        bands: [{ band: 1, ranges: [{ nMin: 3, nMax: 9, minValue: 1, maxValue: 30, maxCarries: 1 }] }],
+        retries: { maxAttempts: 1 },
+      },
+    });
+    const top = { tier: 2, index: 0 };
+    const spec = specFor(tight, { n: 7, operator: 'add', band: 1 });
+    if (!spec.ok) throw new Error(spec.error.message);
+    let checked = 0;
+    for (let roundSeed = 0; roundSeed < 300 && checked < 3; roundSeed += 1) {
+      if (realise(attemptSeed(roundSeed, 0), top, spec.value, versions).ok) continue;
+      const result = planRound({ type: 'classic', n: 7, operator: 'add' }, tight, roundSeed, versions);
+      expect(result.ok, result.ok ? '' : result.error.message).toBe(true);
+      if (!result.ok) continue;
+      expect(result.value.nodes[0]!.puzzle!.seed).not.toBe(attemptSeed(roundSeed, 0));
+      expect(roundPlanProblems(result.value, tight)).toEqual([]);
+      checked += 1;
+    }
+    expect(checked).toBe(3);
+  });
+
+  it('says when no top draw clears the contract floor', () => {
+    // Tower add needs top cells >= 7; in 1..8 no triple a + b = c has a, b >= 7.
+    const low = tuningOf({ ...TUNING_JSON, generation: { ...TUNING_JSON.generation, bands: [{ band: 1, ranges: [{ nMin: 3, nMax: 9, minValue: 1, maxValue: 8, maxCarries: 1 }] }] } });
+    const started = Date.now();
+    const result = planRound({ type: 'tower', n: 3, operator: 'add' }, low, 1, versions);
+    expect(Date.now() - started).toBeLessThan(1000);
+    expect(result).toMatchObject({ ok: false, error: { code: 'unplannable' } });
+    if (!result.ok) expect(result.error.message).toMatch(/none of 256 top puzzles had every cell at least 7/);
+  });
+
   it('returns unplannable for the first POC bands (1..20, no carries) at Tower add n 9', () => {
     const narrow = tuningOf({
       ...TUNING_JSON,
-      generation: { ...TUNING_JSON.generation, bands: [{ band: 1, minValue: 1, maxValue: 20, maxCarries: 0 }] },
+      generation: { ...TUNING_JSON.generation, bands: [{ band: 1, ranges: [{ nMin: 3, nMax: 9, minValue: 1, maxValue: 20, maxCarries: 0 }] }] },
     });
     expect(planRound({ type: 'tower', n: 9, operator: 'add' }, narrow, 1, versions)).toMatchObject({ ok: false, error: { code: 'unplannable' } });
   });

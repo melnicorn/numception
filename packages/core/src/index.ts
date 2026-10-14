@@ -10,7 +10,7 @@ export { type Rational, rational, serialiseRational } from './numbers/rational';
 export { displayValue } from './numbers/display-value';
 
 export { MAX_TUNING_VALUE } from './tuning/max-tuning-value';
-export { MAX_ATTEMPTS, MAX_N, MIN_N, type TuningBand, type TuningConfig, TuningConfigSchema } from './tuning/tuning-config';
+export { MAX_ATTEMPTS, MAX_N, MIN_N, type TuningBand, type TuningBandRange, type TuningConfig, TuningConfigSchema } from './tuning/tuning-config';
 export { parseTuning } from './tuning/parse-tuning';
 
 export type { NodeId } from './generator/node-id';

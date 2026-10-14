@@ -14,10 +14,39 @@ const tuningV1 = {
     operators: ['add', 'sub'],
     n: { min: 3, max: 9 },
     bands: [
-      { band: 1, minValue: 1, maxValue: 99, maxCarries: 1 },
-      { band: 2, minValue: 10, maxValue: 199, maxCarries: 1 },
-      { band: 3, minValue: 10, maxValue: 499, maxCarries: 2 },
-      { band: 4, minValue: 10, maxValue: 999, maxCarries: 2 },
+      {
+        band: 1,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 1, maxValue: 20, maxCarries: 1 },
+          { nMin: 5, nMax: 6, minValue: 1, maxValue: 30, maxCarries: 1 },
+          { nMin: 7, nMax: 8, minValue: 1, maxValue: 60, maxCarries: 1 },
+          { nMin: 9, nMax: 9, minValue: 1, maxValue: 99, maxCarries: 1 },
+        ],
+      },
+      {
+        band: 2,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 1, maxValue: 50, maxCarries: 1 },
+          { nMin: 5, nMax: 6, minValue: 5, maxValue: 99, maxCarries: 1 },
+          { nMin: 7, nMax: 9, minValue: 10, maxValue: 199, maxCarries: 1 },
+        ],
+      },
+      {
+        band: 3,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 5, maxValue: 99, maxCarries: 1 },
+          { nMin: 5, nMax: 6, minValue: 10, maxValue: 199, maxCarries: 2 },
+          { nMin: 7, nMax: 9, minValue: 10, maxValue: 499, maxCarries: 2 },
+        ],
+      },
+      {
+        band: 4,
+        ranges: [
+          { nMin: 3, nMax: 4, minValue: 10, maxValue: 199, maxCarries: 2 },
+          { nMin: 5, nMax: 6, minValue: 10, maxValue: 499, maxCarries: 2 },
+          { nMin: 7, nMax: 9, minValue: 10, maxValue: 999, maxCarries: 2 },
+        ],
+      },
     ],
     distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
     retries: { maxAttempts: 100 },
@@ -99,7 +128,7 @@ describe('inspectRound', () => {
       expect(leaf.clamped).toBe(leaf.servedBand !== 4);
       expect(leaf.servedBand).toBeLessThanOrEqual(4);
     }
-    // Leaf contracts fit band 1 (1..99), and band 4 starts at 10, so some serve lower.
+    // Leaf contracts fit band 1 (1..30 at n 5), and band 4 starts at 10, so some serve lower.
     expect(leaves.some((l) => l.clamped)).toBe(true);
     expectContractsHold(v);
     // Upper tiers are the planned puzzles whatever the leaf band.

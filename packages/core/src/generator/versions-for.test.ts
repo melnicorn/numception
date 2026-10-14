@@ -3,7 +3,7 @@ import type { TuningConfig } from '../tuning/tuning-config';
 import { versionsFor } from './versions-for';
 
 function tuning(tuningVersion: number): TuningConfig {
-  return { kind: 'TuningConfig', schemaVersion: 1, tuningVersion, generation: { operators: ['add'], n: { min: 3, max: 3 }, bands: [{ band: 1, minValue: 1, maxValue: 20, maxCarries: 0 }], distractors: { nearMissDelta: 1, nearMissShare: 0 }, retries: { maxAttempts: 1 } } };
+  return { kind: 'TuningConfig', schemaVersion: 1, tuningVersion, generation: { operators: ['add'], n: { min: 3, max: 3 }, bands: [{ band: 1, ranges: [{ nMin: 3, nMax: 3, minValue: 1, maxValue: 20, maxCarries: 0 }] }], distractors: { nearMissDelta: 1, nearMissShare: 0 }, retries: { maxAttempts: 1 } } };
 }
 
 describe('versionsFor', () => {

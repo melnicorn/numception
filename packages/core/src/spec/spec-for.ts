@@ -29,8 +29,14 @@ export function nearMissCountFor(nearMissShare: number, n: number): number {
   return Math.min(slots, Math.max(0, count));
 }
 
-function band(b: TuningBand): PuzzleBand {
-  return { band: b.band, minValue: b.minValue, maxValue: b.maxValue, maxCarries: b.maxCarries };
+/**
+ * Band `b` resolved for puzzle size `n`: the generator's ordinary band, from the
+ * range covering `n`. Undefined only when no range covers `n`, which a validated
+ * tuning rules out for every n in its `n.min..n.max`.
+ */
+function bandAt(b: TuningBand, n: number): PuzzleBand | undefined {
+  const r = b.ranges.find((range) => range.nMin <= n && n <= range.nMax);
+  return r === undefined ? undefined : { band: b.band, minValue: r.minValue, maxValue: r.maxValue, maxCarries: r.maxCarries };
 }
 
 function invalid(message: string): { readonly ok: false; readonly error: DomainError } {
@@ -39,8 +45,10 @@ function invalid(message: string): { readonly ok: false; readonly error: DomainE
 
 /**
  * The PuzzleSpec for `request` under a validated `tuning` (AD-7): the requested
- * band, every lower band as a fallback (nearest first), the tuning's near-miss
- * delta and retry bound, and the quantised near-miss count (`nearMissCountFor`).
+ * band, every lower band as a fallback (nearest first), each resolved to its range
+ * for the request's n (so the generator sees ordinary bands), the tuning's
+ * near-miss delta and retry bound, and the quantised near-miss count
+ * (`nearMissCountFor`).
  *
  * An `invalid-spec` error when n is outside the tuning's n range, the operator
  * isn't enabled, the band doesn't exist, or the contract isn't a safe integer.
@@ -63,14 +71,18 @@ export function specFor(tuning: TuningConfig, request: SpecRequest): Result<Puzz
   if (contract !== undefined && !Number.isSafeInteger(contract)) {
     return invalid(`contract must be absent or a safe integer, got ${String(contract)}`);
   }
+  const resolved: PuzzleBand[] = [];
+  for (const b of g.bands.filter((x) => x.band <= requested.band).sort((x, y) => y.band - x.band)) {
+    const at = bandAt(b, n);
+    if (at === undefined) return invalid(`band ${b.band} has no range for n ${n} (tuning ${tuning.tuningVersion})`);
+    resolved.push(at);
+  }
+  const [band, ...fallbackBands] = resolved as [PuzzleBand, ...PuzzleBand[]];
   return ok({
     n,
     operator,
-    band: band(requested),
-    fallbackBands: g.bands
-      .filter((b) => b.band < requested.band)
-      .sort((x, y) => y.band - x.band)
-      .map(band),
+    band,
+    fallbackBands,
     ...(contract === undefined ? {} : { contract }),
     nearMissCount: nearMissCountFor(g.distractors.nearMissShare, n),
     nearMissDelta: g.distractors.nearMissDelta,

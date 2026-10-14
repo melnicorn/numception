@@ -6,8 +6,8 @@
     "operators": ["add", "sub"],
     "n": { "min": 3, "max": 9 },
     "bands": [
-      { "band": 1, "minValue": 1, "maxValue": 1000, "maxCarries": 2 },
-      { "band": 2, "minValue": 100, "maxValue": 9999, "maxCarries": 3 }
+      { "band": 1, "ranges": [{ "nMin": 3, "nMax": 9, "minValue": 1, "maxValue": 1000, "maxCarries": 2 }] },
+      { "band": 2, "ranges": [{ "nMin": 3, "nMax": 9, "minValue": 100, "maxValue": 9999, "maxCarries": 3 }] }
     ],
     "distractors": { "nearMissDelta": 3, "nearMissShare": 1 },
     "retries": { "maxAttempts": 50 }
