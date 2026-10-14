@@ -8,5 +8,7 @@
  *   beside the game rather than inside it.
  * - 2: the game gains `softMissLineSeen` and each round its soft-miss cue
  *   (`softMiss`) and `guideLine` (ticket 6, FR-4).
+ * - 3: each round gains its theme (`themeId`) and the theme of the round it
+ *   followed (`previousThemeId`) (AD-15, FR-25).
  */
-export const SAVE_FORMAT_VERSION = 2;
+export const SAVE_FORMAT_VERSION = 3;

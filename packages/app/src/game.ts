@@ -10,7 +10,9 @@ import {
   type PlayVM,
   selectView,
   step,
+  type ThemeCatalog,
   type TuningConfig,
+  type TuningsByVersion,
 } from '@numception/core';
 import { isoDates } from './iso-dates';
 
@@ -20,9 +22,19 @@ export type EntropySource = () => CommandContext['entropy'];
 /** Called synchronously after every dispatch with the new view, the events that produced it, and the command dispatched. */
 export type GameListener = (view: PlayVM | null, events: readonly GameEvent[], command: Command) => void;
 
-/** What the composition root injects: the active tuning, the entropy source and the clock (app reads no clock itself). */
+/**
+ * What the composition root injects: the active tuning, the theme catalogue (AD-15;
+ * `loadThemeCatalog`, or core's built-in Kiln when omitted), the entropy source and
+ * the clock (app reads no clock itself).
+ */
 export type GameOptions = {
   readonly tuning: TuningConfig;
+  readonly themes?: ThemeCatalog;
+  /**
+   * Every bundled tuning by version (AD-7), so a restored round pinned to an older
+   * tuning keeps realising its leaves under it; new rounds use `tuning`.
+   */
+  readonly tunings?: TuningsByVersion;
   readonly entropy: EntropySource;
   readonly now: () => number;
 };
@@ -42,9 +54,9 @@ export type Game = {
 
 /** Creates the game store, starting from no profiles; dispatch `StartSession` to begin. */
 export function createGame(options: GameOptions): Game {
-  const { tuning, entropy, now } = options;
+  const { tuning, entropy, now, themes, tunings } = options;
   let state: AppState = initialAppState();
-  let view: PlayVM | null = selectView(state, tuning);
+  let view: PlayVM | null = selectView(state, tuning, themes);
   const listeners = new Set<GameListener>();
 
   function context(): CommandContext {
@@ -54,9 +66,9 @@ export function createGame(options: GameOptions): Game {
 
   return {
     dispatch(command) {
-      const result = step(state, { command, ctx: context() }, tuning);
+      const result = step(state, { command, ctx: context() }, tuning, themes, tunings);
       state = result.state;
-      view = selectView(state, tuning);
+      view = selectView(state, tuning, themes);
       for (const listener of [...listeners]) listener(view, result.events, command);
       return result.events;
     },

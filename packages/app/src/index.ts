@@ -31,6 +31,7 @@ export {
   inspectRound,
   type RoundInspectorView,
 } from './inspect-round';
+export { type LoadedThemeCatalog, loadThemeCatalog, type RejectedTheme } from './theme-catalog';
 export { type RoundInspectorOptions, roundInspectorOptions, type TuningInspectorOptions } from './round-inspector-options';
 
 // For the adapters and the composition root: render and ui may import core only as
@@ -43,7 +44,6 @@ export {
   type GameEvent,
   hitTestView,
   KILN_TOKENS,
-  type KilnTokens,
   type LayoutPoint,
   type LayoutPolygon,
   type NodeCellRef,
@@ -57,5 +57,8 @@ export {
   puzzleInView,
   type SoftMissVM,
   tapCommand,
+  type ThemeCatalog,
+  type ThemeTokens,
   type TuningConfig,
+  type TuningsByVersion,
 } from '@numception/core';

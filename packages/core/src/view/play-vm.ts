@@ -3,7 +3,7 @@ import type { LayoutPoint, LayoutPolygon } from '../layout/shape-layout';
 import type { ShapeId } from '../layout/shape-id';
 import type { PresentationKind } from '../presentation/presentation';
 import type { CameraRect } from './camera-rect';
-import type { KilnTokens } from './kiln-tokens';
+import type { ThemeTokens } from '../theme/theme-tokens';
 
 /** One cell as the play view draws it. Geometry is in the layout's unit box (`core/layout`). */
 export type PlayCellVM = {
@@ -55,8 +55,9 @@ export type PlayContextVM = { readonly parent: PlayVM; readonly cellIndex: numbe
  * - `collapse`: `from` (the solved child, fused), `to` (the parent it collapsed
  *   into) and `cellIndex`, the cell of `to` the child fills; `camera.from` is the
  *   child's idle framing inside that cell.
- * - `roundStart`: `from` (the last round's solved top, fused) and `to` (the new
- *   round's first puzzle) for the crossfade; no camera.
+ * - `roundStart`: `from` (the last round's solved top, fused, in its theme) and
+ *   `to` (the new round's first puzzle, in the new theme) for the whole-frame
+ *   theme change between rounds; no camera.
  */
 export type PresentationVM = {
   readonly kind: PresentationKind;
@@ -71,7 +72,7 @@ export type PresentationVM = {
 
 /**
  * The soft-miss cue running (FR-4): the tapped cell `cellIndex` pulses once in
- * Kiln `soft-miss` and a ghost arrow points from it to the answer `answerIndex`;
+ * the theme's `soft-miss` and a ghost arrow points from it to the answer `answerIndex`;
  * `progress` runs 0..1 over the cue's Tick time. It is never a wrong tap: no
  * red, the board never dims, input stays open.
  */
@@ -106,7 +107,8 @@ export type PlayVM = {
   readonly inputLocked: boolean;
   readonly blurred: boolean;
   readonly presentation: PresentationVM;
-  readonly theme: KilnTokens;
+  /** The round's theme (AD-15): every colour, face and size the view is drawn with. */
+  readonly theme: ThemeTokens;
   /** The parent drawn around the node in view (`PlayContextVM`); absent for the round's top. */
   readonly context?: PlayContextVM;
   /** The soft-miss cue while it runs (`SoftMissVM`); absent otherwise, and while blurred. */

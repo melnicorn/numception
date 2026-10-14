@@ -106,7 +106,7 @@ export type LayerLook = {
 
 /**
  * The context style (entry 9): the parent (super-shape) around the puzzle in view
- * is drawn quieter than the puzzle. Its outline is Kiln `line` at `lineAlpha`;
+ * is drawn quieter than the puzzle. Its outline is the theme's `line` at `lineAlpha`;
  * its open tiles and the operator wash are at `tileAlpha`, its fired (solved)
  * tiles at `firedTileAlpha`; numerals on open tiles and the operator glyph are at
  * `numeralAlpha`, answers on fired tiles at `solvedNumeralAlpha`; all numerals at
@@ -233,13 +233,4 @@ export function advanceFromAlpha(p: number): number {
  */
 export function advanceToAlpha(p: number): number {
   return easeOut(ramp(p, 0, 0.5));
-}
-
-/**
- * The round crossfade: the old round fades out as the new one fades in, both over
- * the first half, so from half-way only the new round is drawn and nothing of the
- * old one (its fused top, its answer) shows through the new operator's faint wash.
- */
-export function crossfade(p: number): { readonly from: number; readonly to: number } {
-  return { from: 1 - ramp(p, 0, 0.5), to: ramp(p, 0, 0.5) };
 }

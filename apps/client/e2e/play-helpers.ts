@@ -6,8 +6,12 @@ import { expect, type Page } from '@playwright/test';
 export type Point = [number, number];
 export type NodeId = { tier: number; index: number };
 export type CellView = { index: number; polygon: Point[]; labelPoint: Point; text: string; state: 'unsolved' | 'solved'; enters: NodeId | null };
+/** The theme tokens the view is drawn in (AD-15), as far as the specs read them. */
+export type Theme = { themeId: string; mode: string; surface: string; solvedFill: string; cellFill: string; line: string; number: string };
+
 export type View = {
   nodeId: NodeId;
+  theme: Theme;
   kind: 'puzzle' | 'overview';
   shapeId: string;
   cells: CellView[];
@@ -119,14 +123,27 @@ export async function solve(page: Page): Promise<View> {
   return waitIdle(page);
 }
 
+/** `#RRGGBB` as [r, g, b]. */
+export function rgbOf(color: string): [number, number, number] {
+  const v = Number.parseInt(color.slice(1), 16);
+  return [(v >> 16) & 0xff, (v >> 8) & 0xff, v & 0xff];
+}
+
+/** The largest channel difference between two colours. */
+export function colorDistance(a: readonly number[], b: readonly number[]): number {
+  return Math.max(...a.map((c, i) => Math.abs(c - (b[i] ?? 0))));
+}
+
 /**
  * Screenshots the canvas and reports how much of it is not bare surface: the share
- * of pixels away from the Kiln surface colour, and the share near the fired-tile
- * colour (`cell-solved`). A blank frame scores 0 on both.
+ * of pixels away from the surface colour, and the share near the fired-tile colour
+ * (`cell-solved`), both of `theme` (default: the theme of the view in now). A
+ * blank frame scores 0 on both.
  */
-export async function frameInk(page: Page): Promise<{ ink: number; fired: number }> {
+export async function frameInk(page: Page, theme?: Theme): Promise<{ ink: number; fired: number }> {
+  const t = theme ?? (await view(page)).theme;
   const png = await page.locator('#app canvas').screenshot();
-  return page.evaluate(async (base64) => {
+  return page.evaluate(async ([base64, surface, solved]) => {
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
     const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
     const canvas = document.createElement('canvas');
@@ -136,7 +153,7 @@ export async function frameInk(page: Page): Promise<{ ink: number; fired: number
     if (ctx === null) throw new Error('no 2d context');
     ctx.drawImage(bitmap, 0, 0);
     const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
-    const near = (i: number, rgb: number[], tolerance: number) =>
+    const near = (i: number, rgb: readonly number[], tolerance: number) =>
       Math.abs((data[i] ?? 0) - (rgb[0] ?? 0)) <= tolerance &&
       Math.abs((data[i + 1] ?? 0) - (rgb[1] ?? 0)) <= tolerance &&
       Math.abs((data[i + 2] ?? 0) - (rgb[2] ?? 0)) <= tolerance;
@@ -144,11 +161,11 @@ export async function frameInk(page: Page): Promise<{ ink: number; fired: number
     let fired = 0;
     const pixels = data.length / 4;
     for (let i = 0; i < data.length; i += 4) {
-      if (!near(i, [0xec, 0xe3, 0xd7], 12)) ink += 1;
-      if (near(i, [0xa1, 0x4e, 0x36], 16)) fired += 1;
+      if (!near(i, surface, 12)) ink += 1;
+      if (near(i, solved, 16)) fired += 1;
     }
     return { ink: ink / pixels, fired: fired / pixels };
-  }, png.toString('base64'));
+  }, [png.toString('base64'), rgbOf(t.surface), rgbOf(t.solvedFill)] as const);
 }
 
 /** Waits until the view is in a `kind` beat with progress inside `[min, max]`; returns it. */
@@ -209,10 +226,11 @@ export function parentToView(v: View, point: Point): Point {
   return [own.x + own.width / 2 + (point[0] - cx) / k, own.y + own.height / 2 + (point[1] - cy) / k];
 }
 
-/** The share of pixels in page rect `clip` (CSS px) that are away from the Kiln surface colour. */
+/** The share of pixels in page rect `clip` (CSS px) that are away from the surface colour of the view in now. */
 export async function regionInk(page: Page, clip: Rect): Promise<number> {
+  const surface = rgbOf((await view(page)).theme.surface);
   const png = await page.screenshot({ clip, scale: 'css' });
-  return page.evaluate(async (base64) => {
+  return page.evaluate(async ([base64, [r, g, b]]) => {
     const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
     const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
     const canvas = document.createElement('canvas');
@@ -224,11 +242,11 @@ export async function regionInk(page: Page, clip: Rect): Promise<number> {
     const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
     let ink = 0;
     for (let i = 0; i < data.length; i += 4) {
-      const off = Math.max(Math.abs((data[i] ?? 0) - 0xec), Math.abs((data[i + 1] ?? 0) - 0xe3), Math.abs((data[i + 2] ?? 0) - 0xd7));
+      const off = Math.max(Math.abs((data[i] ?? 0) - r), Math.abs((data[i + 1] ?? 0) - g), Math.abs((data[i + 2] ?? 0) - b));
       if (off > 12) ink += 1;
     }
     return ink / (data.length / 4);
-  }, png.toString('base64'));
+  }, [png.toString('base64'), surface] as const);
 }
 
 /** A unit-box point of the current view in page coordinates. */

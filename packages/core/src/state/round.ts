@@ -25,6 +25,12 @@ import type { NodeKey } from './node-key';
  * - `previousTop`: the solved top puzzle of the round this one followed, null for
  *   a session's first round. View data only (AD-13): the completed round is
  *   dropped, and the `roundStart` crossfade draws its top fading out.
+ * - `themeId`: the theme the round is drawn in (AD-15), chosen by
+ *   `selectPresentation` when the round is created and saved with it, so a resume
+ *   reopens in the same theme.
+ * - `previousThemeId`: the theme of the round this one followed (null for a
+ *   session's first round). View data, like `previousTop`: the `roundStart` beat
+ *   draws the change from it.
  * - `softMiss`: the soft-miss cue running (FR-4), or null. Transient view data:
  *   it changes no puzzle state, locks nothing, belongs to the puzzle tapped
  *   (`nodeId`; navigating away clears it), and `Tick` clears it once it ends.
@@ -45,6 +51,8 @@ export type Round = {
   readonly shownAtMs: number | null;
   readonly nextRoundId: string | null;
   readonly previousTop: Puzzle | null;
+  readonly themeId: string;
+  readonly previousThemeId: string | null;
   readonly softMiss: SoftMissCue | null;
   readonly guideLine: boolean;
 };

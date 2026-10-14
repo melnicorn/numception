@@ -4,6 +4,7 @@
  */
 export type DomainError =
   | { readonly code: 'invalid-tuning'; readonly message: string; readonly issues: readonly string[] }
+  | { readonly code: 'invalid-theme'; readonly message: string; readonly issues: readonly string[] }
   | { readonly code: 'invalid-seed'; readonly message: string }
   | { readonly code: 'invalid-node-id'; readonly message: string }
   | { readonly code: 'invalid-spec'; readonly message: string }

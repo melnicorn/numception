@@ -1,1 +1,1 @@
-Bundled game data: TuningConfig JSON (one per tuningVersion, never deleted), themes, transitions and self-hosted fonts.
+Bundled game data: TuningConfig JSON (one per tuningVersion, never deleted), themes (`themes/<themeId>.json`, each a `Theme` validated by core's `ThemeTokensSchema`; tools/theme-content.test.ts checks them), transitions and self-hosted fonts.

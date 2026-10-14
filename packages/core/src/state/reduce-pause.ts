@@ -1,4 +1,6 @@
+import type { ThemeCatalog } from '../theme/theme-catalog';
 import type { TuningConfig } from '../tuning/tuning-config';
+import type { TuningsByVersion } from '../tuning/tunings-by-version';
 import type { AppState } from './app-state';
 import { completePresentation } from './complete-presentation';
 import type { GameEvent } from './game-event';
@@ -19,10 +21,10 @@ function withReasons(reasons: readonly PauseReason[], added: readonly PauseReaso
  * Emits the beats' events, then `Paused`. Pausing for a reason already present
  * changes nothing.
  */
-export function reducePause(state: AppState, reason: unknown, tuning: TuningConfig): StepResult {
+export function reducePause(state: AppState, reason: unknown, tuning: TuningConfig, themes: ThemeCatalog, tunings: TuningsByVersion): StepResult {
   if (!isPauseReason(reason)) return reject(state, 'Pause', { code: 'invalid-command', message: 'Pause needs a reason: blur, gate, lifecycle or panel' });
   const pauseReasons = withReasons(state.pauseReasons, reason === 'lifecycle' ? ['lifecycle', 'blur'] : [reason]);
-  const completed = completePresentation(state, tuning);
+  const completed = completePresentation(state, tuning, themes, tunings);
   const changed = pauseReasons.length !== state.pauseReasons.length;
   if (!changed && completed.state === state) return { state, events: [] };
   const events: GameEvent[] = [...completed.events];

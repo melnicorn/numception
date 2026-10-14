@@ -63,7 +63,7 @@ describe('serializeGame / parseSave', () => {
     const game = midRound();
     const doc = serializeGame(game, 7);
     expect(doc).toMatchObject({ kind: 'GameSave', schemaVersion: 1, saveFormatVersion: SAVE_FORMAT_VERSION, generation: 7 });
-    expect(SAVE_FORMAT_VERSION).toBe(2);
+    expect(SAVE_FORMAT_VERSION).toBe(3);
     expect(doc.checksum).toBe(saveChecksum({ game }));
     const back = parseSave(JSON.stringify(doc));
     expect(back).toEqual({ ok: true, value: { game, generation: 7, saveFormatVersion: SAVE_FORMAT_VERSION } });
@@ -100,7 +100,7 @@ describe('serializeGame / parseSave', () => {
 
   it('migrates a v1 save (no soft-miss fields) to v2: softMissLineSeen false, no cue, no guide line', () => {
     const game = midRound();
-    const strip = ({ softMiss: _s, guideLine: _g, ...round }: Round) => round;
+    const strip = ({ softMiss: _s, guideLine: _g, themeId: _t, previousThemeId: _p, ...round }: Round) => round;
     const { softMissLineSeen: _seen, ...v1Game } = game;
     const v1Payload = {
       game: { ...v1Game, rounds: { ...game.rounds, byId: Object.fromEntries(Object.entries(game.rounds.byId).map(([id, r]) => [id, strip(r)])) } },
@@ -121,6 +121,41 @@ describe('serializeGame / parseSave', () => {
     const { softMissLineSeen: _seen, ...bad } = game;
     const payload = { game: bad };
     expect(parseSave(JSON.stringify({ ...missing, checksum: saveChecksum(payload), payload }))).toMatchObject({ ok: false, error: { code: 'invalid-save' } });
+  });
+
+  it('migrates a v2 save (no themes) to v3: every round in Kiln', () => {
+    const game = midRound();
+    const v2Game = {
+      ...game,
+      rounds: {
+        ...game.rounds,
+        byId: Object.fromEntries(Object.entries(game.rounds.byId).map(([id, { themeId: _t, previousThemeId: _p, ...r }]) => [id, r])),
+      },
+    };
+    const v2Payload = { game: v2Game };
+    const v2 = { kind: 'GameSave', schemaVersion: 1, saveFormatVersion: 2, generation: 5, checksum: saveChecksum(v2Payload), payload: v2Payload };
+    // Without the 2 → 3 step the v2 game is not loadable at v3.
+    const withoutStep = { version: 3, migrations: { 0: MIGRATIONS[0] as SaveMigration, 1: MIGRATIONS[1] as SaveMigration } };
+    expect(parseSave(JSON.stringify(v2), withoutStep)).toMatchObject({ ok: false, error: { code: 'invalid-save' } });
+    const back = parseSave(JSON.stringify(v2));
+    expect(back).toEqual({ ok: true, value: { game, generation: 5, saveFormatVersion: 2 } });
+    const round = back.ok ? back.value.game.rounds.byId[back.value.game.rounds.activeRoundId ?? ''] : undefined;
+    expect(round).toMatchObject({ themeId: 'kiln', previousThemeId: null });
+    // A round that followed another (it carries the last round's top) followed a Kiln one.
+    const migrated = MIGRATIONS[2]?.({ game: { rounds: { byId: { r: { previousTop: { any: 1 } } } } } });
+    expect(migrated).toEqual({ game: { rounds: { byId: { r: { previousTop: { any: 1 }, themeId: 'kiln', previousThemeId: 'kiln' } } } } });
+  });
+
+  it('keeps the round’s theme across save and load, and rejects a save without one', () => {
+    const game = midRound();
+    const id = game.rounds.activeRoundId ?? '';
+    const moon: GameState = { ...game, rounds: { ...game.rounds, byId: { ...game.rounds.byId, [id]: { ...(game.rounds.byId[id] as Round), themeId: 'moonwater' } } } };
+    const back = parseSave(JSON.stringify(serializeGame(moon, 3)));
+    expect(back.ok && back.value.game.rounds.byId[id]?.themeId).toBe('moonwater');
+    const bad = { ...moon, rounds: { ...moon.rounds, byId: { [id]: { ...(moon.rounds.byId[id] as Round), themeId: '' } } } };
+    const payload = { game: bad };
+    const doc = { ...serializeGame(moon, 3), checksum: saveChecksum(payload), payload };
+    expect(parseSave(JSON.stringify(doc))).toMatchObject({ ok: false, error: { code: 'invalid-save', message: expect.stringMatching(/themeId/) } });
   });
 
   it('walks a multi-step migration path one version at a time, and refuses a gap in it', () => {

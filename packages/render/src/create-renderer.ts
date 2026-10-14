@@ -15,7 +15,6 @@ import {
   collapseToLook,
   contextFadeIn,
   contextLook,
-  crossfade,
   easeOut,
   fusedLook,
   IDLE_LOOK,
@@ -28,6 +27,7 @@ import { blendScale, sizingTransform } from './numeral-size';
 import { paintView } from './paint-view';
 import type { RenderPort } from './render-port';
 import { resumeButton } from './resume-button';
+import { blendTheme, inTheme, roundChangeLook, scaleAbout } from './round-change';
 import { ScenePool } from './scene-pool';
 import { ARROW_WIDTH_PX, arrowAlpha, ghostArrow, pulseLook } from './soft-miss-motion';
 import { contextTransform, fitRect, idleTransform, nestTransform, shapeBox, toScreen, toUnit, type ViewTransform } from './view-transform';
@@ -45,12 +45,18 @@ const PRESS_MS = 220;
  */
 export const BLUR_VEIL_ALPHA = 0.86;
 
-/** The surface drawn before the first view (Kiln surface). */
+/** The surface drawn before the first view (Kiln surface, the first-run theme). */
 const DEFAULT_SURFACE = '#ECE3D7';
 
 export type RendererOptions = {
   /** Called on pointer up over a cell (after `hitTest`); never for shared edges, the operator or outside. */
   readonly onTap: (ref: NodeCellRef) => void;
+  /**
+   * Called with the surface colour (`#RRGGBB`) whenever the frame's surface
+   * changes, every frame of a round change included, so the page around the canvas
+   * can follow it and the whole screen changes theme.
+   */
+  readonly onSurface?: (color: string) => void;
 };
 
 /** The PixiJS renderer, plus `pagePoint` for dev and playtest test hooks. */
@@ -91,7 +97,23 @@ export function createRenderer(options: RendererOptions): Renderer {
   let contextLost = false;
   let framesRendered = 0;
   let rebuilds = 0;
+  let surfaceShown: string | undefined;
+  let surfacePending: string | undefined;
   const activePointers = new Set<number>();
+
+  /** Sets the frame's background; the page hears of a change once the frame is presented (`flushSurface`). */
+  function setSurface(color: string): void {
+    if (app !== undefined) app.renderer.background.color = color;
+    surfacePending = color;
+  }
+
+  /** After a frame is rendered: tells the page its new surface, so the page and canvas change together. */
+  function flushSurface(): void {
+    const color = surfacePending;
+    if (color === undefined || color === surfaceShown) return;
+    surfaceShown = color;
+    options.onSurface?.(color);
+  }
 
   function size(): { width: number; height: number } {
     return { width: app?.renderer.screen.width ?? 0, height: app?.renderer.screen.height ?? 0 };
@@ -107,8 +129,8 @@ export function createRenderer(options: RendererOptions): Renderer {
     if (app === undefined || pool === undefined) return;
     pool.begin();
     const theme = vm?.theme;
-    app.renderer.background.color = theme?.surface ?? DEFAULT_SURFACE;
     if (vm === null || theme === undefined) {
+      setSurface(DEFAULT_SURFACE);
       transform = undefined;
       pool.end();
       return;
@@ -132,11 +154,18 @@ export function createRenderer(options: RendererOptions): Renderer {
       const parentRest = contextTransform(restOf(view), view);
       if (context === undefined || parentT === undefined || parentRest === undefined || alpha <= 0) return;
       const fade = cellFade ?? { [context.cellIndex]: 0 };
-      paintView(pool as ScenePool, context.parent, parentT, sizingTransform(parentT, parentRest, followCamera), contextLook(fade, alpha), width);
+      paintView(pool as ScenePool, context.parent, parentT, sizingTransform(parentT, parentRest, followCamera), contextLook(fade, alpha), width, {
+        rest: parentRest,
+        quiet: 1,
+      });
     };
     const p = vm.presentation;
     const to = p.to ?? vm;
     const { from, camera } = p;
+    const roundChange = p.kind === 'roundStart' && from !== undefined ? roundChangeLook(p.progress) : undefined;
+    // In a round change the whole frame moves from the old round's theme to the new one's.
+    const frameTheme = roundChange === undefined || from === undefined ? theme : blendTheme(from.theme, to.theme, roundChange.color);
+    setSurface(frameTheme.surface);
     if (p.kind === 'solve' && p.cellIndex !== null) {
       paintContext(vm, rest, 1, false);
       paintView(pool, vm, rest, rest, solveLook(p.cellIndex, p.progress), width);
@@ -153,8 +182,11 @@ export function createRenderer(options: RendererOptions): Renderer {
         // Numerals start at the size the context parent had and settle to the rest size.
         const fromParentRest = contextTransform(restOf(from), from) ?? restOf(to);
         const sizing = blendScale(fromParentRest, restOf(to), easeOut(p.progress));
-        paintView(pool, to, toT, sizing, collapseToLook(cell, p.progress, theme.operatorDimAlpha), width);
-        paintView(pool, from, fromT, sizingTransform(fromT, restOf(from), false), settled(from, collapseFromAlpha(p.progress)), width);
+        paintView(pool, to, toT, sizing, collapseToLook(cell, p.progress, theme.operatorDimAlpha), width, { rest: restOf(to), quiet: 0 });
+        paintView(pool, from, fromT, sizingTransform(fromT, restOf(from), false), settled(from, collapseFromAlpha(p.progress)), width, {
+          rest: restOf(from),
+          quiet: 0,
+        });
       } else {
         // Inside a shared parent it stays put; when the parents differ (Tower,
         // tier-2 puzzle → the next group's leaf) the old one fades as the new one
@@ -186,15 +218,25 @@ export function createRenderer(options: RendererOptions): Renderer {
           ].sort((a, b) => b.tier - a.tier);
           for (const layer of layers) paintContext(layer.view, layer.t, layer.alpha, true, layer.fade);
         }
-        paintView(pool, from, fromT, sizingTransform(fromT, restOf(from), true), settled(from, fromAlpha), width);
-        paintView(pool, to, toT, sizingTransform(toT, restOf(to), true), { ...IDLE_LOOK, alpha: toAlpha }, width);
+        paintView(pool, from, fromT, sizingTransform(fromT, restOf(from), true), settled(from, fromAlpha), width, { rest: restOf(from), quiet: 0 });
+        paintView(pool, to, toT, sizingTransform(toT, restOf(to), true), { ...IDLE_LOOK, alpha: toAlpha }, width, { rest: restOf(to), quiet: 0 });
       }
-    } else if (p.kind === 'roundStart' && from !== undefined) {
-      const fade = crossfade(p.progress);
-      paintContext(from, restOf(from), fade.from, false);
-      paintView(pool, from, restOf(from), restOf(from), settled(from, fade.from), width);
-      paintContext(to, restOf(to), fade.to, false);
-      paintView(pool, to, restOf(to), restOf(to), { ...IDLE_LOOK, alpha: fade.to }, width);
+    } else if (roundChange !== undefined && from !== undefined) {
+      // The round change (`round-change`): the old top shrinks away into the frame's
+      // centre while the field changes colour, then the new puzzle (with its parent)
+      // grows in, both drawn in the frame's blended theme.
+      const [cx, cy] = [width / 2, height / 2];
+      const old = inTheme(from, frameTheme);
+      const next = inTheme(to, frameTheme);
+      if (roundChange.fromAlpha > 0) {
+        const fromT = scaleAbout(restOf(from), roundChange.fromScale, cx, cy);
+        paintView(pool, old, fromT, fromT, settled(old, roundChange.fromAlpha), width, { rest: restOf(from), quiet: 0 });
+      }
+      if (roundChange.toAlpha > 0) {
+        const toT = scaleAbout(restOf(to), roundChange.toScale, cx, cy);
+        paintContext(next, toT, roundChange.toAlpha, true);
+        paintView(pool, next, toT, toT, { ...IDLE_LOOK, alpha: roundChange.toAlpha }, width, { rest: restOf(to), quiet: 0 });
+      }
     } else {
       paintContext(vm, rest, 1, false);
       paintView(pool, vm, rest, rest, settled(vm, 1), width);
@@ -210,7 +252,7 @@ export function createRenderer(options: RendererOptions): Renderer {
         const look = pulseLook(cue.progress, theme.lineWidth);
         const flat = tapped.polygon.flatMap((pt) => toScreen(rest, pt));
         const pulse = pool.takeGraphics().poly(flat).fill({ color, alpha: look.washAlpha });
-        pulse.poly(flat).stroke({ width: look.width, color, alpha: look.alpha, join: 'round' });
+        pulse.poly(flat).stroke({ width: look.width, color, alpha: look.alpha, join: theme.lineJoin });
       }
       const arrow = tapped === undefined || answer === undefined ? null : ghostArrow(toScreen(rest, tapped.labelPoint), toScreen(rest, answer.labelPoint));
       const alpha = arrowAlpha(cue.progress);
@@ -243,6 +285,7 @@ export function createRenderer(options: RendererOptions): Renderer {
   /** After a lost WebGL context is restored: fresh GPU objects, rebuilt from the latest view (AD-14). */
   function rebuild(): void {
     rebuilds += 1;
+    surfaceShown = undefined;
     pool?.reset();
     draw();
     app?.render();
@@ -334,6 +377,7 @@ export function createRenderer(options: RendererOptions): Renderer {
         if (contextLost) return;
         renderer.render(stage);
         framesRendered += 1;
+        flushSurface();
       });
       // Resize-aware: follow the mount element and rebuild from the latest view.
       resizeObserver = new ResizeObserver(() => {
@@ -358,6 +402,7 @@ export function createRenderer(options: RendererOptions): Renderer {
       // Draw before the canvas is attached, so its first visible frame is the view.
       draw();
       renderer.render(stage);
+      flushSurface();
       el.append(canvas);
       ticker.start();
     },

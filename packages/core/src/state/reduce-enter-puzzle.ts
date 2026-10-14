@@ -1,6 +1,7 @@
 import type { DomainError } from '../result/domain-error';
 import { isInRound, parentOf } from '../rounds/round-node-id';
 import type { TuningConfig } from '../tuning/tuning-config';
+import type { TuningsByVersion } from '../tuning/tunings-by-version';
 import { activeRound } from './active-round';
 import type { AppState } from './app-state';
 import { idleAt } from './beat';
@@ -27,7 +28,7 @@ function invalid(message: string): DomainError {
  * always qualify). The puzzle is realised if new, pushed onto `viewPath` and shown
  * from now, idle. Dropped while a beat runs; anything else is rejected.
  */
-export function reduceEnterPuzzle(state: AppState, nodeId: unknown, tuning: TuningConfig): StepResult {
+export function reduceEnterPuzzle(state: AppState, nodeId: unknown, tuning: TuningConfig, tunings: TuningsByVersion): StepResult {
   const active = activeRound(state);
   if (active === undefined) return reject(state, COMMAND, invalid('no active round'));
   const { game, round } = active;
@@ -39,7 +40,7 @@ export function reduceEnterPuzzle(state: AppState, nodeId: unknown, tuning: Tuni
   }
   if (isNodeSolved(round, nodeId)) return reject(state, COMMAND, invalid(`${nodeKey(nodeId)} is already solved`));
   if (!isPlayable(round, nodeId)) return reject(state, COMMAND, invalid(`${nodeKey(nodeId)} has unsolved children`));
-  const served = serveNode(round, nodeId, tuning);
+  const served = serveNode(round, nodeId, tuning, tunings);
   if (!served.ok) return reject(state, COMMAND, served.error);
   const entered = {
     ...served.value,

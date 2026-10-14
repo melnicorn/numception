@@ -6,6 +6,8 @@ import { err, type Result } from '../result/result';
 import { pathFromTop } from '../rounds/path-from-top';
 import { playOrder } from '../rounds/play-order';
 import { planRound } from '../rounds/round-types';
+import { selectPresentation } from '../presentation/select-presentation';
+import type { ThemeCatalog } from '../theme/theme-catalog';
 import type { TuningConfig } from '../tuning/tuning-config';
 import type { GameState } from './game-state';
 import { nextRoundRequest } from './next-round-request';
@@ -17,6 +19,8 @@ import { serveNode } from './serve-node';
  * `deriveSeed(rootSeed, roundOrdinal)`), realises its first leaf and views it:
  * `viewPath` runs from the top to that leaf (AD-25). The round opens on
  * `presentation`; the leaf counts as shown from `shownAtMs` (null while a beat runs).
+ * Its theme is chosen from `themes` (`selectPresentation`), never the same as
+ * `previousThemeId`'s while the pool has another.
  */
 export function startRound(
   roundId: string,
@@ -24,8 +28,11 @@ export function startRound(
   tuning: TuningConfig,
   presentation: Presentation,
   shownAtMs: number | null,
+  themes: ThemeCatalog,
+  previousThemeId: string | null,
 ): Result<Round, DomainError> {
   const seed = deriveSeed(game.rootSeed, game.roundOrdinal);
+  const { themeId } = selectPresentation({ mode: game.settings.mode, previousThemeId, roundSeed: seed }, tuning, themes);
   const plan = planRound(nextRoundRequest(game), tuning, seed, versionsFor(tuning));
   if (!plan.ok) return plan;
   const [first] = playOrder(plan.value.tiers, plan.value.n);
@@ -44,6 +51,8 @@ export function startRound(
     shownAtMs,
     nextRoundId: null,
     previousTop: null,
+    themeId,
+    previousThemeId,
     softMiss: null,
     guideLine: false,
   };

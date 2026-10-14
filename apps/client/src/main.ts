@@ -4,10 +4,13 @@ import {
   createSaveWriter,
   createScheduler,
   loadSave,
+  loadThemeCatalog,
   parseTuning,
+  type ThemeCatalog,
   saveAfterBatches,
   tapCommand,
   type TuningConfig,
+  type TuningsByVersion,
 } from '@numception/app';
 import { webLifecycle, webStorage } from '@numception/platform-web';
 import { createRenderer } from '@numception/render';
@@ -22,31 +25,74 @@ if (!root) {
 /** How long boot waits for the save before playing in memory (no writes) instead. */
 const LOAD_TIMEOUT_MS = 2500;
 
-// The active tuning is bundled (offline works) and passed in explicitly (AD-7).
-const ACTIVE_TUNING_VERSION = '1';
-const bundledTuning = import.meta.glob<unknown>('../../../content/tuning/1.json', { eager: true, import: 'default' });
-const activeTuningJson = Object.values(bundledTuning)[0];
-const tuning = parseTuning(activeTuningJson);
+// Every tuning version is bundled (offline works; a few KB each) and the latest is
+// the active one, passed in explicitly (AD-7). shipped.json is the shipped-hash
+// list, not a tuning.
+const bundledTunings = import.meta.glob<unknown>(['../../../content/tuning/*.json', '!../../../content/tuning/shipped.json'], {
+  eager: true,
+  import: 'default',
+});
+/** Bundled tuning JSON by tuningVersion (its file name). */
+const tuningByVersion = new Map(
+  Object.entries(bundledTunings).flatMap(([path, json]) => {
+    const version = Number(path.replace(/^.*\/|\.json$/g, ''));
+    return Number.isSafeInteger(version) && version > 0 ? [[version, json] as const] : [];
+  }),
+);
+const activeTuningVersion = Math.max(0, ...tuningByVersion.keys());
+const tuning = parseTuning(tuningByVersion.get(activeTuningVersion));
+// Every bundled version, validated, so a saved round pinned to an older tuning still
+// realises its leaves under it (AD-7); a version that fails validation is left out.
+const tunings: TuningsByVersion = Object.fromEntries(
+  [...tuningByVersion].flatMap(([version, json]) => {
+    const parsed = parseTuning(json);
+    if (!parsed.ok && __NUMCEPTION_FLAVOUR__ === 'dev') console.warn(`Tuning ${version} left out: ${parsed.error.message}`);
+    return parsed.ok && parsed.value.tuningVersion === version ? [[version, parsed.value] as const] : [];
+  }),
+);
+
+// The theme catalogue (AD-15): every bundled content/themes/*.json, validated; a
+// theme that fails is left out (logged in dev), and with none the built-in Kiln.
+const themeCatalog = loadThemeCatalog(import.meta.glob<unknown>('../../../content/themes/*.json', { eager: true, import: 'default' }));
+if (__NUMCEPTION_FLAVOUR__ === 'dev') {
+  for (const rejected of themeCatalog.rejected) console.warn(`Theme ${rejected.source} left out: ${rejected.message}`);
+}
 
 if (!tuning.ok) {
   // Playtest and dev only in practice: a shipped tuning is validated in CI. Plain text, never a crash loop.
   root.textContent = `Numception could not start: ${tuning.error.message}`;
 } else {
-  void boot(root, tuning.value);
+  void boot(root, tuning.value, tunings, themeCatalog.themes);
+}
+
+/** How long boot waits for the themes' faces before drawing anyway (system fonts resolve at once). */
+const FONT_TIMEOUT_MS = 800;
+
+/**
+ * Waits until every theme's face is loaded at its numeral weights (Pixi measures
+ * text when it rasterises, so a face that arrives late would leave numerals sized
+ * for the fallback). POC faces are system font stacks; never blocks past
+ * `FONT_TIMEOUT_MS` or fails boot.
+ */
+async function loadFaces(themes: ThemeCatalog, wait: (ms: number) => Promise<void>): Promise<void> {
+  const fonts = (document as Document & { fonts?: FontFaceSet }).fonts;
+  if (fonts === undefined) return;
+  const faces = new Set(themes.flatMap((t) => [t.fontWeight, t.fontWeightSolved, '400'].map((w) => `${w} ${t.numberSizePx}px ${t.fontFamily}`)));
+  await Promise.race([Promise.allSettled([...faces].map((face) => fonts.load(face))), wait(FONT_TIMEOUT_MS)]);
 }
 
 /**
  * Loads the save (one IndexedDB read, AD-10) before anything is painted, so the
  * first frame is the restored puzzle, or a new one when nothing is saved (FR-10).
  */
-async function boot(el: HTMLElement, activeTuning: TuningConfig): Promise<void> {
+async function boot(el: HTMLElement, activeTuning: TuningConfig, tunings: TuningsByVersion, themes: ThemeCatalog): Promise<void> {
   const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
   // One database per flavour (AD-18); IndexedDB in the Capacitor shell too for the POC.
   const storage = webStorage(__NUMCEPTION_APP_ID__);
-  const session = await loadSave(storage, wait, LOAD_TIMEOUT_MS);
+  const [session] = await Promise.all([loadSave(storage, wait, LOAD_TIMEOUT_MS), loadFaces(themes, wait)]);
 
   const now = () => Date.now();
-  const game = createGame({ tuning: activeTuning, entropy: webEntropy(now), now });
+  const game = createGame({ tuning: activeTuning, tunings, themes, entropy: webEntropy(now), now });
   // The play clock (AD-17): Ticks from the frame loop while a beat runs, on the
   // monotonic clock; idle time is flushed before each command (see createScheduler).
   // Its pause set is core's (`Pause` / `Resume`).
@@ -73,6 +119,13 @@ async function boot(el: HTMLElement, activeTuning: TuningConfig): Promise<void> 
       const view = game.getView();
       const command = view === null ? null : tapCommand(view, ref);
       if (command !== null) scheduler.dispatch(command);
+    },
+    // The page around the canvas (the guide-line band, the safe areas) follows the
+    // surface the frame is drawn on, through the round change too: the whole screen
+    // changes theme, not only the canvas.
+    onSurface: (color) => {
+      document.body.style.backgroundColor = color;
+      document.querySelector('meta[name="theme-color"]')?.setAttribute('content', color);
     },
   });
   game.subscribe((view) => renderer.render(view));
@@ -102,21 +155,14 @@ async function boot(el: HTMLElement, activeTuning: TuningConfig): Promise<void> 
 
 // Dev panel: dev and playtest only. The constant is a literal `false` in prod, so
 // the bundler drops this branch and emits no dev-panel chunk (AD-18). Every bundled
-// tuning file (content/tuning/<tuningVersion>.json; shipped.json is the shipped-hash
-// list, not a tuning) is globbed lazily here too, and the map, keyed by tuning
-// version, is passed in explicitly (AD-7).
+// tuning file (already bundled above) is passed in as a map keyed by tuning
+// version, explicitly (AD-7).
 if (__NUMCEPTION_DEV_PANEL__) {
   const host = document.createElement('div');
   document.body.append(host);
-  // The active tuning is already bundled above, so it is reused rather than globbed
-  // lazily again (a module both static and dynamic would gain nothing from the split).
-  const tuningFiles: Record<string, () => Promise<unknown>> = {
-    ...import.meta.glob<unknown>(
-      ['../../../content/tuning/*.json', '!../../../content/tuning/shipped.json', '!../../../content/tuning/1.json'],
-      { import: 'default' },
-    ),
-    [`${ACTIVE_TUNING_VERSION}.json`]: () => Promise.resolve(activeTuningJson),
-  };
+  const tuningFiles: Record<string, () => Promise<unknown>> = Object.fromEntries(
+    [...tuningByVersion].map(([version, json]) => [`${version}.json`, () => Promise.resolve(json)]),
+  );
   // A tuning that fails to load is left out (and logged); the panel still mounts
   // with the rest. A failed panel chunk is logged too, never left unhandled.
   const loadTunings = Promise.allSettled(

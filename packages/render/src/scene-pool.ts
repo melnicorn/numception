@@ -1,7 +1,8 @@
+import type { ThemeTokens } from '@numception/app';
 import { type Container, Graphics, Text } from 'pixi.js';
 
 /** The Text style fields the play view sets. */
-export type TextLook = { readonly fontFamily: string; readonly fontWeight: '500'; readonly fontSize: number; readonly fill: number };
+export type TextLook = { readonly fontFamily: string; readonly fontWeight: ThemeTokens['fontWeight']; readonly fontSize: number; readonly fill: number };
 
 /**
  * Graphics and Text reused across frames (performance: a beat redraws every frame,

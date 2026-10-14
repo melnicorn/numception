@@ -10,7 +10,7 @@ import { isPlayable } from '../state/is-playable';
 import type { Round } from '../state/round';
 import { roundPuzzle } from '../state/round-puzzle';
 import { contextCamera } from './camera-rect';
-import { KILN_TOKENS } from './kiln-tokens';
+import type { ThemeTokens } from '../theme/theme-tokens';
 import type { PlayCellVM, PlayContextVM, PlayVM, PresentationVM } from './play-vm';
 
 const SYMBOLS: Readonly<Record<Operator, string>> = { add: '+', sub: '−' };
@@ -23,8 +23,9 @@ function nested(p: NestedPresentation): PresentationVM {
 }
 
 /**
- * The view of `node` of `round` (AD-13), drawn on its n's default shape in Kiln,
- * with `presentation` and `inputLocked` as given (no transitions nested in it).
+ * The view of `node` of `round` (AD-13), drawn on its n's default shape in
+ * `theme` (the round's, AD-15), with `presentation` and `inputLocked` as given (no
+ * transitions nested in it).
  *
  * - A puzzle view (a leaf, or a node whose children are all solved) shows its
  *   puzzle; cells of an upper tier are `solved`, showing each child's answer.
@@ -37,10 +38,16 @@ function nested(p: NestedPresentation): PresentationVM {
  *
  * Undefined when the node's puzzle is not realised or n has no shape.
  */
-export function nodeView(round: Round, node: NodeId, presentation: NestedPresentation, inputLocked: boolean): PlayVM | undefined {
-  const view = baseView(round, node, presentation, inputLocked, false);
+export function nodeView(
+  round: Round,
+  node: NodeId,
+  presentation: NestedPresentation,
+  inputLocked: boolean,
+  theme: ThemeTokens,
+): PlayVM | undefined {
+  const view = baseView(round, node, presentation, inputLocked, false, theme);
   if (view === undefined) return undefined;
-  const context = nodeContext(round, node, presentation);
+  const context = nodeContext(round, node, presentation, theme);
   return context === undefined ? view : { ...view, context };
 }
 
@@ -49,12 +56,12 @@ export function nodeView(round: Round, node: NodeId, presentation: NestedPresent
  * (solved cells show answers, unsolved ones are empty, nothing enterable), the
  * cell `node` fills and the context camera. Undefined at the round's top.
  */
-function nodeContext(round: Round, node: NodeId, presentation: NestedPresentation): PlayContextVM | undefined {
+function nodeContext(round: Round, node: NodeId, presentation: NestedPresentation, theme: ThemeTokens): PlayContextVM | undefined {
   const { n, tiers } = round.plan;
   const shapeId = defaultShapeFor(n);
   if (node.tier >= tiers || !shapeId.ok) return undefined;
   const { parent, cell } = parentOf(node, n);
-  const view = baseView(round, parent, presentation, true, true);
+  const view = baseView(round, parent, presentation, true, true, theme);
   return view === undefined ? undefined : { parent: view, cellIndex: cell, camera: contextCamera(SHAPES[shapeId.value], cell) };
 }
 
@@ -65,6 +72,7 @@ function baseView(
   presentation: NestedPresentation,
   inputLocked: boolean,
   asContext: boolean,
+  theme: ThemeTokens,
 ): PlayVM | undefined {
   const puzzle = roundPuzzle(round, node);
   const shapeId = defaultShapeFor(round.plan.n);
@@ -98,16 +106,16 @@ function baseView(
     inputLocked,
     blurred: false,
     presentation: nested(presentation),
-    theme: KILN_TOKENS,
+    theme,
   };
 }
 
 /**
  * The view of a solved top puzzle on its own (the round before, for the
- * `roundStart` crossfade): every cell shows its value as a solved child's answer,
- * fused into the answer cell.
+ * `roundStart` beat), in that round's `theme`: every cell shows its value as a
+ * solved child's answer, fused into the answer cell.
  */
-export function solvedTopView(puzzle: Puzzle, presentation: NestedPresentation): PlayVM | undefined {
+export function solvedTopView(puzzle: Puzzle, presentation: NestedPresentation, theme: ThemeTokens): PlayVM | undefined {
   const shapeId = defaultShapeFor(puzzle.spec.n);
   if (!shapeId.ok) return undefined;
   const layout = SHAPES[shapeId.value];
@@ -133,6 +141,6 @@ export function solvedTopView(puzzle: Puzzle, presentation: NestedPresentation):
     inputLocked: true,
     blurred: false,
     presentation: nested(presentation),
-    theme: KILN_TOKENS,
+    theme,
   };
 }

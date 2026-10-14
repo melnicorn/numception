@@ -27,6 +27,26 @@ function addSoftMiss(payload: unknown): unknown {
   };
 }
 
+/**
+ * 2 → 3: every round gains `themeId: 'kiln'` (every round before themes was drawn
+ * in Kiln) and `previousThemeId`: `'kiln'` when it carries a previous round's top
+ * (`previousTop`), else null. Anything not shaped like a v2 payload passes
+ * through unchanged, for `checkGameState` to reject.
+ */
+function addTheme(payload: unknown): unknown {
+  if (!isRecord(payload) || !isRecord(payload.game)) return payload;
+  const game = payload.game;
+  if (!isRecord(game.rounds) || !isRecord(game.rounds.byId)) return payload;
+  const rounds = game.rounds;
+  const byId = Object.fromEntries(
+    Object.entries(rounds.byId as Record<string, unknown>).map(([id, r]) => [
+      id,
+      isRecord(r) ? { ...r, themeId: 'kiln', previousThemeId: r.previousTop === null || r.previousTop === undefined ? null : 'kiln' } : r,
+    ]),
+  );
+  return { ...payload, game: { ...game, rounds: { ...rounds, byId } } };
+}
+
 /** Forward-only migrations, keyed by the version they upgrade from (AD-10). */
 export type SaveMigrations = Readonly<Record<number, SaveMigration>>;
 
@@ -37,8 +57,10 @@ export type SaveMigrations = Readonly<Record<number, SaveMigration>>;
  *
  * - 0 → 1: the bare `GameState` is wrapped as `{ game }`.
  * - 1 → 2: `softMissLineSeen`, and each round's `softMiss` and `guideLine` (`addSoftMiss`).
+ * - 2 → 3: each round's `themeId` and `previousThemeId` (`addTheme`).
  */
 export const MIGRATIONS: SaveMigrations = {
   0: (payload) => ({ game: payload }),
   1: addSoftMiss,
+  2: addTheme,
 };

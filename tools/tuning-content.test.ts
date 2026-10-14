@@ -46,6 +46,18 @@ describe('content/tuning', () => {
     expect(parsed.ok ? 'ok' : parsed.error.message).toBe('ok');
   });
 
+  it('keeps v1 and retunes the round change to about 900 ms in v2, the latest (AD-7)', () => {
+    const v2 = parseTuning(JSON.parse(readFileSync(join(TUNING_DIR, '2.json'), 'utf8')));
+    expect(v2.ok && v2.value.tuningVersion).toBe(2);
+    expect(v2.ok && v2.value.presentation.roundTransitionMs).toBe(900);
+    const v1 = parseTuning(realV1);
+    expect(v1.ok && v1.value.presentation.roundTransitionMs).toBe(400);
+    // Only the round change moved: v2 is v1 with a new version and duration.
+    const raw2 = JSON.parse(readFileSync(join(TUNING_DIR, '2.json'), 'utf8')) as Record<string, unknown> & { presentation: object };
+    const raw1 = realV1 as unknown as Record<string, unknown> & { presentation: object };
+    expect({ ...raw2, tuningVersion: 1, presentation: { ...raw2.presentation, roundTransitionMs: 400 } }).toEqual(raw1);
+  });
+
   it('enables + and − only, never × or ÷ (FR-3 POC)', () => {
     const parsed = parseTuning(realV1);
     expect(parsed.ok && parsed.value.generation.operators).toEqual(['add', 'sub']);

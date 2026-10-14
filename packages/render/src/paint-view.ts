@@ -1,6 +1,6 @@
 import type { LayoutPoint, PlayVM } from '@numception/app';
 import { CONTEXT_STYLE, lerp, type LayerLook, mixColor } from './beat-motion';
-import { numeralSize } from './numeral-size';
+import { numeralSize, numeralWeight } from './numeral-size';
 import type { ScenePool } from './scene-pool';
 import { toScreen, type ViewTransform } from './view-transform';
 
@@ -24,12 +24,28 @@ function mixPoint(a: LayoutPoint, b: LayoutPoint, t: number): LayoutPoint {
  * the current one in an advance, so numerals stay in proportion to their tiles).
  * `look` says what the running beat does to it.
  *
- * Kiln at rest: a puzzle view's cells are open tiles (an upper tier's solved
+ * At rest (in the view's theme): a puzzle view's cells are open tiles (an upper tier's solved
  * cells cool to `cell-unsolved` once it opens); an overview's solved cells are
  * fired tiles and its operator is dimmed until its tier opens. A context parent
  * (entry 9) is drawn `quiet` (`CONTEXT_STYLE`).
  */
-export function paintView(pool: ScenePool, vm: PlayVM, t: ViewTransform, rest: ViewTransform, look: LayerLook, frameWidth: number): void {
+/**
+ * Where a layer comes to rest, for numeral weights (DESIGN numeral-min-weight:
+ * 400 below 32 px): its idle transform and how quiet it is there (1 for a context
+ * parent). Weights are chosen from that rest size, never the animated one, so a
+ * numeral keeps one weight through a beat (no mid-beat weight pop or re-raster).
+ */
+export type WeightRest = { readonly rest: ViewTransform; readonly quiet: number };
+
+export function paintView(
+  pool: ScenePool,
+  vm: PlayVM,
+  t: ViewTransform,
+  rest: ViewTransform,
+  look: LayerLook,
+  frameWidth: number,
+  weightRest: WeightRest = { rest, quiet: look.quiet },
+): void {
   const theme = vm.theme;
   const flat = (polygon: readonly LayoutPoint[]) => polygon.flatMap((p) => toScreen(t, p));
   const others = look.focus?.others ?? 1;
@@ -44,7 +60,7 @@ export function paintView(pool: ScenePool, vm: PlayVM, t: ViewTransform, rest: V
   const centre = vm.operator.labelPoint;
   const boostRatio = theme.numberSolvedSizePx / theme.numberSizePx;
   const fontFamily = theme.fontFamily;
-  const fontWeight = theme.fontWeight;
+  const join = theme.lineJoin;
 
   // A fully fused puzzle is one fired tile: nothing under it would show, and a
   // fading layer would otherwise let its seams show through.
@@ -60,15 +76,20 @@ export function paintView(pool: ScenePool, vm: PlayVM, t: ViewTransform, rest: V
     background
       .poly(flat(cell.polygon))
       .fill({ color: mixColor(theme.cellFill, theme.solvedFill, fired), alpha: alpha * quietly(lerp(CONTEXT_STYLE.tileAlpha, CONTEXT_STYLE.firedTileAlpha, fired), q) })
-      .stroke({ width: theme.lineWidth, color: hex(theme.line), alpha: alpha * quietly(CONTEXT_STYLE.lineAlpha, q), join: 'round' });
+      .stroke({ width: theme.lineWidth, color: hex(theme.line), alpha: alpha * quietly(CONTEXT_STYLE.lineAlpha, q), join });
   }
 
   // A numeral in `number` on an open tile, `cell-solved-number` on a fired one. A
   // cooling tile swaps it at half-way: a blend of the two inks would match the
   // blended fill and vanish, a swap keeps the numeral readable throughout.
-  const numeral = (text: string, at: LayoutPoint, size: number, fired: number, alpha: number, maxSize: number) => {
+  // The size a cell's numeral has at rest (`weightRest`), which picks its weight.
+  const restSize = (inscribedRadius: number) =>
+    numeralSize(theme, weightRest.rest, inscribedRadius, frameWidth) * quietly(CONTEXT_STYLE.numeralScale, weightRest.quiet);
+  const numeral = (text: string, at: LayoutPoint, size: number, fired: number, alpha: number, maxSize: number, sizeAtRest: number) => {
     const fontSize = Math.max(1, Math.round(maxSize));
-    const fill = hex(fired >= 0.5 ? theme.solvedNumber : theme.number);
+    const onFired = fired >= 0.5;
+    const fill = hex(onFired ? theme.solvedNumber : theme.number);
+    const fontWeight = numeralWeight(onFired ? theme.fontWeightSolved : theme.fontWeight, sizeAtRest);
     const label = pool.takeText(text, { fontFamily, fontWeight, fontSize, fill });
     label.position.set(...toScreen(t, at));
     label.scale.set(size / fontSize);
@@ -76,9 +97,11 @@ export function paintView(pool: ScenePool, vm: PlayVM, t: ViewTransform, rest: V
   };
 
   let operatorBase = theme.numberSizePx;
+  let operatorRestBase = theme.numberSizePx;
   for (const cell of vm.cells) {
     const base = numeralSize(theme, rest, cell.inscribedRadius, frameWidth);
     operatorBase = base;
+    operatorRestBase = restSize(cell.inscribedRadius);
     if (fused || cell.text === '' || cell.index === look.answer) continue;
     const fade = look.operands;
     const q = quietOf(cell.index);
@@ -91,7 +114,7 @@ export function paintView(pool: ScenePool, vm: PlayVM, t: ViewTransform, rest: V
     const boosted = look.focus !== null && look.focus.cell !== cell.index && look.othersBoost !== null ? look.othersBoost : look.boost;
     const boost = cell.state === 'solved' ? 1 + (boostRatio - 1) * boosted : 1;
     const size = base * boost * (1 - OPERAND_SHRINK * fade) * quietly(CONTEXT_STYLE.numeralScale, q);
-    numeral(cell.text, mixPoint(cell.labelPoint, centre, fade), size, fired, alpha, base * boostRatio);
+    numeral(cell.text, mixPoint(cell.labelPoint, centre, fade), size, fired, alpha, base * boostRatio, restSize(cell.inscribedRadius));
   }
 
   const operatorPx = vm.nodeId.tier > 1 ? theme.operatorTier2SizePx : theme.operatorSizePx;
@@ -99,6 +122,7 @@ export function paintView(pool: ScenePool, vm: PlayVM, t: ViewTransform, rest: V
   const operatorAlpha = look.alpha * others * operatorStrength * (1 - look.operands) * quietly(CONTEXT_STYLE.numeralAlpha, look.quiet);
   if (!fused && operatorAlpha > INVISIBLE) {
     const fontSize = Math.max(1, Math.round(operatorSize));
+    const fontWeight = numeralWeight(theme.fontWeight, (operatorRestBase * operatorPx) / theme.numberSizePx);
     const symbol = pool.takeText(vm.operator.symbol, { fontFamily, fontWeight, fontSize, fill: hex(theme.operator) });
     symbol.position.set(...toScreen(t, centre));
     symbol.scale.set((operatorSize * (1 - OPERAND_SHRINK * look.operands)) / fontSize);
@@ -113,7 +137,7 @@ export function paintView(pool: ScenePool, vm: PlayVM, t: ViewTransform, rest: V
     for (const polygon of [vm.operator.polygon, ...vm.cells.map((c) => c.polygon)]) {
       overlay.poly(flat(polygon)).fill({ color: solved });
       // Covering the seams drawn beneath while they fade; a fused tile has none.
-      if (!fused) overlay.stroke({ width: theme.lineWidth + 1, color: solved, join: 'round' });
+      if (!fused) overlay.stroke({ width: theme.lineWidth + 1, color: solved, join });
     }
     overlay.alpha = overlayAlpha;
   }
@@ -122,6 +146,6 @@ export function paintView(pool: ScenePool, vm: PlayVM, t: ViewTransform, rest: V
   if (answer !== undefined && answer.text !== '' && look.alpha > INVISIBLE) {
     const base = numeralSize(theme, rest, answer.inscribedRadius, frameWidth);
     const size = base * (1 + (boostRatio - 1) * look.grow);
-    numeral(answer.text, mixPoint(answer.labelPoint, centre, look.grow), size, 1, look.alpha, base * boostRatio);
+    numeral(answer.text, mixPoint(answer.labelPoint, centre, look.grow), size, 1, look.alpha, base * boostRatio, restSize(answer.inscribedRadius));
   }
 }

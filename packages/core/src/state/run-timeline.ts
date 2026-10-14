@@ -1,6 +1,8 @@
 import type { Presentation } from '../presentation/presentation';
 import type { DomainError } from '../result/domain-error';
+import type { ThemeCatalog } from '../theme/theme-catalog';
 import type { TuningConfig } from '../tuning/tuning-config';
+import type { TuningsByVersion } from '../tuning/tunings-by-version';
 import { idleAt } from './beat';
 import { endBeat, type TimelineResult } from './end-beat';
 import type { GameEvent } from './game-event';
@@ -26,6 +28,8 @@ export function runTimeline(
   game: GameState,
   tuning: TuningConfig,
   endOf: (presentation: Presentation) => number | null,
+  themes: ThemeCatalog,
+  tunings: TuningsByVersion,
 ): TimelineRun {
   let current = game;
   const events: GameEvent[] = [];
@@ -35,7 +39,7 @@ export function runTimeline(
     if (round === undefined || round.presentation.kind === 'idle') break;
     const endAt = endOf(round.presentation);
     if (endAt === null) break;
-    const ended = endBeat(current, round, endAt, tuning);
+    const ended = endBeat(current, round, endAt, tuning, themes, tunings);
     if (!ended.ok) {
       const inView = round.viewPath[round.viewPath.length - 1];
       const shown = inView !== undefined && isPlayable(round, inView) ? current.clockMs : null;

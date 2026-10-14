@@ -4,6 +4,7 @@ import { pathFromTop } from '../rounds/path-from-top';
 import { parentOf } from '../rounds/round-node-id';
 import { isPlayable } from '../state/is-playable';
 import type { Round } from '../state/round';
+import { type ThemeCatalog, themeById } from '../theme/theme-catalog';
 import { sameNode } from '../state/same-node';
 import { idleCamera, relativeCamera } from './camera-rect';
 import { type NestedPresentation, nodeView, solvedTopView } from './node-view';
@@ -54,12 +55,21 @@ function advanceFrom(round: Round): NodeId | undefined {
  *   in the grandparent), and an advance pans inside the shared parent.
  * - `from` and `to` carry their own `context`, so render keeps the parent framing
  *   throughout.
- * - `roundStart`: `from` is the last round's top (`Round.previousTop`).
+ * - `roundStart`: `from` is the last round's top (`Round.previousTop`) in the
+ *   last round's theme (`Round.previousThemeId`), so render can draw the change
+ *   from that theme to `to`'s.
  *
  * A `from` that cannot be found (it cannot happen through `step`) is left out, and
  * render then draws `to` alone.
  */
-export function beatViews(round: Round, to: PlayVM, layout: ShapeLayout, beat: NestedPresentation, answerIndex: number | null): BeatExtras {
+export function beatViews(
+  round: Round,
+  to: PlayVM,
+  layout: ShapeLayout,
+  beat: NestedPresentation,
+  answerIndex: number | null,
+  themes: ThemeCatalog,
+): BeatExtras {
   const { tiers, n } = round.plan;
   const toPath = cellPath(to.nodeId, tiers, n);
   const camera = (from: NodeId) => {
@@ -73,7 +83,7 @@ export function beatViews(round: Round, to: PlayVM, layout: ShapeLayout, beat: N
       return { cellIndex: answerIndex };
     case 'collapse': {
       const child = lastSolved(round);
-      const from = child === undefined ? undefined : nodeView(round, child, beat, true);
+      const from = child === undefined ? undefined : nodeView(round, child, beat, true, to.theme);
       if (child === undefined || from === undefined || child.tier >= tiers || !sameNode(parentOf(child, n).parent, to.nodeId)) {
         return { cellIndex: null };
       }
@@ -81,11 +91,11 @@ export function beatViews(round: Round, to: PlayVM, layout: ShapeLayout, beat: N
     }
     case 'advance': {
       const node = advanceFrom(round);
-      const from = node === undefined ? undefined : nodeView(round, node, beat, true);
+      const from = node === undefined ? undefined : nodeView(round, node, beat, true, to.theme);
       return node === undefined || from === undefined ? { cellIndex: null } : { cellIndex: null, from, to, camera: camera(node) };
     }
     case 'roundStart': {
-      const from = round.previousTop === null ? undefined : solvedTopView(round.previousTop, beat);
+      const from = round.previousTop === null ? undefined : solvedTopView(round.previousTop, beat, themeById(themes, round.previousThemeId));
       return from === undefined ? { cellIndex: null } : { cellIndex: null, from, to };
     }
   }

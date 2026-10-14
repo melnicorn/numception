@@ -12,7 +12,7 @@ import { step } from '../state/step';
 import { parseTuning } from '../tuning/parse-tuning';
 import { boundsOf, CONTEXT_CELL_SHARE, contextCamera } from './camera-rect';
 import { hitTestView } from './hit-test-view';
-import { KILN_TOKENS } from './kiln-tokens';
+import { KILN_TOKENS } from '../theme/kiln-tokens';
 import { selectView } from './select-view';
 import { tapCommand } from './tap-command';
 

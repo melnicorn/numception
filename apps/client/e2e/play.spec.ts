@@ -3,6 +3,7 @@ import { expect, test } from '@playwright/test';
 import {
   answerCell,
   clickUnit,
+  colorDistance,
   eventLog,
   events,
   frameInk,
@@ -10,6 +11,7 @@ import {
   parentToView,
   pixelAt,
   regionInk,
+  rgbOf,
   roles,
   solve,
   solvedCount,
@@ -20,8 +22,8 @@ import {
 } from './play-helpers';
 
 
-/** The bundled tuning's presentation durations, so the test follows tuning changes. */
-const PRESENTATION = JSON.parse(readFileSync(new URL('../../../content/tuning/1.json', import.meta.url), 'utf8')).presentation as { firstCollapseMs: number };
+/** The active (latest) bundled tuning's presentation durations, so the test follows tuning changes. */
+const PRESENTATION = JSON.parse(readFileSync(new URL('../../../content/tuning/2.json', import.meta.url), 'utf8')).presentation as { firstCollapseMs: number };
 
 // The play-loop tracer on the playtest build (playwright.config.ts serves FLAVOUR=playtest):
 // a tap travels render -> app -> core -> app -> render.
@@ -147,6 +149,7 @@ test('round 1 is a Tower: 9, then 3, then 1 puzzles, collapsing after each group
   await waitForPuzzle(page);
   // Round 0, Classic: three leaves and the top.
   for (let k = 0; k < 4; k += 1) await solve(page);
+  expect((await view(page)).theme.themeId).toBe('moonwater');
   const towerStart = (await eventLog(page)).length;
   const order: string[] = [];
   for (let k = 0; k < 13; k += 1) {
@@ -161,12 +164,14 @@ test('round 1 is a Tower: 9, then 3, then 1 puzzles, collapsing after each group
   expect(tower.filter((e) => e.type === 'RoundStarted').map((e) => e.roundOrdinal)).toEqual([2]);
   // Round 2 is Classic again: its first leaf sits under a tier-2 top.
   const next = await view(page);
+  // Each round in a theme other than the last one's (with two Zen themes they alternate).
+  expect(next.theme.themeId).toBe('kiln');
   expect(next.nodeId).toEqual({ tier: 1, index: 0 });
   expect(next.kind).toBe('puzzle');
   expect(next.cells.every((c) => c.state === 'unsolved')).toBe(true);
 });
 
-test('the solve, collapse and round crossfade are drawn: mid-beat frames carry from/to views and are not blank', async ({ page }) => {
+test('the solve, collapse and round change are drawn: mid-beat frames carry from/to views and are not blank', async ({ page }) => {
   test.setTimeout(60_000);
   await page.goto('./');
   await waitForPuzzle(page);
@@ -200,26 +205,29 @@ test('the solve, collapse and round crossfade are drawn: mid-beat frames carry f
   const top = await waitIdle(page);
   expect(top.nodeId).toEqual({ tier: 2, index: 0 });
 
-  // The top's solve crossfades into the next round.
+  // The top's solve changes into the next round, from this round's theme to the next one's.
   await clickUnit(page, (await answerCell(page)).labelPoint);
-  const crossfading = await waitBeat(page, 'roundStart', 0, 1);
-  expect(crossfading.presentation.from?.nodeId).toEqual({ tier: 2, index: 0 });
-  expect(crossfading.presentation.to?.nodeId).toEqual({ tier: 1, index: 0 });
-  expect(crossfading.presentation.camera).toBeUndefined();
-  // Second half of the crossfade: only the new round is drawn. The old top fused
-  // into the solved fill (#A14E36) must not show through the new operator's faint
-  // wash; sampled half-way between the operator's centre (its + glyph) and a corner.
-  const late = await waitBeat(page, 'roundStart', 0.55, 0.95);
+  const changing = await waitBeat(page, 'roundStart', 0, 1);
+  expect(changing.presentation.from?.nodeId).toEqual({ tier: 2, index: 0 });
+  expect(changing.presentation.to?.nodeId).toEqual({ tier: 1, index: 0 });
+  expect(changing.presentation.camera).toBeUndefined();
+  const oldTheme = changing.presentation.from?.theme;
+  const newTheme = changing.presentation.to?.theme;
+  expect(oldTheme?.themeId).toBe(top.theme.themeId);
+  expect(newTheme?.themeId).not.toBe(oldTheme?.themeId);
+  // Late in the change only the new round is drawn: the old top fused into its
+  // solved fill must not show through the new operator's faint wash; sampled
+  // half-way between the operator's centre (its + glyph) and a corner.
+  const late = await waitBeat(page, 'roundStart', 0.85, 1);
   const corner = late.operator.polygon[0] ?? late.operator.labelPoint;
   const probe: [number, number] = [(late.operator.labelPoint[0] + corner[0]) / 2, (late.operator.labelPoint[1] + corner[1]) / 2];
   const probeAt = await page.evaluate((p) => (window as unknown as { __numception: { pagePoint(q: number[]): number[] } }).__numception.pagePoint(p), probe);
-  const [lateFrame, operatorPixel] = await Promise.all([frameInk(page), pixelAt(page, [probeAt[0] ?? 0, probeAt[1] ?? 0])]);
+  const [lateFrame, operatorPixel] = await Promise.all([frameInk(page, newTheme), pixelAt(page, [probeAt[0] ?? 0, probeAt[1] ?? 0])]);
   expect(lateFrame.ink).toBeGreaterThan(0.05);
-  const solvedFill = [0xa1, 0x4e, 0x36];
-  const distance = Math.max(...operatorPixel.map((c, i) => Math.abs(c - (solvedFill[i] ?? 0))));
-  expect(distance, `operator region ${operatorPixel.join(',')}`).toBeGreaterThan(40);
+  expect(colorDistance(operatorPixel, rgbOf(oldTheme?.solvedFill ?? '#000000')), `operator region ${operatorPixel.join(',')}`).toBeGreaterThan(40);
   const next = await waitIdle(page);
   expect(next.presentation.from).toBeUndefined();
+  expect(next.theme.themeId).toBe(newTheme?.themeId);
 });
 
 test('a puzzle sits inside its parent: the parent outline and siblings are drawn around it, and taps there do nothing', async ({ page }) => {

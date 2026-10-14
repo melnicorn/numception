@@ -20,6 +20,7 @@ export {
   type TuningPresentation,
 } from './tuning/tuning-config';
 export { parseTuning } from './tuning/parse-tuning';
+export { pinnedTuning, type TuningsByVersion } from './tuning/tunings-by-version';
 
 export type { NodeId } from './generator/node-id';
 export { OPERATORS, type Operator } from './generator/operator';
@@ -48,6 +49,12 @@ export { pathFromTop } from './rounds/path-from-top';
 export type { Presentation, PresentationKind } from './presentation/presentation';
 export type { SoftMissCue } from './presentation/soft-miss-cue';
 export { beatDuration, softMissDuration } from './presentation/beat-duration';
+export {
+  FIRST_RUN_THEME_ID,
+  type PresentationChoice,
+  type PresentationRequest,
+  selectPresentation,
+} from './presentation/select-presentation';
 
 export type { TapOutcome } from './rules/tap-outcome';
 export { classifyTap } from './rules/classify-tap';
@@ -93,7 +100,10 @@ export { serializeDeviceSettings } from './save/serialize-device-settings';
 export { parseDeviceSettings } from './save/parse-device-settings';
 export { checkGameState } from './save/check-game-state';
 
-export { KILN_TOKENS, type KilnTokens } from './view/kiln-tokens';
+export { type ThemeMode, type ThemeTokens, ThemeTokensSchema } from './theme/theme-tokens';
+export { parseTheme } from './theme/parse-theme';
+export { KILN_TOKENS } from './theme/kiln-tokens';
+export { BUILTIN_THEMES, type ThemeCatalog, themeById } from './theme/theme-catalog';
 export type { NodeCellRef } from './view/node-cell-ref';
 export type { CameraVM, PlayCellVM, PlayContextVM, PlayVM, PresentationVM, SoftMissVM } from './view/play-vm';
 export type { CameraRect } from './view/camera-rect';

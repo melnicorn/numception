@@ -1,4 +1,4 @@
-import type { KilnTokens } from '@numception/app';
+import type { ThemeTokens } from '@numception/app';
 import type { ViewTransform } from './view-transform';
 
 /** The DESIGN reference frame width the hero sizes are given for. */
@@ -7,6 +7,13 @@ const REFERENCE_WIDTH_PX = 375;
 const RADIUS_SHARE = 1.1;
 /** DESIGN `typography.number-floor`. */
 const FLOOR_PX = 20;
+/** DESIGN `numeral-min-weight`: below this size a numeral is at least 400. */
+const LIGHT_MIN_PX = 32;
+
+/** A numeral's weight at `fontSizePx`: the theme's, raised to 400 below 32 px (DESIGN numeral-min-weight). */
+export function numeralWeight(weight: ThemeTokens['fontWeight'], fontSizePx: number): ThemeTokens['fontWeight'] {
+  return fontSizePx < LIGHT_MIN_PX && Number(weight) < 400 ? '400' : weight;
+}
 
 /**
  * The numeral size for a cell of inscribed radius `inscribedRadius` (unit box) in
@@ -14,7 +21,7 @@ const FLOOR_PX = 20;
  * theme's hero size scaled with the frame beyond 375 px (44 px at n = 3 on a
  * phone), never below 20 px.
  */
-export function numeralSize(theme: Pick<KilnTokens, 'numberSizePx'>, t: ViewTransform, inscribedRadius: number, frameWidth: number): number {
+export function numeralSize(theme: Pick<ThemeTokens, 'numberSizePx'>, t: ViewTransform, inscribedRadius: number, frameWidth: number): number {
   const radiusPx = inscribedRadius * Math.min(1, t.aspect) * t.scale;
   const cap = theme.numberSizePx * Math.max(1, frameWidth / REFERENCE_WIDTH_PX);
   return Math.max(FLOOR_PX, Math.min(RADIUS_SHARE * radiusPx, cap));

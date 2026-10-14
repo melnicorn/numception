@@ -1,4 +1,4 @@
-import type { KilnTokens } from '@numception/app';
+import type { ThemeTokens } from '@numception/app';
 
 /** Id of the guide-line slot (e2e and tests find it by its role and this id). */
 export const GUIDE_LINE_ID = 'numception-guide-line';
@@ -11,7 +11,7 @@ export const GUIDE_LINE_ID = 'numception-guide-line';
  * and it never takes a tap (`pointer-events: none`). The live region is always in the DOM, so screen readers
  * announce the line when its text arrives (`role="status"`, `aria-live="polite"`).
  */
-export function GuideLine(props: { readonly text: string | undefined; readonly theme: KilnTokens | undefined }) {
+export function GuideLine(props: { readonly text: string | undefined; readonly theme: ThemeTokens | undefined }) {
   const { text, theme } = props;
   const style = {
     margin: 0,

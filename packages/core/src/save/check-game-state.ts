@@ -50,6 +50,8 @@ export function checkGameState(x: unknown): DomainError | undefined {
     return bad('active round .softMiss must be null or a cue');
   }
   if (typeof round.guideLine !== 'boolean') return bad('active round .guideLine must be a boolean');
+  if (typeof round.themeId !== 'string' || round.themeId === '') return bad('active round .themeId must be a non-empty string');
+  if (round.previousThemeId !== null && typeof round.previousThemeId !== 'string') return bad('active round .previousThemeId must be a string or null');
   return undefined;
 }
 

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { answerCell, clickUnit, eventLog, frameInk, pixelAt, solve, solvedCount, view, type View, waitForPuzzle, waitIdle } from './play-helpers';
+import { answerCell, clickUnit, eventLog, frameInk, pixelAt, rgbOf, solve, solvedCount, view, type View, waitForPuzzle, waitIdle } from './play-helpers';
 
 // Save and resume (FR-10, AD-10) and the lifecycle pause (AD-17) on the playtest
 // build. Playwright gives every test a fresh browser context, so each starts with
@@ -109,8 +109,9 @@ test('backgrounding mid-beat completes the beat and pauses; on return the board 
   const box = await page.locator('#app canvas').boundingBox();
   if (box === null) throw new Error('no canvas');
   const [r, g, b] = await pixelAt(page, [box.x + box.width / 2 - box.width * 0.05, box.y + box.height / 2]);
-  // Kiln solvedFill #A14E36 (161, 78, 54).
-  expect(Math.abs(r - 161) + Math.abs(g - 78) + Math.abs(b - 54)).toBeLessThan(40);
+  // The theme's solvedFill (Kiln #A14E36: 161, 78, 54).
+  const [sr, sg, sb] = rgbOf(veiled.theme.solvedFill);
+  expect(Math.abs(r - sr) + Math.abs(g - sg) + Math.abs(b - sb)).toBeLessThan(40);
 
   // The first tap, even on the answer, only lifts the veil.
   await clickUnit(page, (await answerCell(page)).labelPoint);

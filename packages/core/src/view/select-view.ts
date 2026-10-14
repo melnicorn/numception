@@ -7,6 +7,7 @@ import type { NodeId } from '../generator/node-id';
 import type { Round } from '../state/round';
 import { sameNode } from '../state/same-node';
 import { roundPuzzle } from '../state/round-puzzle';
+import { BUILTIN_THEMES, type ThemeCatalog, themeById } from '../theme/theme-catalog';
 import type { TuningConfig } from '../tuning/tuning-config';
 import { beatViews } from './beat-views';
 import { type NestedPresentation, nodeView } from './node-view';
@@ -31,7 +32,9 @@ function timing(p: Presentation, clockMs: number): NestedPresentation {
 
 /**
  * The play view of `state` (AD-13): the node at the end of the active round's
- * `viewPath` (see `nodeView`), drawn on its n's default shape in Kiln.
+ * `viewPath` (see `nodeView`), drawn on its n's default shape in the round's
+ * theme: `theme` is `themes`' entry for `Round.themeId` (AD-15; the built-in Kiln
+ * when the catalogue has none by that id). `themes` is passed in like the tuning.
  *
  * `inputLocked` and `presentation` come from the round's timeline at the profile's
  * Tick time; `presentation` also carries what the running beat draws (`beatViews`:
@@ -41,18 +44,18 @@ function timing(p: Presentation, clockMs: number): NestedPresentation {
  * exists. `tuning` is the active config (AD-13's signature); this build reads
  * nothing from it yet.
  */
-export function selectView(state: AppState, _tuning: TuningConfig): PlayVM | null {
+export function selectView(state: AppState, _tuning: TuningConfig, themes: ThemeCatalog = BUILTIN_THEMES): PlayVM | null {
   const active = activeRound(state);
   const nodeId = active?.round.viewPath[active.round.viewPath.length - 1];
   if (active === undefined || nodeId === undefined) return null;
   const { game, round } = active;
   const beat = timing(round.presentation, game.clockMs);
   const inputLocked = round.presentation.kind !== 'idle';
-  const view = nodeView(round, nodeId, beat, inputLocked);
+  const view = nodeView(round, nodeId, beat, inputLocked, themeById(themes, round.themeId));
   const shapeId = defaultShapeFor(round.plan.n);
   if (view === undefined || !shapeId.ok) return null;
   const puzzle = roundPuzzle(round, nodeId);
-  const extra = beatViews(round, view, SHAPES[shapeId.value], beat, puzzle?.answerIndex ?? null);
+  const extra = beatViews(round, view, SHAPES[shapeId.value], beat, puzzle?.answerIndex ?? null, themes);
   const blurred = state.pauseReasons.includes('blur');
   const softMiss = view.kind === 'puzzle' ? softMissAt(round.softMiss, nodeId, game.clockMs) : undefined;
   const shown: PlayVM = {

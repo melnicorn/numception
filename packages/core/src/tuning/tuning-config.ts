@@ -140,7 +140,7 @@ const durationMs = () => int(0, MAX_PRESENTATION_MS);
  * - `advanceMs`: the move to the next unsolved puzzle.
  * - `firstCollapseMs`: the profile's first-ever collapse (FR-9: at most 3 s).
  * - `collapseMs`: every later collapse (FR-9: at most 1.2 s).
- * - `roundTransitionMs`: the crossfade into the next round.
+ * - `roundTransitionMs`: the round change: the whole-frame theme change into the next round (tuning v2: 900 ms).
  * - `calmMotionScale`: the multiplier applied at Calm motion to every beat except
  *   collapses (which keep FR-9's caps at every Motion level). A float because it's
  *   a tuning weight; durations are rounded to integer ms.

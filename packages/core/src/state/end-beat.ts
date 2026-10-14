@@ -2,7 +2,9 @@ import type { DomainError } from '../result/domain-error';
 import { err, ok, type Result } from '../result/result';
 import { pathFromTop } from '../rounds/path-from-top';
 import { ROUND_TYPES } from '../rounds/round-types';
+import { type ThemeCatalog, themeById } from '../theme/theme-catalog';
 import type { TuningConfig } from '../tuning/tuning-config';
+import type { TuningsByVersion } from '../tuning/tunings-by-version';
 import { beatAt, idleAt } from './beat';
 import type { GameEvent } from './game-event';
 import type { GameState } from './game-state';
@@ -23,10 +25,10 @@ function invalid(message: string): DomainError {
 }
 
 /** `round` advancing from `atMs` to its next unsolved puzzle (AD-25), realised if new. */
-function startAdvance(round: Round, atMs: number, tuning: TuningConfig, game: GameState): Result<Round, DomainError> {
+function startAdvance(round: Round, atMs: number, tuning: TuningConfig, game: GameState, tunings: TuningsByVersion): Result<Round, DomainError> {
   const next = nextUnsolved(round);
   if (next === undefined) return err(invalid('no unsolved puzzle to advance to'));
-  const served = serveNode(round, next, tuning);
+  const served = serveNode(round, next, tuning, tunings);
   if (!served.ok) return served;
   return ok({
     ...served.value,
@@ -47,17 +49,27 @@ function settle(round: Round, atMs: number): Round {
  *
  * - `solve`: the node in view joins `solved`. If that completes the round
  *   (`RoundType.isComplete`): `RoundCompleted`, `roundOrdinal` + 1, and the next
- *   round (id `nextRoundId`) opens on `roundStart` (`RoundStarted`); the completed
- *   round is dropped. Else, if it completed a group (`RoundType.onSolve`), the view
+ *   round (id `nextRoundId`) opens on `roundStart` (`RoundStarted`) in a theme
+ *   from `themes` other than the completed round's; the completed round is dropped. Else, if it completed a group (`RoundType.onSolve`), the view
  *   moves to the parent and a `collapse` runs (`RoundCollapsed`; the first one sets
  *   `firstCollapseSeen`). Else `advance`.
  * - `collapse`: `advance`, or idle when the parent collapsed into is itself the next puzzle.
  * - `advance`, `roundStart`: idle; the puzzle in view is shown from `endAt`.
  *
+ * Leaves are realised under the round's pinned tuning (`tunings`, AD-7); a new
+ * round is planned under the active `tuning`.
+ *
  * Errors (a leaf that cannot be realised, a round that cannot be planned) leave the
  * caller to reject; they cannot occur with a plan the planner accepted.
  */
-export function endBeat(game: GameState, round: Round, endAt: number, tuning: TuningConfig): Result<TimelineResult, DomainError> {
+export function endBeat(
+  game: GameState,
+  round: Round,
+  endAt: number,
+  tuning: TuningConfig,
+  themes: ThemeCatalog,
+  tunings: TuningsByVersion,
+): Result<TimelineResult, DomainError> {
   const inView = round.viewPath[round.viewPath.length - 1];
   if (inView === undefined) return err(invalid('no puzzle in view'));
   switch (round.presentation.kind) {
@@ -71,14 +83,14 @@ export function endBeat(game: GameState, round: Round, endAt: number, tuning: Tu
       if (next !== undefined && next.tier === inView.tier && next.index === inView.index) {
         return ok({ game: withRound(game, settle(round, endAt)), events: [] });
       }
-      const advanced = startAdvance(round, endAt, tuning, game);
+      const advanced = startAdvance(round, endAt, tuning, game, tunings);
       return advanced.ok ? ok({ game: withRound(game, advanced.value), events: [] }) : advanced;
     }
     case 'solve': {
       const solved: Round = { ...round, solved: [...round.solved, nodeKey(inView)] };
       const rt = ROUND_TYPES[round.type];
       const isSolved = (node: Parameters<typeof isNodeSolved>[1]) => isNodeSolved(solved, node);
-      if (rt.isComplete(round.plan, isSolved)) return completeRound(game, round, endAt, tuning);
+      if (rt.isComplete(round.plan, isSolved)) return completeRound(game, round, endAt, tuning, themes);
       const { collapsesInto } = rt.onSolve(round.plan, inView, isSolved);
       if (collapsesInto !== null) {
         const collapsing: Round = {
@@ -92,18 +104,21 @@ export function endBeat(game: GameState, round: Round, endAt: number, tuning: Tu
           events: [{ type: 'RoundCollapsed', roundId: round.roundId, nodeId: collapsesInto }],
         });
       }
-      const advanced = startAdvance(solved, endAt, tuning, game);
+      const advanced = startAdvance(solved, endAt, tuning, game, tunings);
       return advanced.ok ? ok({ game: withRound(game, advanced.value), events: [] }) : advanced;
     }
   }
 }
 
 /** The round's top was solved at `endAt`: it completes and the next one starts. */
-function completeRound(game: GameState, round: Round, endAt: number, tuning: TuningConfig): Result<TimelineResult, DomainError> {
+function completeRound(game: GameState, round: Round, endAt: number, tuning: TuningConfig, themes: ThemeCatalog): Result<TimelineResult, DomainError> {
   const nextId = round.nextRoundId;
   if (nextId === null) return err(invalid('the next round has no reserved id'));
   const roundOrdinal = game.roundOrdinal + 1;
-  const next = startRound(nextId, { ...game, roundOrdinal }, tuning, beatAt('roundStart', endAt, tuning, game), null);
+  // The theme the completed round was drawn in (a saved id the catalogue lacks drew
+  // as Kiln), so the next round is never a repeat of what was on screen.
+  const drawnThemeId = themeById(themes, round.themeId).themeId;
+  const next = startRound(nextId, { ...game, roundOrdinal }, tuning, beatAt('roundStart', endAt, tuning, game), null, themes, drawnThemeId);
   if (!next.ok) return next;
   const { [round.roundId]: _completed, ...rest } = game.rounds.byId;
   const inView = round.viewPath[round.viewPath.length - 1];
