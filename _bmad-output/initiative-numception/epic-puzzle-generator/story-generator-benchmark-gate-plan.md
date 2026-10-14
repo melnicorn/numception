@@ -15,7 +15,14 @@ review_loop_iteration: 0
 followup_review_recommended: false
 context: []
 warnings: []
-deferred: []
+deferred:
+  - summary: >-
+      CI headroom on the plan gate is thin: the slowest Tower n=9 plan took 43.56 ms on ubuntu-latest against the 50 ms limit (laptop: 19.98 ms).
+    evidence: |-
+      CI run on 6d5919e: "tower n=9 round plan: n=200 max 43.56 ms after re-timing the 5 slowest (limit 50 ms per plan)". Realisation p95 is 0.33 ms, far under 10 ms. The plan gate may flake as the generator grows. Candidate for the epic's Refactor sweep (2.12): speed up Tower planning, e.g. cheaper leaf-contract checks.
+    location: >-
+      tools/bench/generator.bench-test.ts; packages/core/src/rounds/plan-tiers.ts
+    severity: medium
 ---
 
 <intent-contract>
@@ -79,4 +86,4 @@ Oneshot: one Vitest benchmark file run through its own config, plus a pure gate 
 - Slowed run: ✘ verdict with numbers.
 - `pnpm typecheck`, `lint:deps`, `test` (with the gate's unit tests), `build` and `e2e` all pass.
 
-**Residual risks:** GitHub runners are slower than a laptop; the plan max has about 2.5× headroom locally. Confirmed on this push's CI run.
+**Residual risks:** on CI (ubuntu-latest) the gate passed with plan max 43.56 ms against the 50 ms limit, which is thin headroom (deferred to the Refactor sweep), and realisation p95 0.33 ms.
