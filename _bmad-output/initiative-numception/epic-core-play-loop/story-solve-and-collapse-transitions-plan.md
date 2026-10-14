@@ -3,7 +3,7 @@ title: 'Solve and collapse transitions'
 type: 'feature'
 ticket: '3'
 created: '2026-10-14'
-status: 'in-review'
+status: 'built'
 baseline_revision: '7ec0efe77039b71625b4e6857fc0227c41644e27'
 route: 'full'
 route_source: 'auto'
@@ -116,8 +116,33 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-14 — Review pass
+- verdicts: 4 findings — high 0, medium 1, low 3, false 0, maybe-false 0
+- findings:
+  - `[low]` `[patch]` The round-start crossfade showed the old round's fused top (solved fill and answer) through the new operator for its second half. Fixed: both layers cross over the first half; only the new round after that.
+  - `[medium]` `[patch]` Numerals were sized from the rest scale, so scale-changing advances (Tower tier-2 → next leaf) drew them about 3× too large for their tiles. Fixed: `sizingTransform` sizes advance layers from their on-screen scale (floor 20 px), and collapses keep rest sizing; unit-tested.
+  - `[low]` `[patch]` The context-loss e2e couldn't fail on a broken rebuild. Fixed: renderer `stats()` (frames, rebuilds) via the dev/playtest hook; the test asserts no frames between lost and restored and exactly one rebuild.
+  - `[low]` `[patch]` The crossfade wasn't frame-sampled, despite the notes. Fixed: a late-crossfade frame sample checks the frame isn't blank and the operator region isn't the solved fill.
+
 ## Verification
 
 **Commands:**
 - `pnpm install --frozen-lockfile && pnpm typecheck && pnpm lint:deps && pnpm test && pnpm build && pnpm check:flavours && pnpm check:budget && CI=1 pnpm e2e` -- expected: all exit 0
 - Same with `BASE_PATH=/numception/` -- expected: all exit 0
+
+## Auto Run Result
+
+**Summary:** Render draws the presentation timeline. The answer tile fires the frame of a correct tap, the camera advances between puzzles, solved groups collapse into their parent cell with a constant-velocity pull-out (3 s first, 1.2 s later), and rounds crossfade. Core view supplies the beat's from/to views, camera rects and tapped cell. The scene rebuilds after WebGL context loss.
+
+**Hitl verdict (user, iPhone 16 Pro, Capacitor playtest build, 2026-10-14):**
+- Taps feel nice and responsive.
+- Solve and advance beats seem good.
+- Fonts and sizes look great, and animations are smooth.
+- **Collapse:** "a little weird, not sure it's obvious that we're solving the super puzzle". The user suggested showing the super-shape's outline when zoomed into a node, which becomes new entry 9.
+- **Round change:** "didn't get the sense of new round; looked like the values were replaced", possibly better with a theme switch between rounds. Carried to epic-themes-and-feedback.
+
+**Review findings:** 4 patches applied (1 medium, 3 low), 0 deferred, 0 rejected.
+
+**Follow-up review recommended:** false.
+
+**Verification:** with and without `BASE_PATH=/numception/`, `pnpm typecheck`, `lint:deps`, `test` (877), `build`, `check:flavours`, `check:budget` and `CI=1 pnpm e2e` (20 passed, 1 skipped: real context restore can't fire in headless WebKit) all pass. The user played it on the iPhone.

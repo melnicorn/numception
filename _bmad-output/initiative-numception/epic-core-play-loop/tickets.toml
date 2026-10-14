@@ -38,6 +38,18 @@ risk = "medium"
 references = ["_bmad-output/initiative-numception/ux-numception/DESIGN.md", "_bmad-output/initiative-numception/ux-numception/mockups/key-first-collapse.html"]
 
 [[entry]]
+id = 9
+type = "story"
+title = "Super-shape outline around the zoomed puzzle"
+description = "While a puzzle or overview is shown inside a bigger one, draws the parent (super-shape) outline and sibling cells extending around and beyond the frame, with the current puzzle sitting in its cell, so the player sees they are solving part of a larger puzzle before the collapse reveals it; the outline carries through advance and collapse beats."
+verify = "On the iPhone, a leaf puzzle shows the faint outline of its tier-2 shape around it with solved siblings visible in their cells, and the user confirms the collapse now reads as completing the super puzzle."
+covers = ["CAP-4"]
+after = [3]
+hitl = true
+risk = "medium"
+notes = ["Collapse is \"a little weird, not sure it's obvious that we're solving the super puzzle. Perhaps if we extended the super-shape's outline when we zoom in on a node, that might help?\" (user, 2026-10-14)"]
+
+[[entry]]
 id = 4
 type = "story"
 title = "Save and resume"
