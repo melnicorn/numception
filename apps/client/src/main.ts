@@ -2,8 +2,11 @@
 import {
   createFeedbackDirector,
   createGame,
-  type FeedbackControls,
   createSaveWriter,
+  createSettingsControls,
+  DEFAULT_FEEDBACK_FLAGS,
+  type FeedbackFlags,
+  feedbackFlagsOf,
   type HapticKind,
   type HapticsPort,
   createScheduler,
@@ -13,11 +16,12 @@ import {
   parseTuning,
   type ThemeCatalog,
   saveAfterBatches,
+  type SettingsControls,
   tapCommand,
   type TuningConfig,
   type TuningsByVersion,
 } from '@numception/app';
-import { webAudio, webFeedbackFlags, webLifecycle, webStorage } from '@numception/platform-web';
+import { takeLegacyFeedbackFlags, webAccessibilityPrefs, webAudio, webLifecycle, webStorage } from '@numception/platform-web';
 import { createRenderer } from '@numception/render';
 import { mountGuideLine } from '@numception/ui';
 import { type CueCall, recordingAudio, recordingHaptics } from './recording-audio';
@@ -31,8 +35,8 @@ if (!root) {
 // Sound and haptics (FR-41, AD-16): procedural Web Audio behind the AudioPort, the
 // Capacitor Haptics plugin behind the HapticsPort inside a native shell (a no-op on
 // the web: the iOS PWA has no haptics API), and the one FeedbackDirector mapping
-// events to them, gated by the effects, music and haptics flags (dev flags in
-// localStorage for now; entry 4 moves them into profile settings). Dev and playtest
+// events to them, gated by the active profile's effects, music and haptics settings
+// (AD-21; read from the game once it boots, the defaults before). Dev and playtest
 // record every cue and impact the director asks for, for the e2e specs (the test
 // hook's `cues` and `haptics`).
 const cueLog: CueCall[] = [];
@@ -48,19 +52,15 @@ if (isNativeShell()) {
     })
     .catch((error: unknown) => console.warn('Haptics failed to load', error));
 }
-const feedbackFlags = webFeedbackFlags(__NUMCEPTION_APP_ID__);
+/** Where the director reads its switches: the game's active profile once booted. */
+let feedbackFlags: () => FeedbackFlags = () => DEFAULT_FEEDBACK_FLAGS;
 const director = createFeedbackDirector({
   audio: __NUMCEPTION_DEV_PANEL__ ? recordingAudio(webAudio(), cueLog) : webAudio(),
   haptics: __NUMCEPTION_DEV_PANEL__ ? recordingHaptics(haptics, hapticLog) : haptics,
-  flags: feedbackFlags.read(),
+  flags: () => feedbackFlags(),
 });
-const feedbackControls: FeedbackControls = {
-  get: () => director.flags(),
-  set: (flags) => {
-    feedbackFlags.write(flags);
-    director.setFlags(flags);
-  },
-};
+/** The settings the dev panel shows and changes (`SetSetting`), bound to the game once it boots. */
+let bootedSettings: SettingsControls | null = null;
 // The audio output unlocks inside a user gesture: the first press anywhere (captured
 // before the canvas handles it, so a first-tap solve can sound). iOS counts the
 // release (touchend / pointerup) as the activating gesture for touch, so those
@@ -104,6 +104,13 @@ const themeCatalog = loadThemeCatalog(import.meta.glob<unknown>('../../../conten
 if (__NUMCEPTION_FLAVOUR__ === 'dev') {
   for (const rejected of themeCatalog.rejected) console.warn(`Theme ${rejected.source} left out: ${rejected.message}`);
 }
+
+// Dev panel settings: forwards to the booted game (none before it boots).
+const settingsControls: SettingsControls = {
+  get: () => bootedSettings?.get() ?? null,
+  set: (change) => bootedSettings?.set(change),
+  themeIds: themeCatalog.themes.map((t) => t.themeId),
+};
 
 if (!tuning.ok) {
   // Playtest and dev only in practice: a shipped tuning is validated in CI. Plain text, never a crash loop.
@@ -159,6 +166,11 @@ async function boot(el: HTMLElement, activeTuning: TuningConfig, tunings: Tuning
       })
     : null;
   if (writer !== null) saveAfterBatches(game, writer, (fn) => setTimeout(fn, 0));
+  feedbackFlags = () => feedbackFlagsOf(game.getState());
+  bootedSettings = createSettingsControls(game.getState, (command) => scheduler.dispatch(command), themes.map((t) => t.themeId));
+  // OS Reduce Motion (AD-16) before the session starts, so the first beat already
+  // runs at the effective Motion level; later changes follow at once.
+  webAccessibilityPrefs().start(({ reduceMotion }) => scheduler.dispatch({ type: 'SetOsPreferences', reduceMotion }));
   // One call stack per tap: render -> app -> core -> app -> render (AD-2). A tap on
   // a puzzle answers it; on an overview it enters the cell's puzzle (FR-9).
   const renderer = createRenderer({
@@ -184,6 +196,13 @@ async function boot(el: HTMLElement, activeTuning: TuningConfig, tunings: Tuning
   scheduler.dispatch(session.restore === null ? { type: 'StartSession' } : { type: 'StartSession', restore: session.restore });
   // A restore core refused (it never should: it parsed) falls back to a new session.
   if (game.getView() === null) scheduler.dispatch({ type: 'StartSession' });
+  // The dev feedback flags tickets 6.2 and 6.3 kept in localStorage move into the
+  // profile's settings once (the key is removed), then the settings are the truth.
+  const legacy = takeLegacyFeedbackFlags(__NUMCEPTION_APP_ID__);
+  for (const key of ['effects', 'music', 'haptics'] as const) {
+    const value = legacy?.[key];
+    if (value !== undefined) scheduler.dispatch({ type: 'SetSetting', key, value });
+  }
   renderer.render(game.getView());
   // Backgrounding pauses play, completes any beat, saves, and veils the board until the next tap (AD-17).
   webLifecycle().start((command) => (command.type === 'Pause' ? scheduler.pause(command.reason) : scheduler.resume(command.reason)));
@@ -224,7 +243,7 @@ if (__NUMCEPTION_DEV_PANEL__) {
     }),
   );
   void Promise.all([import('@numception/ui/dev-panel'), loadTunings])
-    .then(([{ mountDevPanel }, entries]) => mountDevPanel(host, Object.fromEntries(entries), feedbackControls))
+    .then(([{ mountDevPanel }, entries]) => mountDevPanel(host, Object.fromEntries(entries), settingsControls))
     .catch((error: unknown) => {
       console.warn('Dev panel failed to load', error);
       host.textContent = `Dev panel failed to load: ${error instanceof Error ? error.message : String(error)}`;

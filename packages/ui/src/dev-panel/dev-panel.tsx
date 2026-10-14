@@ -1,7 +1,8 @@
-import { type FeedbackControls, roundInspectorOptions } from '@numception/app';
+import { roundInspectorOptions, type SettingsControls } from '@numception/app';
 import { useMemo, useState } from 'preact/hooks';
 import { PuzzleBlock } from './puzzle-block';
 import { RoundInspector } from './round-inspector';
+import { SettingsBlock } from './settings-block';
 import { SoundBlock } from './sound-block';
 
 /**
@@ -44,10 +45,10 @@ const panelStyle = {
  * Dev panel: a toggle that opens the panel region. `tunings` maps every bundled
  * tuning's version to its JSON, as the composition root passed it in (AD-7); the
  * panel never loads tuning itself. The demo Puzzle block uses version 1 (else the
- * lowest); the round inspector can choose any of them. `feedback`, when passed,
- * shows the sound toggles.
+ * lowest); the round inspector can choose any of them. `settings`, when passed,
+ * shows the profile settings (Motion, themes) and the sound toggles.
  */
-export function DevPanel({ tunings, feedback }: { tunings: Readonly<Record<string, unknown>>; feedback?: FeedbackControls }) {
+export function DevPanel({ tunings, settings }: { tunings: Readonly<Record<string, unknown>>; settings?: SettingsControls }) {
   const [open, setOpen] = useState(false);
   const options = useMemo(() => roundInspectorOptions(tunings), [tunings]);
   const demoTuning = options.defaultTuningVersion === undefined ? undefined : tunings[String(options.defaultTuningVersion)];
@@ -68,7 +69,8 @@ export function DevPanel({ tunings, feedback }: { tunings: Readonly<Record<strin
           <h2 id={`${DEV_PANEL_ID}-heading`} style={{ margin: 0, fontSize: '14px' }}>
             Dev panel
           </h2>
-          {feedback !== undefined && <SoundBlock feedback={feedback} />}
+          {settings !== undefined && <SettingsBlock settings={settings} />}
+          {settings !== undefined && <SoundBlock settings={settings} />}
           <PuzzleBlock tuning={demoTuning} />
           <RoundInspector tunings={tunings} options={options} />
         </section>

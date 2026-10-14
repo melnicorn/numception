@@ -8,6 +8,8 @@ import { gateInput } from './gate-input';
 import { reduceEnterPuzzle } from './reduce-enter-puzzle';
 import { reducePause } from './reduce-pause';
 import { reduceResume } from './reduce-resume';
+import { reduceSetOsPreferences } from './reduce-set-os-preferences';
+import { reduceSetSetting } from './reduce-set-setting';
 import { reduceStartSession } from './reduce-start-session';
 import { reduceTapCell } from './reduce-tap-cell';
 import { reduceTick } from './reduce-tick';
@@ -61,6 +63,10 @@ export function step(
       return reducePause(state, fields.reason, tuning, themes, tunings);
     case 'Resume':
       return reduceResume(state, fields.reason);
+    case 'SetSetting':
+      return reduceSetSetting(state, fields);
+    case 'SetOsPreferences':
+      return reduceSetOsPreferences(state, fields.reduceMotion);
     default:
       return reject(state, name, { code: 'invalid-command', message: `unknown command ${name}` });
   }

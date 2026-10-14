@@ -3,6 +3,7 @@ import type { TuningConfig } from '../tuning/tuning-config';
 import type { TuningsByVersion } from '../tuning/tunings-by-version';
 import type { AppState } from './app-state';
 import type { GameState } from './game-state';
+import { motionOf } from './motion-of';
 import { reject } from './reject';
 import { rejected } from './rejected';
 import { runTimeline } from './run-timeline';
@@ -35,7 +36,7 @@ export function reduceTick(state: AppState, elapsedMs: unknown, tuning: TuningCo
   const game = state.activeProfileId === null ? undefined : state.profiles[state.activeProfileId];
   if (game === undefined || state.pauseReasons.length > 0) return { state, events: [] };
   const clockMs = game.clockMs + elapsedMs;
-  const ran = runTimeline(endSoftMiss({ ...game, clockMs }), tuning, (p) => (p.startedAtMs + p.durationMs <= clockMs ? p.startedAtMs + p.durationMs : null), themes, tunings);
+  const ran = runTimeline(endSoftMiss({ ...game, clockMs }), tuning, (p) => (p.startedAtMs + p.durationMs <= clockMs ? p.startedAtMs + p.durationMs : null), themes, tunings, motionOf(state, game));
   const next = withGame(state, ran.game);
   if (ran.error !== null) return { state: next, events: [...ran.events, rejected('Tick', ran.error)] };
   return { state: next, events: ran.events };

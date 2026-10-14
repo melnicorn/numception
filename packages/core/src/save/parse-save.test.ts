@@ -63,7 +63,7 @@ describe('serializeGame / parseSave', () => {
     const game = midRound();
     const doc = serializeGame(game, 7);
     expect(doc).toMatchObject({ kind: 'GameSave', schemaVersion: 1, saveFormatVersion: SAVE_FORMAT_VERSION, generation: 7 });
-    expect(SAVE_FORMAT_VERSION).toBe(3);
+    expect(SAVE_FORMAT_VERSION).toBe(4);
     expect(doc.checksum).toBe(saveChecksum({ game }));
     const back = parseSave(JSON.stringify(doc));
     expect(back).toEqual({ ok: true, value: { game, generation: 7, saveFormatVersion: SAVE_FORMAT_VERSION } });
@@ -144,6 +144,47 @@ describe('serializeGame / parseSave', () => {
     // A round that followed another (it carries the last round's top) followed a Kiln one.
     const migrated = MIGRATIONS[2]?.({ game: { rounds: { byId: { r: { previousTop: { any: 1 } } } } } });
     expect(migrated).toEqual({ game: { rounds: { byId: { r: { previousTop: { any: 1 }, themeId: 'kiln', previousThemeId: 'kiln' } } } } });
+  });
+
+  it('migrates a v3 save (motion only) to v4: the theme selection, playlist and feedback switches at their defaults', () => {
+    const game = midRound();
+    const { themeSelection: _s, playlist: _p, effects: _e, music: _m, haptics: _h, ...v3Settings } = game.settings;
+    const v3Payload = { game: { ...game, settings: v3Settings } };
+    const v3 = { kind: 'GameSave', schemaVersion: 1, saveFormatVersion: 3, generation: 6, checksum: saveChecksum(v3Payload), payload: v3Payload };
+    // Without the 3 → 4 step the v3 game is not loadable at v4.
+    const withoutStep = { version: 4, migrations: { 0: MIGRATIONS[0], 1: MIGRATIONS[1], 2: MIGRATIONS[2] } as Record<number, SaveMigration> };
+    expect(parseSave(JSON.stringify(v3), withoutStep)).toMatchObject({ ok: false, error: { code: 'invalid-save' } });
+    const back = parseSave(JSON.stringify(v3));
+    expect(back).toEqual({ ok: true, value: { game, generation: 6, saveFormatVersion: 3 } });
+    expect(back.ok && back.value.game.settings).toEqual({
+      mode: 'zen',
+      motion: 'calm',
+      themeSelection: 'randomize',
+      playlist: [],
+      effects: true,
+      music: false,
+      haptics: true,
+    });
+    // A setting already present is kept; a payload not shaped like v3 passes through.
+    expect(MIGRATIONS[3]?.({ game: { settings: { effects: false } } })).toEqual({
+      game: { settings: { themeSelection: 'randomize', playlist: [], effects: false, music: false, haptics: true } },
+    });
+    expect(MIGRATIONS[3]?.({ game: 'junk' })).toEqual({ game: 'junk' });
+  });
+
+  it('keeps every setting across save and load, and rejects malformed settings', () => {
+    const base = midRound();
+    const game: GameState = {
+      ...base,
+      settings: { ...base.settings, motion: 'minimal', themeSelection: 'playlist', playlist: ['moonwater', 'kiln'], effects: false, music: true, haptics: false },
+    };
+    const back = parseSave(JSON.stringify(serializeGame(game, 4)));
+    expect(back.ok && back.value.game.settings).toEqual(game.settings);
+    for (const bad of [{ motion: 'fast' }, { themeSelection: 'shuffle' }, { playlist: ['kiln', 'kiln'] }, { playlist: 'kiln' }, { haptics: 'on' }]) {
+      const payload = { game: { ...game, settings: { ...game.settings, ...bad } } };
+      const doc = { ...serializeGame(game, 4), checksum: saveChecksum(payload), payload };
+      expect(parseSave(JSON.stringify(doc))).toMatchObject({ ok: false, error: { code: 'invalid-save', message: expect.stringMatching(/settings/) } });
+    }
   });
 
   it('keeps the round’s theme across save and load, and rejects a save without one', () => {

@@ -16,13 +16,9 @@ export { type LoadedSession, loadSave } from './load-save';
 export type { LifecycleCommand, LifecyclePort } from './lifecycle-port';
 export { type AudioChannels, type AudioPort, type CueId, type CueParams, noAudio } from './audio-port';
 export { type HapticKind, type HapticsPort, noHaptics } from './haptics-port';
-export {
-  DEFAULT_FEEDBACK_FLAGS,
-  type FeedbackControls,
-  type FeedbackFlags,
-  type FeedbackFlagStore,
-  parseFeedbackFlags,
-} from './feedback-flags';
+export { DEFAULT_FEEDBACK_FLAGS, type FeedbackFlags, feedbackFlagsOf } from './feedback-flags';
+export { type AccessibilityPrefs, type AccessibilityPrefsPort, noAccessibilityPrefs } from './accessibility-prefs-port';
+export { createSettingsControls, type SettingsControls, type SettingsView, settingsView } from './settings-controls';
 export {
   type Cue,
   createFeedbackDirector,
@@ -64,6 +60,9 @@ export {
   KILN_TOKENS,
   type LayoutPoint,
   type LayoutPolygon,
+  MINIMAL_CROSSFADE_MS,
+  MOTION_LEVELS,
+  type MotionLevel,
   type NodeCellRef,
   type NodeId,
   type PlayCellVM,
@@ -73,9 +72,12 @@ export {
   parseTuning,
   type Puzzle,
   puzzleInView,
+  type ProfileSettings,
+  type SettingChange,
   type SoftMissVM,
   tapCommand,
   type ThemeCatalog,
+  type ThemeSelection,
   type ThemeTokens,
   type TuningConfig,
   type TuningsByVersion,

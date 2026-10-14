@@ -10,5 +10,7 @@
  *   (`softMiss`) and `guideLine` (ticket 6, FR-4).
  * - 3: each round gains its theme (`themeId`) and the theme of the round it
  *   followed (`previousThemeId`) (AD-15, FR-25).
+ * - 4: the profile's settings gain `minimal` motion, `themeSelection`, `playlist`,
+ *   `effects`, `music` and `haptics` (AD-21; ticket 6.4).
  */
-export const SAVE_FORMAT_VERSION = 3;
+export const SAVE_FORMAT_VERSION = 4;

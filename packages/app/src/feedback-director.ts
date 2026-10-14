@@ -6,7 +6,11 @@ import type { HapticKind, HapticsPort } from './haptics-port';
 export type FeedbackDirectorOptions = {
   readonly audio: AudioPort;
   readonly haptics: HapticsPort;
-  readonly flags?: FeedbackFlags;
+  /**
+   * The current switches, read on every `handle` (the client passes the active
+   * profile's settings, `feedbackFlagsOf(game.getState())`); the defaults when omitted.
+   */
+  readonly flags?: () => FeedbackFlags;
 };
 
 /** The one mapper from events to the audio and haptics ports (AD-16). */
@@ -15,8 +19,8 @@ export type FeedbackDirector = {
   readonly handle: (events: readonly GameEvent[]) => void;
   /** From a user gesture: unlocks the audio output. */
   readonly unlock: () => void;
+  /** The switches as last applied. */
   readonly flags: () => FeedbackFlags;
-  readonly setFlags: (flags: FeedbackFlags) => void;
 };
 
 /** The scale step a solve at `tier` sounds: tier 1 the top note, one step lower per tier. */
@@ -72,16 +76,26 @@ export function hapticsFor(events: readonly GameEvent[]): readonly HapticKind[] 
 /**
  * Creates the feedback director (AD-16): the only place events turn into
  * `AudioPort` and `HapticsPort` calls, the cues gated by the effects (and music)
- * flags and the impacts by the haptics flag. A lifecycle pause suspends the audio
- * output; the resume resumes it.
+ * flags and the impacts by the haptics flag, read from `options.flags` on every
+ * batch (a change reaches the audio port's channels before the batch plays). A
+ * lifecycle pause suspends the audio output; the resume resumes it.
  */
 export function createFeedbackDirector(options: FeedbackDirectorOptions): FeedbackDirector {
   const { audio, haptics } = options;
-  let flags = options.flags ?? DEFAULT_FEEDBACK_FLAGS;
+  const read = options.flags ?? (() => DEFAULT_FEEDBACK_FLAGS);
+  let flags = read();
   audio.setEnabled({ effects: flags.effects, music: flags.music });
+
+  /** Takes the current switches, telling the audio port when its channels change. */
+  function refresh(): void {
+    const next = read();
+    if (next.effects !== flags.effects || next.music !== flags.music) audio.setEnabled({ effects: next.effects, music: next.music });
+    flags = { effects: next.effects, music: next.music, haptics: next.haptics };
+  }
 
   return {
     handle(events) {
+      refresh();
       for (const event of events) {
         if (event.type === 'Paused' && event.reason === 'lifecycle') audio.suspend();
         if (event.type === 'Resumed' && event.reason === 'lifecycle') audio.resume();
@@ -96,9 +110,5 @@ export function createFeedbackDirector(options: FeedbackDirectorOptions): Feedba
     },
     unlock: () => audio.unlock(),
     flags: () => flags,
-    setFlags(next) {
-      flags = { effects: next.effects, music: next.music, haptics: next.haptics };
-      audio.setEnabled({ effects: flags.effects, music: flags.music });
-    },
   };
 }

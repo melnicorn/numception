@@ -3,6 +3,7 @@ import { SHAPES } from '../layout/shapes/shapes';
 import type { Presentation } from '../presentation/presentation';
 import { activeRound } from '../state/active-round';
 import type { AppState } from '../state/app-state';
+import { motionOf } from '../state/motion-of';
 import type { NodeId } from '../generator/node-id';
 import type { Round } from '../state/round';
 import { sameNode } from '../state/same-node';
@@ -39,7 +40,7 @@ function timing(p: Presentation, clockMs: number): NestedPresentation {
  * `inputLocked` and `presentation` come from the round's timeline at the profile's
  * Tick time; `presentation` also carries what the running beat draws (`beatViews`:
  * the tapped answer, `from` / `to` views and the camera). `blurred` is the `blur`
- * pause reason (AD-17). `softMiss` is the round's soft-miss cue while it runs
+ * pause reason (AD-17), `motion` the effective Motion level (`motionOf`). `softMiss` is the round's soft-miss cue while it runs
  * and `guideLine` its guide line while up (FR-4). Null before a round
  * exists. `tuning` is the active config (AD-13's signature); this build reads
  * nothing from it yet.
@@ -61,6 +62,7 @@ export function selectView(state: AppState, _tuning: TuningConfig, themes: Theme
   const shown: PlayVM = {
     ...view,
     blurred,
+    motion: motionOf(state, game),
     presentation: { ...view.presentation, ...extra },
     ...(softMiss === undefined || blurred ? {} : { softMiss }),
     // The veiled board's first tap only unblurs, so the line waits until the veil lifts.

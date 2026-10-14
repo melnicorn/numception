@@ -1,6 +1,7 @@
 import type { Presentation } from '../presentation/presentation';
 import type { DomainError } from '../result/domain-error';
 import type { ThemeCatalog } from '../theme/theme-catalog';
+import type { MotionLevel } from '../settings/motion-level';
 import type { TuningConfig } from '../tuning/tuning-config';
 import type { TuningsByVersion } from '../tuning/tunings-by-version';
 import { idleAt } from './beat';
@@ -17,7 +18,7 @@ export type TimelineRun = TimelineResult & { readonly error: DomainError | null 
  * Runs `game`'s active round's timeline (AD-20): while a beat is running and
  * `endOf` gives it an end time, ends it there (`endBeat`) and goes on with the beat
  * that follows, so one call may cross several beats. Stops at idle, or at a beat
- * `endOf` leaves running (null).
+ * `endOf` leaves running (null). The beats it starts run at Motion level `motion`.
  *
  * If a beat end fails (a leaf that cannot be realised, a round that cannot be
  * planned), the round is settled idle on what is in view at `game.clockMs`, without
@@ -30,6 +31,7 @@ export function runTimeline(
   endOf: (presentation: Presentation) => number | null,
   themes: ThemeCatalog,
   tunings: TuningsByVersion,
+  motion: MotionLevel,
 ): TimelineRun {
   let current = game;
   const events: GameEvent[] = [];
@@ -39,7 +41,7 @@ export function runTimeline(
     if (round === undefined || round.presentation.kind === 'idle') break;
     const endAt = endOf(round.presentation);
     if (endAt === null) break;
-    const ended = endBeat(current, round, endAt, tuning, themes, tunings);
+    const ended = endBeat(current, round, endAt, tuning, themes, tunings, motion);
     if (!ended.ok) {
       const inView = round.viewPath[round.viewPath.length - 1];
       const shown = inView !== undefined && isPlayable(round, inView) ? current.clockMs : null;

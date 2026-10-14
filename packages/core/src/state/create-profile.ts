@@ -1,7 +1,16 @@
 import type { CommandContext } from './command-context';
 import type { GameState, ProfileKind, ProfileSettings } from './game-state';
 
-const KID_DEFAULTS: ProfileSettings = { mode: 'zen', motion: 'calm' };
+/** The Kid defaults (EXPERIENCE: Calm motion); effects and haptics on, music off. */
+export const KID_DEFAULTS: ProfileSettings = Object.freeze({
+  mode: 'zen',
+  motion: 'calm',
+  themeSelection: 'randomize',
+  playlist: Object.freeze([]) as readonly string[],
+  effects: true,
+  music: false,
+  haptics: true,
+});
 
 /**
  * A new profile of `kind` (AD-21): its id is `ctx.entropy.ids[0]` and its

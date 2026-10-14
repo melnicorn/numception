@@ -19,8 +19,9 @@ import { serveNode } from './serve-node';
  * `deriveSeed(rootSeed, roundOrdinal)`), realises its first leaf and views it:
  * `viewPath` runs from the top to that leaf (AD-25). The round opens on
  * `presentation`; the leaf counts as shown from `shownAtMs` (null while a beat runs).
- * Its theme is chosen from `themes` (`selectPresentation`), never the same as
- * `previousThemeId`'s while the pool has another.
+ * Its theme is chosen from `themes` (`selectPresentation`) by the profile's theme
+ * selection: never the same as `previousThemeId`'s under Randomize while the pool
+ * has another; the next in the playlist under Playlist.
  */
 export function startRound(
   roundId: string,
@@ -32,7 +33,11 @@ export function startRound(
   previousThemeId: string | null,
 ): Result<Round, DomainError> {
   const seed = deriveSeed(game.rootSeed, game.roundOrdinal);
-  const { themeId } = selectPresentation({ mode: game.settings.mode, previousThemeId, roundSeed: seed }, tuning, themes);
+  const { themeId } = selectPresentation(
+    { mode: game.settings.mode, previousThemeId, roundSeed: seed, selection: game.settings.themeSelection, playlist: game.settings.playlist },
+    tuning,
+    themes,
+  );
   const plan = planRound(nextRoundRequest(game), tuning, seed, versionsFor(tuning));
   if (!plan.ok) return plan;
   const [first] = playOrder(plan.value.tiers, plan.value.n);

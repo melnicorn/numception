@@ -1,5 +1,6 @@
-import type { ProfileSettings } from '../state/game-state';
+import type { MotionLevel } from '../settings/motion-level';
 import type { TuningConfig } from '../tuning/tuning-config';
+import { MINIMAL_CROSSFADE_MS } from './minimal-crossfade-ms';
 import type { PresentationKind } from './presentation';
 
 /** The tuning duration each beat reads; `collapse` is resolved by `firstCollapse`. */
@@ -15,14 +16,18 @@ const BEAT_KEY = {
  * `collapseMs` after, at every Motion level, so FR-9's caps (≤ 3 s first, ≤ 1.2 s
  * later) hold for every profile. Every other beat is the tuning's duration, times
  * `calmMotionScale` at Calm motion, rounded. Idle lasts 0.
+ *
+ * At Minimal motion the moving beats (`advance`, `collapse`, `roundStart`) are
+ * crossfades of `MINIMAL_CROSSFADE_MS` (zooms become cuts); `solve` runs as at Full.
  */
 export function beatDuration(
   kind: PresentationKind,
   tuning: TuningConfig,
-  motion: ProfileSettings['motion'],
+  motion: MotionLevel,
   firstCollapse: boolean,
 ): number {
   if (kind === 'idle') return 0;
+  if (motion === 'minimal' && kind !== 'solve') return MINIMAL_CROSSFADE_MS;
   const p = tuning.presentation;
   if (kind === 'collapse') return firstCollapse ? p.firstCollapseMs : p.collapseMs;
   return Math.round(p[BEAT_KEY[kind]] * (motion === 'calm' ? p.calmMotionScale : 1));
@@ -30,9 +35,9 @@ export function beatDuration(
 
 /**
  * How long the soft-miss cue runs, integer ms (FR-4): `softMissMs`, times
- * `calmMotionScale` at Calm motion, rounded. Not a beat: input stays open.
+ * `calmMotionScale` at Calm motion, rounded (as at Full at Minimal). Not a beat: input stays open.
  */
-export function softMissDuration(tuning: TuningConfig, motion: ProfileSettings['motion']): number {
+export function softMissDuration(tuning: TuningConfig, motion: MotionLevel): number {
   const p = tuning.presentation;
   return Math.round(p.softMissMs * (motion === 'calm' ? p.calmMotionScale : 1));
 }

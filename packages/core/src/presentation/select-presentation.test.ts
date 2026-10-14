@@ -82,3 +82,38 @@ describe('selectPresentation (AD-15, Randomize)', () => {
     expect(['kiln', 'moonwater']).toContain(themeId);
   });
 });
+
+describe('selectPresentation: Playlist', () => {
+  const pick = (previousThemeId: string | null, playlist: readonly string[], catalog: Entry[] = MIXED) =>
+    selectPresentation({ mode: 'zen', previousThemeId, roundSeed: 1, selection: 'playlist', playlist }, tuning, catalog).themeId;
+
+  it('starts at the top, then follows the order after the previous theme, wrapping', () => {
+    const list = ['washi-ink', 'moonwater', 'kiln'];
+    expect(pick(null, list)).toBe('washi-ink');
+    expect(pick('washi-ink', list)).toBe('moonwater');
+    expect(pick('moonwater', list)).toBe('kiln');
+    expect(pick('kiln', list)).toBe('washi-ink');
+  });
+
+  it('never repeats consecutively over a long run while the playlist holds two or more themes', () => {
+    const list = ['kiln', 'moonwater'];
+    let previous: string | null = null;
+    for (let k = 0; k < 20; k += 1) {
+      const next = pick(previous, list);
+      expect(next).not.toBe(previous);
+      previous = next;
+    }
+  });
+
+  it('skips ids not in the mode pool, starts from the top after a theme not on it, and is Randomize with none left', () => {
+    expect(pick('kiln', ['vector-noir', 'moonwater', 'nowhere', 'washi-ink'])).toBe('moonwater');
+    expect(pick('moonwater', ['vector-noir', 'moonwater', 'nowhere', 'washi-ink'])).toBe('washi-ink');
+    const randomize = selectPresentation({ mode: 'zen', previousThemeId: 'kiln', roundSeed: 1 }, tuning, MIXED).themeId;
+    expect(pick('kiln', ['vector-noir'])).toBe(randomize);
+    expect(pick('kiln', [])).toBe(randomize);
+  });
+
+  it('with one theme on it, plays that one every round', () => {
+    expect(pick('moonwater', ['moonwater'])).toBe('moonwater');
+  });
+});

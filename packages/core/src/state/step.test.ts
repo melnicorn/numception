@@ -8,6 +8,7 @@ import type { AppState } from './app-state';
 import type { Command } from './command';
 import type { CommandContext } from './command-context';
 import { completePresentation } from './complete-presentation';
+import { KID_DEFAULTS } from './create-profile';
 import type { GameEvent } from './game-event';
 import type { GameState } from './game-state';
 import { initialAppState } from './initial-app-state';
@@ -429,7 +430,7 @@ describe('step: round flow', () => {
   });
 
   it('uses firstCollapseMs only for the first collapse, then collapseMs; Full motion is unscaled', () => {
-    const full = new Play(patchGame(started().state, { settings: { mode: 'zen', motion: 'full' } }));
+    const full = new Play(patchGame(started().state, { settings: { ...KID_DEFAULTS, motion: 'full' } }));
     const beats = [...full.solve(), ...full.solve(), ...full.solve()];
     expect(beats).toEqual([
       { kind: 'solve', durationMs: 380 },

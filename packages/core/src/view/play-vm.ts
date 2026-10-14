@@ -2,6 +2,7 @@ import type { NodeId } from '../generator/node-id';
 import type { LayoutPoint, LayoutPolygon } from '../layout/shape-layout';
 import type { ShapeId } from '../layout/shape-id';
 import type { PresentationKind } from '../presentation/presentation';
+import type { MotionLevel } from '../settings/motion-level';
 import type { CameraRect } from './camera-rect';
 import type { ThemeTokens } from '../theme/theme-tokens';
 
@@ -119,4 +120,11 @@ export type PlayVM = {
    * absent while blurred (the veil's first tap only unblurs), back once it lifts.
    */
   readonly guideLine?: string;
+  /**
+   * The effective Motion level (the profile's setting capped by OS Reduce Motion,
+   * EXPERIENCE Accessibility Floor), for render and the DOM surfaces: at `minimal`
+   * looping animations stop and DOM transitions become crossfades. Set on the view
+   * `selectView` returns; absent on the views nested in it (`from`, `to`, `context`).
+   */
+  readonly motion?: MotionLevel;
 };

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { TuningConfig } from '../tuning/tuning-config';
 import { beatDuration, softMissDuration } from './beat-duration';
+import { MINIMAL_CROSSFADE_MS } from './minimal-crossfade-ms';
 
 const tuning = {
   presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25, softMissMs: 600 },
@@ -32,5 +33,14 @@ describe('beatDuration', () => {
   it('runs the soft-miss cue for softMissMs, scaled at Calm', () => {
     expect(softMissDuration(tuning, 'full')).toBe(600);
     expect(softMissDuration(tuning, 'calm')).toBe(750);
+  });
+
+  it('at Minimal makes every moving beat a MINIMAL_CROSSFADE_MS crossfade and keeps the solve and soft-miss at Full', () => {
+    for (const kind of ['advance', 'roundStart'] as const) expect(beatDuration(kind, tuning, 'minimal', false)).toBe(MINIMAL_CROSSFADE_MS);
+    expect(beatDuration('collapse', tuning, 'minimal', true)).toBe(MINIMAL_CROSSFADE_MS);
+    expect(beatDuration('collapse', tuning, 'minimal', false)).toBe(MINIMAL_CROSSFADE_MS);
+    expect(beatDuration('solve', tuning, 'minimal', false)).toBe(380);
+    expect(beatDuration('idle', tuning, 'minimal', false)).toBe(0);
+    expect(softMissDuration(tuning, 'minimal')).toBe(600);
   });
 });

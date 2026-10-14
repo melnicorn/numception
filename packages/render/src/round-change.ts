@@ -60,6 +60,17 @@ export function roundChangeLook(p: number): RoundChangeLook {
   };
 }
 
+/**
+ * The round change at Minimal motion (EXPERIENCE Accessibility Floor; core's
+ * `crossfade` transition): a plain crossfade, nothing moving or scaling. The
+ * colours shift linearly (each one monotonically, so a light ↔ dark change passes
+ * mid-luminance frames) while the old top fades out and the new board fades in.
+ */
+export function crossfadeLook(p: number): RoundChangeLook {
+  const u = clamp01(p);
+  return { color: u, fromAlpha: 1 - u, fromScale: 1, toAlpha: u, toScale: 1 };
+}
+
 /** `#RRGGBB` colours mixed in sRGB, as `#RRGGBB`. */
 export function mixHex(a: string, b: string, t: number): string {
   const x = Number.parseInt(a.slice(1), 16);

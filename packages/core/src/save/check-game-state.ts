@@ -1,4 +1,6 @@
 import type { DomainError } from '../result/domain-error';
+import { isMotionLevel } from '../settings/motion-level';
+import { MAX_PLAYLIST_LENGTH, THEME_SELECTIONS } from '../settings/theme-selection';
 import type { GameState } from '../state/game-state';
 
 const PRESENTATION_KINDS = ['idle', 'solve', 'collapse', 'advance', 'roundStart'];
@@ -24,8 +26,21 @@ export function checkGameState(x: unknown): DomainError | undefined {
   if (x.profileKind !== 'kid') return bad('.profileKind must be kid');
   if (!isCount(x.rootSeed) || (x.rootSeed as number) > 0xffffffff) return bad('.rootSeed must be a uint32');
   const settings = x.settings;
-  if (!isRecord(settings) || settings.mode !== 'zen' || (settings.motion !== 'full' && settings.motion !== 'calm')) {
-    return bad('.settings must hold mode zen and motion full or calm');
+  if (!isRecord(settings) || settings.mode !== 'zen' || !isMotionLevel(settings.motion)) {
+    return bad('.settings must hold mode zen and motion full, calm or minimal');
+  }
+  if (!(THEME_SELECTIONS as readonly unknown[]).includes(settings.themeSelection)) return bad('.settings.themeSelection must be randomize or playlist');
+  const playlist = settings.playlist;
+  if (
+    !Array.isArray(playlist) ||
+    playlist.length > MAX_PLAYLIST_LENGTH ||
+    !playlist.every((id) => typeof id === 'string' && id !== '') ||
+    new Set(playlist).size !== playlist.length
+  ) {
+    return bad('.settings.playlist must be distinct non-empty theme ids');
+  }
+  if (typeof settings.effects !== 'boolean' || typeof settings.music !== 'boolean' || typeof settings.haptics !== 'boolean') {
+    return bad('.settings.effects, .music and .haptics must be booleans');
   }
   if (!isCount(x.roundOrdinal)) return bad('.roundOrdinal must be a non-negative integer');
   if (!isCount(x.clockMs)) return bad('.clockMs must be a non-negative integer');

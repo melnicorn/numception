@@ -1,17 +1,27 @@
+import type { MotionLevel } from '../settings/motion-level';
+import type { ThemeSelection } from '../settings/theme-selection';
 import type { Round } from './round';
 
 /** The kind of a profile (AD-11). Kid is the default and only kind so far; Grown-up arrives with profiles. */
 export type ProfileKind = 'kid';
 
 /**
- * Per-profile settings (AD-21). Only the ones this build reads; later epics extend
- * the list. `motion` is the EXPERIENCE Motion level: `full`, or `calm` (the Kid
- * default), which slows every presentation beat by the tuning's `calmMotionScale`.
- * Minimal arrives with the control surface.
+ * Per-profile settings (AD-21), changed by `SetSetting`. Later epics extend the list.
+ *
+ * - `motion`: the EXPERIENCE Motion level (`MotionLevel`); play runs at the lower
+ *   of it and the OS (`effectiveMotion`).
+ * - `themeSelection` and `playlist`: how the next round's theme is chosen
+ *   (`selectPresentation`): at random, or in `playlist` order (distinct theme ids).
+ * - `effects`, `music`, `haptics`: the FeedbackDirector's independent switches (AD-16).
  */
 export type ProfileSettings = {
   readonly mode: 'zen';
-  readonly motion: 'full' | 'calm';
+  readonly motion: MotionLevel;
+  readonly themeSelection: ThemeSelection;
+  readonly playlist: readonly string[];
+  readonly effects: boolean;
+  readonly music: boolean;
+  readonly haptics: boolean;
 };
 
 /**

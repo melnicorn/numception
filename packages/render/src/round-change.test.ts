@@ -1,6 +1,6 @@
 import { KILN_TOKENS, type ThemeTokens } from '@numception/app';
 import { describe, expect, it } from 'vitest';
-import { ARRIVE_SCALE, blendTheme, inTheme, LEAVE_SCALE, mixHex, relativeLuminance, roundChangeLook, scaleAbout } from './round-change';
+import { ARRIVE_SCALE, blendTheme, crossfadeLook, inTheme, LEAVE_SCALE, mixHex, relativeLuminance, roundChangeLook, scaleAbout } from './round-change';
 
 /** Moonwater's colour rows (content/themes/moonwater.json), over Kiln's other tokens. */
 const MOON: ThemeTokens = {
@@ -169,5 +169,24 @@ describe('the whole-frame theme change', () => {
     const unit = [(195 - t.left) / t.scale, (400 - t.top) / t.scale];
     expect(s.left + (unit[0] ?? 0) * s.scale).toBeCloseTo(195);
     expect(s.top + (unit[1] ?? 0) * s.scale).toBeCloseTo(400);
+  });
+});
+
+describe('crossfadeLook (Minimal motion)', () => {
+  it('fades the old board out and the new one in, in place, with the colours moving linearly', () => {
+    expect(crossfadeLook(0)).toEqual({ color: 0, fromAlpha: 1, fromScale: 1, toAlpha: 0, toScale: 1 });
+    expect(crossfadeLook(1)).toEqual({ color: 1, fromAlpha: 0, fromScale: 1, toAlpha: 1, toScale: 1 });
+    for (const p of steps) {
+      const look = crossfadeLook(p);
+      expect(look.fromScale).toBe(1);
+      expect(look.toScale).toBe(1);
+      expect(look.fromAlpha + look.toAlpha).toBeCloseTo(1);
+      expect(look.color).toBeCloseTo(p);
+    }
+  });
+
+  it('moves the surface luminance one way only (no flash) from Kiln to Moonwater', () => {
+    const lum = steps.map((p) => relativeLuminance(blendTheme(KILN_TOKENS, MOON, crossfadeLook(p).color).surface));
+    for (let i = 1; i < lum.length; i += 1) expect(lum[i] as number).toBeLessThanOrEqual((lum[i - 1] as number) + 1e-9);
   });
 });

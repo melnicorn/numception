@@ -9,6 +9,7 @@ import { beatAt } from './beat';
 import type { CommandContext } from './command-context';
 import { dropInput } from './drop-input';
 import { isPlayable } from './is-playable';
+import { motionOf } from './motion-of';
 import { nodeKey } from './node-key';
 import { reject } from './reject';
 import { roundPuzzle } from './round-puzzle';
@@ -71,7 +72,7 @@ export function reduceTapCell(
       cellIndex: command.cellIndex,
       answerIndex: puzzle.answerIndex,
       startedAtMs: game.clockMs,
-      durationMs: softMissDuration(tuning, game.settings.motion),
+      durationMs: softMissDuration(tuning, motionOf(state, game)),
     };
     const first = !game.softMissLineSeen;
     const cued = { ...round, softMiss: cue, guideLine: round.guideLine || first };
@@ -82,7 +83,7 @@ export function reduceTapCell(
     ...round,
     softMiss: null,
     guideLine: false,
-    presentation: beatAt('solve', game.clockMs, tuning, game),
+    presentation: beatAt('solve', game.clockMs, tuning, game, motionOf(state, game)),
     nextRoundId: inView.tier === round.plan.tiers ? ctx.entropy.ids[0] : null,
   };
   return { state: withGame(state, withRound(game, solving)), events: [{ type: 'PuzzleSolved', ...tap }] };

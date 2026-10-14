@@ -27,7 +27,7 @@ import { blendScale, sizingTransform } from './numeral-size';
 import { paintView } from './paint-view';
 import type { RenderPort } from './render-port';
 import { resumeButton } from './resume-button';
-import { blendTheme, inTheme, roundChangeLook, scaleAbout } from './round-change';
+import { blendTheme, crossfadeLook, inTheme, roundChangeLook, scaleAbout } from './round-change';
 import { ScenePool } from './scene-pool';
 import { ARROW_WIDTH_PX, arrowAlpha, ghostArrow, pulseLook } from './soft-miss-motion';
 import { contextTransform, fitRect, idleTransform, nestTransform, shapeBox, toScreen, toUnit, type ViewTransform } from './view-transform';
@@ -70,7 +70,23 @@ export type Renderer = RenderPort & {
   readonly stats: () => RendererStats;
 };
 
-export type RendererStats = { readonly framesRendered: number; readonly rebuilds: number };
+/**
+ * How a frame drew its beat, for the test hooks: `idle`; `solve`; `zoom` (an
+ * advance or collapse moving the camera); `cut` (an advance or collapse at
+ * Minimal motion: the views crossfade at rest, no camera move); `themeChange` (the
+ * round change); `crossfade` (the round change at Minimal motion).
+ */
+export type BeatStyle = 'idle' | 'solve' | 'zoom' | 'cut' | 'themeChange' | 'crossfade';
+
+/** The core transition id of the Minimal-motion beats (core `CROSSFADE_TRANSITION_ID`). */
+const CROSSFADE = 'crossfade';
+
+/** Frame and rebuild counters, and the frames drawn per `BeatStyle` (styles never drawn are absent). */
+export type RendererStats = {
+  readonly framesRendered: number;
+  readonly rebuilds: number;
+  readonly beats: Readonly<Partial<Record<BeatStyle, number>>>;
+};
 
 function hex(color: string): number {
   return Number.parseInt(color.replace('#', ''), 16);
@@ -99,6 +115,10 @@ export function createRenderer(options: RendererOptions): Renderer {
   let rebuilds = 0;
   let surfaceShown: string | undefined;
   let surfacePending: string | undefined;
+  const beats: Partial<Record<BeatStyle, number>> = {};
+  const drew = (style: BeatStyle) => {
+    beats[style] = (beats[style] ?? 0) + 1;
+  };
   const activePointers = new Set<number>();
 
   /** Sets the frame's background; the page hears of a change once the frame is presented (`flushSurface`). */
@@ -162,14 +182,30 @@ export function createRenderer(options: RendererOptions): Renderer {
     const p = vm.presentation;
     const to = p.to ?? vm;
     const { from, camera } = p;
-    const roundChange = p.kind === 'roundStart' && from !== undefined ? roundChangeLook(p.progress) : undefined;
+    // At Minimal motion core marks the moving beats `crossfade`: zooms become cuts with a crossfade (EXPERIENCE).
+    const crossfade = p.transitionId === CROSSFADE;
+    const roundChange =
+      p.kind === 'roundStart' && from !== undefined ? (crossfade ? crossfadeLook(p.progress) : roundChangeLook(p.progress)) : undefined;
     // In a round change the whole frame moves from the old round's theme to the new one's.
     const frameTheme = roundChange === undefined || from === undefined ? theme : blendTheme(from.theme, to.theme, roundChange.color);
     setSurface(frameTheme.surface);
     if (p.kind === 'solve' && p.cellIndex !== null) {
+      drew('solve');
       paintContext(vm, rest, 1, false);
       paintView(pool, vm, rest, rest, solveLook(p.cellIndex, p.progress), width);
+    } else if ((p.kind === 'advance' || p.kind === 'collapse') && from !== undefined && crossfade) {
+      // A cut with a crossfade: each view at its own rest framing (no camera move,
+      // no scaling), the old one fading out as the new one fades in.
+      drew('cut');
+      const fromRest = restOf(from);
+      const toRest = restOf(to);
+      const toAlpha = p.progress;
+      paintContext(from, fromRest, 1 - toAlpha, false);
+      paintView(pool, from, fromRest, fromRest, settled(from, 1 - toAlpha), width, { rest: fromRest, quiet: 0 });
+      paintContext(to, toRest, toAlpha, false);
+      paintView(pool, to, toRest, toRest, { ...IDLE_LOOK, alpha: toAlpha }, width, { rest: toRest, quiet: 0 });
     } else if ((p.kind === 'advance' || p.kind === 'collapse') && from !== undefined && camera !== undefined) {
+      drew('zoom');
       const collapse = p.kind === 'collapse';
       const cam = cameraAt(camera, collapse ? collapseCameraT(p.progress) : advanceCameraT(p.progress));
       const toT = fitRect(cam, to.aspect, width, height);
@@ -224,7 +260,8 @@ export function createRenderer(options: RendererOptions): Renderer {
     } else if (roundChange !== undefined && from !== undefined) {
       // The round change (`round-change`): the old top shrinks away into the frame's
       // centre while the field changes colour, then the new puzzle (with its parent)
-      // grows in, both drawn in the frame's blended theme.
+      // grows in, both drawn in the frame's blended theme. At Minimal: a crossfade in place.
+      drew(crossfade ? 'crossfade' : 'themeChange');
       const [cx, cy] = [width / 2, height / 2];
       const old = inTheme(from, frameTheme);
       const next = inTheme(to, frameTheme);
@@ -238,6 +275,7 @@ export function createRenderer(options: RendererOptions): Renderer {
         paintView(pool, next, toT, toT, { ...IDLE_LOOK, alpha: roundChange.toAlpha }, width, { rest: restOf(to), quiet: 0 });
       }
     } else {
+      drew('idle');
       paintContext(vm, rest, 1, false);
       paintView(pool, vm, rest, rest, settled(vm, 1), width);
     }
@@ -415,7 +453,7 @@ export function createRenderer(options: RendererOptions): Renderer {
       draw();
     },
     hitTest,
-    stats: () => ({ framesRendered, rebuilds }),
+    stats: () => ({ framesRendered, rebuilds, beats: { ...beats } }),
     pagePoint(point) {
       if (app === undefined || transform === undefined) return null;
       const rect = app.canvas.getBoundingClientRect();

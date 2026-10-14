@@ -47,6 +47,19 @@ function addTheme(payload: unknown): unknown {
   return { ...payload, game: { ...game, rounds: { ...rounds, byId } } };
 }
 
+/**
+ * 3 → 4: the profile's settings gain `themeSelection: 'randomize'`, `playlist: []`,
+ * `effects: true`, `music: false` and `haptics: true` (the Kid defaults, and the
+ * defaults of the dev flags they replace), each only where missing. Anything not
+ * shaped like a v3 payload passes through unchanged, for `checkGameState` to reject.
+ */
+function addSettings(payload: unknown): unknown {
+  if (!isRecord(payload) || !isRecord(payload.game) || !isRecord(payload.game.settings)) return payload;
+  const game = payload.game;
+  const settings = { themeSelection: 'randomize', playlist: [], effects: true, music: false, haptics: true, ...(game.settings as Record<string, unknown>) };
+  return { ...payload, game: { ...game, settings } };
+}
+
 /** Forward-only migrations, keyed by the version they upgrade from (AD-10). */
 export type SaveMigrations = Readonly<Record<number, SaveMigration>>;
 
@@ -58,9 +71,11 @@ export type SaveMigrations = Readonly<Record<number, SaveMigration>>;
  * - 0 → 1: the bare `GameState` is wrapped as `{ game }`.
  * - 1 → 2: `softMissLineSeen`, and each round's `softMiss` and `guideLine` (`addSoftMiss`).
  * - 2 → 3: each round's `themeId` and `previousThemeId` (`addTheme`).
+ * - 3 → 4: the settings' theme selection, playlist and feedback switches (`addSettings`).
  */
 export const MIGRATIONS: SaveMigrations = {
   0: (payload) => ({ game: payload }),
   1: addSoftMiss,
   2: addTheme,
+  3: addSettings,
 };

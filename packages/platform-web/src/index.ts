@@ -3,7 +3,8 @@ export { databaseName } from './database-name';
 export { indexedDbDriver } from './indexed-db-driver';
 export { webStorage } from './web-storage';
 export { type LifecycleDocument, type LifecycleWindow, webLifecycle } from './web-lifecycle';
-export { type FeedbackFlagStorage, webFeedbackFlags } from './web-feedback-flags';
+export { type LegacyFlagStorage, takeLegacyFeedbackFlags } from './legacy-feedback-flags';
+export { type MotionQuery, REDUCED_MOTION_QUERY, webAccessibilityPrefs } from './web-accessibility-prefs';
 export {
   type AudioSessionLike,
   CUES,

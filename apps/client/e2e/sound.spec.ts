@@ -12,6 +12,14 @@ async function cues(page: Page): Promise<Cue[]> {
   return page.evaluate(() => (window as unknown as { __numception: { cues(): Cue[] } }).__numception.cues());
 }
 
+/** Waits until the save writer has written everything queued (the settings live in the profile's save). */
+async function waitSaved(page: Page): Promise<void> {
+  await page.waitForTimeout(50);
+  await expect
+    .poll(() => page.evaluate(() => (window as unknown as { __numception: { saves(): { busy: boolean } | null } }).__numception.saves()?.busy))
+    .toBe(false);
+}
+
 /** The haptic impacts the director asked for (a no-op port on the web; the client records the calls). */
 async function haptics(page: Page): Promise<string[]> {
   return page.evaluate(() => (window as unknown as { __numception: { haptics(): string[] } }).__numception.haptics());
@@ -46,7 +54,7 @@ test('solves sound one scale step lower per tier, a wrong tap its soft tone, and
   expect(await haptics(page)).toEqual(['light', 'light', 'light', 'light']);
 });
 
-test('turning haptics off in the dev panel stops the solve taps but not the sound, and the choice persists', async ({ page }) => {
+test('turning haptics off in the dev panel stops the solve taps but not the sound, and the setting persists in the save', async ({ page }) => {
   await page.goto('./');
   await waitForPuzzle(page);
   await page.getByRole('button', { name: 'Dev panel' }).click();
@@ -60,6 +68,7 @@ test('turning haptics off in the dev panel stops the solve taps but not the soun
   expect(await haptics(page)).toEqual([]);
   expect(await cues(page)).toEqual([{ cue: 'solve', params: { step: 0 } }]);
 
+  await waitSaved(page);
   await page.reload();
   await waitForPuzzle(page);
   await page.getByRole('button', { name: 'Dev panel' }).click();
@@ -70,7 +79,7 @@ test('turning haptics off in the dev panel stops the solve taps but not the soun
   expect(await haptics(page)).toEqual(['light']);
 });
 
-test('turning sound effects off in the dev panel silences every cue, and the choice persists', async ({ page }) => {
+test('turning sound effects off in the dev panel silences every cue, and the setting persists in the save', async ({ page }) => {
   await page.goto('./');
   await waitForPuzzle(page);
   await page.getByRole('button', { name: 'Dev panel' }).click();
@@ -88,6 +97,7 @@ test('turning sound effects off in the dev panel silences every cue, and the cho
   await expect.poll(() => events(page)).toContain('WrongTap');
   expect(await cues(page)).toEqual([]);
 
+  await waitSaved(page);
   await page.reload();
   await waitForPuzzle(page);
   await page.getByRole('button', { name: 'Dev panel' }).click();
@@ -96,4 +106,17 @@ test('turning sound effects off in the dev panel silences every cue, and the cho
   await page.getByRole('button', { name: 'Dev panel' }).click();
   await solve(page);
   expect(await cues(page)).toEqual([{ cue: 'solve', params: { step: 0 } }]);
+});
+
+test('the old dev feedback flags in localStorage move into the profile settings once', async ({ page }) => {
+  await page.goto('./');
+  await waitForPuzzle(page);
+  // A build from before ticket 6.4 left its flags here (one key per flavour app id).
+  await page.evaluate(() => localStorage.setItem('numception:feedback-flags:app.numception.playtest', JSON.stringify({ effects: false, music: false, haptics: true })));
+  await page.reload();
+  await waitForPuzzle(page);
+  await page.getByRole('button', { name: 'Dev panel' }).click();
+  await expect(page.getByRole('checkbox', { name: 'Sound effects' })).not.toBeChecked();
+  await expect(page.getByRole('checkbox', { name: 'Haptics' })).toBeChecked();
+  expect(await page.evaluate(() => localStorage.getItem('numception:feedback-flags:app.numception.playtest'))).toBeNull();
 });

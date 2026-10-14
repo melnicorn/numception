@@ -49,6 +49,11 @@ export { pathFromTop } from './rounds/path-from-top';
 export type { Presentation, PresentationKind } from './presentation/presentation';
 export type { SoftMissCue } from './presentation/soft-miss-cue';
 export { beatDuration, softMissDuration } from './presentation/beat-duration';
+export { MINIMAL_CROSSFADE_MS } from './presentation/minimal-crossfade-ms';
+export { isMotionLevel, MOTION_LEVELS, type MotionLevel } from './settings/motion-level';
+export { effectiveMotion } from './settings/effective-motion';
+export { MAX_PLAYLIST_LENGTH, THEME_SELECTIONS, type ThemeSelection } from './settings/theme-selection';
+export type { SettingChange, SettingKey } from './settings/setting-change';
 export {
   FIRST_RUN_THEME_ID,
   type PresentationChoice,
@@ -71,7 +76,7 @@ export { defaultShapeFor } from './layout/default-shape-for';
 export { hitTest } from './layout/hit-test';
 export { focusOrder } from './layout/focus-order';
 
-export type { AppState, DeviceState } from './state/app-state';
+export type { AppState, DeviceState, OsPreferences } from './state/app-state';
 export { isPauseReason, PAUSE_REASONS, type PauseReason } from './state/pause-reason';
 export type { GameState, ProfileKind, ProfileSettings } from './state/game-state';
 export type { Round } from './state/round';
@@ -82,7 +87,9 @@ export type { Envelope } from './state/envelope';
 export type { GameEvent } from './state/game-event';
 export type { StepResult } from './state/step-result';
 export { initialAppState } from './state/initial-app-state';
-export { createProfile } from './state/create-profile';
+export { createProfile, KID_DEFAULTS } from './state/create-profile';
+export { motionOf } from './state/motion-of';
+export { CROSSFADE_TRANSITION_ID, DEFAULT_TRANSITION_ID } from './state/beat';
 export { step } from './state/step';
 export { nextRoundRequest } from './state/next-round-request';
 export { completePresentation } from './state/complete-presentation';
