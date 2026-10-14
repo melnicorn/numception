@@ -40,3 +40,8 @@ export { planRound, realiseRoundNode, ROUND_TYPES, type RoundType } from './roun
 
 export type { TapOutcome } from './rules/tap-outcome';
 export { classifyTap } from './rules/classify-tap';
+
+export type { BucketFeatures } from './difficulty/bucket-features';
+export { bucketOf } from './difficulty/bucket-of';
+export { formatBucketId } from './difficulty/format-bucket-id';
+export { parseBucketId } from './difficulty/parse-bucket-id';
