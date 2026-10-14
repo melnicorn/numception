@@ -43,3 +43,4 @@ The Pyramid round type and home view. Not streaks or packs (epic-daily-habit).
 - Open question: OQ-17 (spatial menus), OQ-18 (backup across devices).
 - Waits on epic-poc-playtest because: it needs go/no-go.
 - Waits on epic-puzzle-generator because: it needs generator interface open for upward growth.
+- Idea: 2026-10-14 (user, for later) — the infinite/Pyramid mode could unlock once enough operators exist, so − (and later negatives) can pull growing number ranges back down as the pyramid rises; that could also give levels that raise difficulty automatically. Not decided; revisit with level progression.

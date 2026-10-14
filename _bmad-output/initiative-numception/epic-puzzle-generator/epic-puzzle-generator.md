@@ -63,3 +63,4 @@ The core generator, rules, layout geometry and tuning schema. Not ratings or sel
 - Source conflict: spec marks soft miss (OQ-6) resolved vs prd-numception.md FR-4 still carries it as an assumption. The spec wins.
 - Tracer: entry 1 — one seeded n=3 + puzzle from core through app to the dev panel in the deployed offline PWA.
 - Sequencing: the golden guard (2) lands before tuning (3) and the generator grows (4); 5, 6 and 7 follow 4; 8 (layout) is independent; 9, 10 and 11 need full rounds (5); the Refactor sweep is last. No closing end-to-end suite: golden seeds, property tests and the nightly check cover it.
+- Decision: 2026-10-14 (user) — number ranges depend on puzzle size n: small n (3–5) keeps easy numbers like 1..20 and larger n gets wider ranges. This resolves the 2.5 band-1 widening; added as entry 13 (re-slice after the epic's planned work was built).

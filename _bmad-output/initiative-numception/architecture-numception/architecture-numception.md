@@ -518,6 +518,7 @@ flowchart LR
 - **Formula constants** (K, selector, scoring, durations). These live in `TuningConfig` (AD-7) and the PRD addendum §A2.
 - **Multiple rating chains, propensity-corrected recalibration, and device-wide bucket ratings.** AD-8 and AD-9 let all three be added later without a data migration.
 - **Upward generation for the endless Pyramid** (PRD OQ-4). This means choosing a new top's answer contract around the existing top's answer. Bottom-anchored addressing (AD-4) is already in place. Deferred to the v1 Pyramid epic.
+- **Native save storage (POC exception, 2026-10-14).** For the POC, the Capacitor iOS shell persists through the same IndexedDB StoragePort adapter as the PWA (least friction). AD-10's `@capacitor/filesystem` adapter, chosen because WKWebView storage can be evicted, is deferred to epic-native-apps, which migrates the saves before any store build.
 - **Telemetry ingest provider and API, push provider, purchase plugin, Game Center plugin** (a custom thin plugin; there is no maintained Capacitor 8 plugin). All v1, each behind its port.
 - **Seed and share link format and deep-link handling** (v1, FR-33). It is limited by AD-6 (seeds carry puzzle content only) and AD-11.
 - **Backup and restore across devices** (PRD OQ-18). Snapshots and logs are already portable JSON.

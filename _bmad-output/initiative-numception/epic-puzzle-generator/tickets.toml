@@ -142,3 +142,15 @@ covers = []
 after = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]
 hitl = false
 risk = "low"
+
+[[entry]]
+id = 13
+type = "story"
+title = "Number ranges by puzzle size"
+description = "Lets each tuning band give its value range per puzzle size n (e.g. n 3–5 keeps 1..20 with no carries, larger n widens), so small puzzles stay easy while large Classic and Tower rounds remain plannable; content/tuning/1.json adopts it."
+verify = "With content/tuning/1.json, every n=3 puzzle in band 1 uses values within 1..20, and Classic and Tower rounds still plan for every n and operator (round-content, nightly and benchmark checks green)."
+covers = ["CAP-9"]
+after = [12]
+hitl = false
+risk = "medium"
+notes = ["Number ranges by puzzle size (user, 2026-10-14)."]

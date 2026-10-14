@@ -20,10 +20,10 @@ A playtester plays Classic and Tower rounds end to end on a phone with no loadin
 
 ## Done when
 
-1. Cold start's first interactive frame is a puzzle, and a tap's first visible response is within 100 ms on the reference devices.
+1. Cold start's first interactive frame is a puzzle, and a tap's first visible response is within 100 ms on the user's iPhone 16 Pro (reference-device re-measure deferred; see Notes).
 2. A Tower round at n=3 plays 9, 3, then 1 puzzles with a round collapse after each tier and flows into the next round with no end screen.
 3. Killing the app at any moment and relaunching restores the same puzzle, solved cells, tier and mode; the kill-mid-write test passes.
-4. Play, solve transitions and round collapses hold 60 fps on the reference devices.
+4. Play, solve transitions and round collapses hold 60 fps on the user's iPhone 16 Pro (reference-device re-measure deferred; see Notes).
 5. Web keyboard play works: arrow keys, Enter or Space, Esc (opens the control surface once epic-profiles-and-controls lands), visible focus ring; every cell has an accessible-tree button named by its number; cells are at least 48 pt, Kid cells at least 56 pt (NFR-4).
 6. Saves carry a saveFormatVersion with a forward migration path, tested (NFR-2).
 7. Delivered in the playtest PWA, offline, on a phone.
@@ -46,4 +46,19 @@ The play loop, navigation, presentation timeline and persistence. Not mode scori
 - Open question: OQ-8 — pinch in addition to tap-to-enter is open; POC ships tap-to-enter.
 - Waits on epic-platform-baseline because: it needs the renderer decision.
 - Waits on epic-puzzle-generator because: it needs round planning and realisation API.
-- Carried over: 2026-10-11 from epic-platform-baseline 1.3 (via 1.7), placed here because it must happen before POC architecture locks, which this epic's render work precedes. The renderer (PixiJS, provisional) still needs measuring on an older iPhone-class device (iPad Air 4, A14) and a mid-range Android (Galaxy A35 class) before POC architecture locks; see the architecture spine's Deferred (Renderer) and prototypes/renderer-bakeoff/measurements.md.
+- Decision: 2026-10-14 — breakdown planned autonomously at the user's request (priority: bare-minimum playable on the iPhone and in the browser with least friction); validated by an independent set check before writing.
+- Tracer: entry 1 — one tappable Classic n=3 + puzzle from core state through app into a fresh PixiJS render package; it deliberately has no persistence. Entries 1–3 are the playable path; 4 onwards complete the Done-when.
+- Sequencing: 1 → 2 → 3 (playable) → 4 → 5 → 6 (one lane: they share render, ui, PlayVM, GameState and main.ts) → 7 (on-device measurement) → 8 Refactor sweep. No closing end-to-end suite.
+- Decision: 2026-10-14 (user) — level progression is tabled. Stand-in: `nextRoundRequest` alternates Classic and Tower at n=3 + (entry 6 adds Classic − and Tower −), seeded by `deriveSeed(rootSeed, roundOrdinal)`; epic-adaptive-difficulty's selection and FR-47's level pin replace it later.
+- Decision: Tower is played breadth-first (9, then 3, then 1, per Done-when 2), and each group of three collapses into its tier-2 cell as it finishes (EXPERIENCE Flow 4 "collapse in threes"). After a solve the camera auto-advances to the next unsolved sibling (AD-25); tapping any unsolved overview cell enters it (FR-9).
+- Decision: unsolved cells in an overview show no numeral; solved cells show their answer.
+- Decision: render's `hitTest` returns null while `inputLocked`, and core keeps its idle guard as a backstop (AD-14 vs AD-20). The press acknowledgement comes from the pointer position, independent of `hitTest`.
+- Decision: presentation durations go in a new TuningConfig `presentation` section: solve 380 ms, advance 400 ms, first collapse 3000 ms, later collapses 1200 ms, round crossfade 400 ms (EXPERIENCE OQ-6 left them open).
+- Decision: between rounds the theme stays Kiln with a crossfade; theme variety and theme transitions are epic-themes-and-feedback's.
+- Decision: a wrong tap at POC baseline gives the press acknowledgement only and changes no state (emits `WrongTap`); Zen and Normal consequences are epic-zen-normal-onboarding's.
+- Decision: `render` is written fresh on pixi.js 8.22 from core/layout geometry, with no pixi-filters (Kiln has no glow), so the open glow-cost question doesn't block this epic. The bake-off prototype is not reused.
+- Decision: `firstCollapseSeen` and `softMissLineSeen` are per-profile flags in `GameState`.
+- Decision: `RoundCore.mode` is `'zen'` with no scoring in this epic; epic-zen-normal-onboarding adds mode behaviour.
+- Decision: 2026-10-14 — the iPhone gets the build through the playtest PWA (Add to Home Screen, offline) and the Capacitor playtest shell.
+- Decision: 2026-10-14 (least-friction priority) — for the POC, saves use IndexedDB in both the PWA and the Capacitor iOS shell's WebView. AD-10's `@capacitor/filesystem` adapter (WebView eviction safety) is deferred to epic-native-apps (note there; spine Deferred updated).
+- Decision: 2026-10-14 — the older-device renderer re-measure (iPad Air 4 / A14, Galaxy A35-class) moves to epic-poc-playtest (note there); this epic measures on the user's iPhone 16 Pro only (Done-when 1 and 4).

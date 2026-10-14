@@ -53,3 +53,4 @@ Capability boundary: each epic delivers one capability or a tightly coupled pair
 - Unknown: OQ-4 (upward Pyramid generation) — epic-puzzle-generator must keep the generator interface open for it; epic-pyramid-home owns the answer.
 - Decision: 2026-10-09 — user approved the 17-epic set and build order as presented, including the assumptions above.
 - Decision: 2026-10-09 — whether the one-time unlock is on web, and whether it bundles packs, is deferred (too early); see epic-one-time-unlock.
+- Decision: 2026-10-14 (user) — priority is a bare-minimum playable build tested on the user's iPhone and in the browser with the least friction; level progression and unlock design are tabled until after that test.
