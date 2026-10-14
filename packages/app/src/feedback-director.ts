@@ -1,4 +1,4 @@
-import type { GameEvent } from '@numception/core';
+import { BUILTIN_TRANSITIONS, type GameEvent, type TransitionCatalog, transitionById } from '@numception/core';
 import type { AudioPort, CueId, CueParams } from './audio-port';
 import { DEFAULT_FEEDBACK_FLAGS, type FeedbackFlags } from './feedback-flags';
 import type { HapticKind, HapticsPort } from './haptics-port';
@@ -11,6 +11,8 @@ export type FeedbackDirectorOptions = {
    * profile's settings, `feedbackFlagsOf(game.getState())`); the defaults when omitted.
    */
   readonly flags?: () => FeedbackFlags;
+  /** The transition catalogue (AD-15): a round change plays its transition's `audioCue`. Core's built-in one when omitted. */
+  readonly transitions?: TransitionCatalog;
 };
 
 /** The one mapper from events to the audio and haptics ports (AD-16). */
@@ -31,13 +33,28 @@ export function solveStep(tier: number): number {
 /** A cue to play. */
 export type Cue = { readonly cue: CueId; readonly params?: CueParams };
 
+const CUE_IDS: readonly CueId[] = ['solve', 'softMiss', 'wrongZen', 'whoosh'];
+
 /**
- * The cues for one batch of events, in order (FR-41). `RoundStarted` whooshes only
- * as a round change (with its `RoundCompleted`), not when a session opens. A batch
+ * The cue a round change into `transitionId` plays: the transition's `audioCue`
+ * (AD-15) when it is a cue this build knows, none for `null` or an unknown cue id,
+ * and the whoosh for a transition the catalogue lacks.
+ */
+export function transitionCue(transitionId: string, transitions: TransitionCatalog = BUILTIN_TRANSITIONS): CueId | null {
+  const transition = transitionById(transitions, transitionId);
+  if (transition === undefined) return 'whoosh';
+  const cue = transition.audioCue;
+  return cue !== null && (CUE_IDS as readonly string[]).includes(cue) ? (cue as CueId) : null;
+}
+
+/**
+ * The cues for one batch of events, in order (FR-41). `RoundStarted` plays its
+ * transition's cue (`transitionCue`) only as a round change (with its
+ * `RoundCompleted`), not when a session opens. A batch
  * that pauses for the lifecycle plays nothing (the app is leaving). Zen-only for
  * now: every round is Zen, so a wrong tap is the soft `wrongZen` tone.
  */
-export function cuesFor(events: readonly GameEvent[]): readonly Cue[] {
+export function cuesFor(events: readonly GameEvent[], transitions: TransitionCatalog = BUILTIN_TRANSITIONS): readonly Cue[] {
   if (events.some((e) => e.type === 'Paused' && e.reason === 'lifecycle')) return [];
   const roundChange = events.some((e) => e.type === 'RoundCompleted');
   const cues: Cue[] = [];
@@ -52,9 +69,11 @@ export function cuesFor(events: readonly GameEvent[]): readonly Cue[] {
       case 'WrongTap':
         cues.push({ cue: 'wrongZen' });
         break;
-      case 'RoundStarted':
-        if (roundChange) cues.push({ cue: 'whoosh' });
+      case 'RoundStarted': {
+        const cue = roundChange ? transitionCue(event.transitionId, transitions) : null;
+        if (cue !== null) cues.push({ cue });
         break;
+      }
       default:
         // RoundCollapsed has no sound (the next tier's solve covers it).
         break;
@@ -101,7 +120,7 @@ export function createFeedbackDirector(options: FeedbackDirectorOptions): Feedba
         if (event.type === 'Resumed' && event.reason === 'lifecycle') audio.resume();
       }
       if (flags.effects) {
-        for (const { cue, params } of cuesFor(events)) {
+        for (const { cue, params } of cuesFor(events, options.transitions)) {
           if (params === undefined) audio.play(cue);
           else audio.play(cue, params);
         }

@@ -1,4 +1,6 @@
 import { BUILTIN_THEMES, type ThemeCatalog } from '../theme/theme-catalog';
+import { BUILTIN_TRANSITIONS, type TransitionCatalog } from '../transition/transition-catalog';
+import { transitionSource } from './transition-source';
 import type { TuningConfig } from '../tuning/tuning-config';
 import type { TuningsByVersion } from '../tuning/tunings-by-version';
 import type { AppState } from './app-state';
@@ -28,11 +30,12 @@ export function completePresentation(
   tuning: TuningConfig,
   themes: ThemeCatalog = BUILTIN_THEMES,
   tunings: TuningsByVersion = {},
+  transitions: TransitionCatalog = BUILTIN_TRANSITIONS,
 ): StepResult {
   const found = state.activeProfileId === null ? undefined : state.profiles[state.activeProfileId];
   if (found === undefined) return { state, events: [] };
   const game = withoutSoftMiss(found);
-  const ran = runTimeline(game, tuning, () => game.clockMs, themes, tunings, motionOf(state, game));
+  const ran = runTimeline(game, tuning, () => game.clockMs, themes, tunings, motionOf(state, game), transitionSource(state, transitions));
   if (ran.error !== null) return { state: withGame(state, ran.game), events: [...ran.events, rejected('completePresentation', ran.error)] };
   if (ran.game === found) return { state, events: [] };
   return { state: withGame(state, ran.game), events: ran.events };

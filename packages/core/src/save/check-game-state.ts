@@ -67,6 +67,7 @@ export function checkGameState(x: unknown): DomainError | undefined {
   if (typeof round.guideLine !== 'boolean') return bad('active round .guideLine must be a boolean');
   if (typeof round.themeId !== 'string' || round.themeId === '') return bad('active round .themeId must be a non-empty string');
   if (round.previousThemeId !== null && typeof round.previousThemeId !== 'string') return bad('active round .previousThemeId must be a string or null');
+  if (typeof round.transitionId !== 'string' || round.transitionId === '') return bad('active round .transitionId must be a non-empty string');
   return undefined;
 }
 

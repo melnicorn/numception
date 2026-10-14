@@ -12,9 +12,11 @@ import {
   createScheduler,
   loadSave,
   loadThemeCatalog,
+  loadTransitionCatalog,
   noHaptics,
   parseTuning,
   type ThemeCatalog,
+  type TransitionCatalog,
   saveAfterBatches,
   type SettingsControls,
   tapCommand,
@@ -54,13 +56,23 @@ if (isNativeShell()) {
 }
 /** Where the director reads its switches: the game's active profile once booted. */
 let feedbackFlags: () => FeedbackFlags = () => DEFAULT_FEEDBACK_FLAGS;
+// The transition catalogue (AD-15): every bundled content/transitions/*.json,
+// validated; a file that fails is left out (logged in dev), and with none core's
+// built-in interpolate and crossfade. The director plays each one's audio cue.
+const transitionCatalog = loadTransitionCatalog(import.meta.glob<unknown>('../../../content/transitions/*.json', { eager: true, import: 'default' }));
+if (__NUMCEPTION_FLAVOUR__ === 'dev') {
+  for (const rejected of transitionCatalog.rejected) console.warn(`Transition ${rejected.source} left out: ${rejected.message}`);
+}
 const director = createFeedbackDirector({
   audio: __NUMCEPTION_DEV_PANEL__ ? recordingAudio(webAudio(), cueLog) : webAudio(),
   haptics: __NUMCEPTION_DEV_PANEL__ ? recordingHaptics(haptics, hapticLog) : haptics,
   flags: () => feedbackFlags(),
+  transitions: transitionCatalog.transitions,
 });
 /** The settings the dev panel shows and changes (`SetSetting`), bound to the game once it boots. */
 let bootedSettings: SettingsControls | null = null;
+/** The dev panel's transition preview, bound to the renderer once it boots. */
+let bootedPreview: ((transitionId: string) => boolean) | null = null;
 // The audio output unlocks inside a user gesture: the first press anywhere (captured
 // before the canvas handles it, so a first-tap solve can sound). iOS counts the
 // release (touchend / pointerup) as the activating gesture for touch, so those
@@ -110,13 +122,17 @@ const settingsControls: SettingsControls = {
   get: () => bootedSettings?.get() ?? null,
   set: (change) => bootedSettings?.set(change),
   themeIds: themeCatalog.themes.map((t) => t.themeId),
+  transitionIds: transitionCatalog.transitions.map((t) => t.transitionId),
+  transitionOverride: () => bootedSettings?.transitionOverride() ?? null,
+  setTransitionOverride: (transitionId) => bootedSettings?.setTransitionOverride(transitionId),
 };
+const previewTransition = (transitionId: string) => bootedPreview?.(transitionId) ?? false;
 
 if (!tuning.ok) {
   // Playtest and dev only in practice: a shipped tuning is validated in CI. Plain text, never a crash loop.
   root.textContent = `Numception could not start: ${tuning.error.message}`;
 } else {
-  void boot(root, tuning.value, tunings, themeCatalog.themes);
+  void boot(root, tuning.value, tunings, themeCatalog.themes, transitionCatalog.transitions);
 }
 
 /** How long boot waits for the themes' faces before drawing anyway (system fonts resolve at once). */
@@ -139,14 +155,14 @@ async function loadFaces(themes: ThemeCatalog, wait: (ms: number) => Promise<voi
  * Loads the save (one IndexedDB read, AD-10) before anything is painted, so the
  * first frame is the restored puzzle, or a new one when nothing is saved (FR-10).
  */
-async function boot(el: HTMLElement, activeTuning: TuningConfig, tunings: TuningsByVersion, themes: ThemeCatalog): Promise<void> {
+async function boot(el: HTMLElement, activeTuning: TuningConfig, tunings: TuningsByVersion, themes: ThemeCatalog, transitions: TransitionCatalog): Promise<void> {
   const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
   // One database per flavour (AD-18); IndexedDB in the Capacitor shell too for the POC.
   const storage = webStorage(__NUMCEPTION_APP_ID__);
   const [session] = await Promise.all([loadSave(storage, wait, LOAD_TIMEOUT_MS), loadFaces(themes, wait)]);
 
   const now = () => Date.now();
-  const game = createGame({ tuning: activeTuning, tunings, themes, entropy: webEntropy(now), now });
+  const game = createGame({ tuning: activeTuning, tunings, themes, transitions, entropy: webEntropy(now), now });
   // The play clock (AD-17): Ticks from the frame loop while a beat runs, on the
   // monotonic clock; idle time is flushed before each command (see createScheduler).
   // Its pause set is core's (`Pause` / `Resume`).
@@ -167,7 +183,12 @@ async function boot(el: HTMLElement, activeTuning: TuningConfig, tunings: Tuning
     : null;
   if (writer !== null) saveAfterBatches(game, writer, (fn) => setTimeout(fn, 0));
   feedbackFlags = () => feedbackFlagsOf(game.getState());
-  bootedSettings = createSettingsControls(game.getState, (command) => scheduler.dispatch(command), themes.map((t) => t.themeId));
+  bootedSettings = createSettingsControls(
+    game.getState,
+    (command) => scheduler.dispatch(command),
+    themes.map((t) => t.themeId),
+    transitions.map((t) => t.transitionId),
+  );
   // OS Reduce Motion (AD-16) before the session starts, so the first beat already
   // runs at the effective Motion level; later changes follow at once.
   webAccessibilityPrefs().start(({ reduceMotion }) => scheduler.dispatch({ type: 'SetOsPreferences', reduceMotion }));
@@ -188,6 +209,20 @@ async function boot(el: HTMLElement, activeTuning: TuningConfig, tunings: Tuning
     },
   });
   game.subscribe((view) => renderer.render(view));
+  // Dev panel: replays the last round change (or the view into another theme) as a
+  // chosen transition, with its cue through the director, so each can be rated at once.
+  if (__NUMCEPTION_DEV_PANEL__) bootedPreview = (transitionId) => {
+    const current = game.getView();
+    const other = themes.find((t) => t.themeId !== current?.theme.themeId);
+    const shown = renderer.replayRoundChange(transitionId, other === undefined ? {} : { theme: other });
+    if (shown) {
+      director.handle([
+        { type: 'RoundCompleted', roundId: 'preview', roundOrdinal: 0 },
+        { type: 'RoundStarted', roundId: 'preview', roundOrdinal: 1, transitionId },
+      ]);
+    }
+    return shown;
+  };
   // The director hears each dispatch's events, the same synchronous batch the renderer sees (AD-2, AD-16).
   game.subscribe((_view, events) => director.handle(events));
   // The guide-line slot, a band above the board (DOM, AD-13; index.html): core decides the line; ui shows it.
@@ -243,7 +278,7 @@ if (__NUMCEPTION_DEV_PANEL__) {
     }),
   );
   void Promise.all([import('@numception/ui/dev-panel'), loadTunings])
-    .then(([{ mountDevPanel }, entries]) => mountDevPanel(host, Object.fromEntries(entries), settingsControls))
+    .then(([{ mountDevPanel }, entries]) => mountDevPanel(host, Object.fromEntries(entries), settingsControls, previewTransition))
     .catch((error: unknown) => {
       console.warn('Dev panel failed to load', error);
       host.textContent = `Dev panel failed to load: ${error instanceof Error ? error.message : String(error)}`;

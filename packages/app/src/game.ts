@@ -11,6 +11,7 @@ import {
   selectView,
   step,
   type ThemeCatalog,
+  type TransitionCatalog,
   type TuningConfig,
   type TuningsByVersion,
 } from '@numception/core';
@@ -35,6 +36,8 @@ export type GameOptions = {
    * tuning keeps realising its leaves under it; new rounds use `tuning`.
    */
   readonly tunings?: TuningsByVersion;
+  /** The transition catalogue a round change's transition is drawn from (AD-15; `loadTransitionCatalog`, or core's built-in one). */
+  readonly transitions?: TransitionCatalog;
   readonly entropy: EntropySource;
   readonly now: () => number;
 };
@@ -54,7 +57,7 @@ export type Game = {
 
 /** Creates the game store, starting from no profiles; dispatch `StartSession` to begin. */
 export function createGame(options: GameOptions): Game {
-  const { tuning, entropy, now, themes, tunings } = options;
+  const { tuning, entropy, now, themes, tunings, transitions } = options;
   let state: AppState = initialAppState();
   let view: PlayVM | null = selectView(state, tuning, themes);
   const listeners = new Set<GameListener>();
@@ -66,7 +69,7 @@ export function createGame(options: GameOptions): Game {
 
   return {
     dispatch(command) {
-      const result = step(state, { command, ctx: context() }, tuning, themes, tunings);
+      const result = step(state, { command, ctx: context() }, tuning, themes, tunings, transitions);
       state = result.state;
       view = selectView(state, tuning, themes);
       for (const listener of [...listeners]) listener(view, result.events, command);

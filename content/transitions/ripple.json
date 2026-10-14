@@ -1,0 +1,10 @@
+{
+  "kind": "Transition",
+  "schemaVersion": 1,
+  "transitionId": "ripple",
+  "name": "Ripple",
+  "tag": "calm",
+  "start": "on-tap",
+  "maxFlashesPerSecond": 1,
+  "audioCue": "whoosh"
+}

@@ -167,7 +167,7 @@ describe('step: StartSession', () => {
     });
     expect(play.events).toEqual([
       { type: 'ProfileCreated', profileId: 'id-0-a' },
-      { type: 'RoundStarted', roundId: 'id-0-b', roundOrdinal: 0 },
+      { type: 'RoundStarted', roundId: 'id-0-b', roundOrdinal: 0, transitionId: 'interpolate' },
     ]);
   });
 
@@ -353,7 +353,7 @@ describe('step: round flow', () => {
     const endEvents = play.finishBeat();
     expect(endEvents).toEqual([
       { type: 'RoundCompleted', roundId: 'id-0-b', roundOrdinal: 0 },
-      { type: 'RoundStarted', roundId: reserved, roundOrdinal: 1 },
+      { type: 'RoundStarted', roundId: reserved, roundOrdinal: 1, transitionId: 'interpolate' },
     ]);
     const g = game(play.state);
     expect(g.roundOrdinal).toBe(1);

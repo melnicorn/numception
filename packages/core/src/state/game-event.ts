@@ -24,7 +24,7 @@ import type { PauseReason } from './pause-reason';
  */
 export type GameEvent =
   | { readonly type: 'ProfileCreated'; readonly profileId: string }
-  | { readonly type: 'RoundStarted'; readonly roundId: string; readonly roundOrdinal: number }
+  | { readonly type: 'RoundStarted'; readonly roundId: string; readonly roundOrdinal: number; readonly transitionId: string }
   | { readonly type: 'PuzzleSolved'; readonly roundId: string; readonly nodeId: NodeId; readonly cellIndex: number; readonly responseMs: number }
   | { readonly type: 'WrongTap'; readonly roundId: string; readonly nodeId: NodeId; readonly cellIndex: number; readonly responseMs: number }
   | { readonly type: 'SoftMiss'; readonly roundId: string; readonly nodeId: NodeId; readonly cellIndex: number; readonly responseMs: number }

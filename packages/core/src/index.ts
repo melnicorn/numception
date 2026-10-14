@@ -76,7 +76,7 @@ export { defaultShapeFor } from './layout/default-shape-for';
 export { hitTest } from './layout/hit-test';
 export { focusOrder } from './layout/focus-order';
 
-export type { AppState, DeviceState, OsPreferences } from './state/app-state';
+export type { AppState, DeviceState, OsPreferences, RuntimeOverrides } from './state/app-state';
 export { isPauseReason, PAUSE_REASONS, type PauseReason } from './state/pause-reason';
 export type { GameState, ProfileKind, ProfileSettings } from './state/game-state';
 export type { Round } from './state/round';
@@ -89,7 +89,7 @@ export type { StepResult } from './state/step-result';
 export { initialAppState } from './state/initial-app-state';
 export { createProfile, KID_DEFAULTS } from './state/create-profile';
 export { motionOf } from './state/motion-of';
-export { CROSSFADE_TRANSITION_ID, DEFAULT_TRANSITION_ID } from './state/beat';
+export { DEFAULT_TRANSITION_ID } from './state/beat';
 export { step } from './state/step';
 export { nextRoundRequest } from './state/next-round-request';
 export { completePresentation } from './state/complete-presentation';
@@ -111,6 +111,23 @@ export { type ThemeMode, type ThemeTokens, ThemeTokensSchema } from './theme/the
 export { parseTheme } from './theme/parse-theme';
 export { KILN_TOKENS } from './theme/kiln-tokens';
 export { BUILTIN_THEMES, type ThemeCatalog, themeById } from './theme/theme-catalog';
+export {
+  MAX_FLASHES_PER_SECOND,
+  TRANSITION_STARTS,
+  TRANSITION_TAGS,
+  type Transition,
+  TransitionSchema,
+  type TransitionStart,
+  type TransitionTag,
+} from './transition/transition';
+export { parseTransition } from './transition/parse-transition';
+export {
+  BUILTIN_TRANSITIONS,
+  CROSSFADE_TRANSITION_ID,
+  FALLBACK_TRANSITION_ID,
+  type TransitionCatalog,
+  transitionById,
+} from './transition/transition-catalog';
 export type { NodeCellRef } from './view/node-cell-ref';
 export type { CameraVM, PlayCellVM, PlayContextVM, PlayVM, PresentationVM, SoftMissVM } from './view/play-vm';
 export type { CameraRect } from './view/camera-rect';

@@ -1,0 +1,10 @@
+{
+  "kind": "Transition",
+  "schemaVersion": 1,
+  "transitionId": "fade",
+  "name": "Fade",
+  "tag": "calm",
+  "start": "after-tap",
+  "maxFlashesPerSecond": 1,
+  "audioCue": "whoosh"
+}

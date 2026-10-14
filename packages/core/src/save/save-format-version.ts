@@ -12,5 +12,7 @@
  *   followed (`previousThemeId`) (AD-15, FR-25).
  * - 4: the profile's settings gain `minimal` motion, `themeSelection`, `playlist`,
  *   `effects`, `music` and `haptics` (AD-21; ticket 6.4).
+ * - 5: each round gains the transition that brought it in (`transitionId`)
+ *   (AD-15; ticket 6.5).
  */
-export const SAVE_FORMAT_VERSION = 4;
+export const SAVE_FORMAT_VERSION = 5;

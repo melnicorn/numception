@@ -1,0 +1,10 @@
+{
+  "kind": "Transition",
+  "schemaVersion": 1,
+  "transitionId": "snow",
+  "name": "Snow or embers",
+  "tag": "calm",
+  "start": "after-tap",
+  "maxFlashesPerSecond": 2,
+  "audioCue": "whoosh"
+}

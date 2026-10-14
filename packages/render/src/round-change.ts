@@ -7,12 +7,14 @@ import type { ViewTransform } from './view-transform';
 //
 // 1. The whole field (surface, the old round's fused top, its numeral) shifts
 //    from the old theme's colours to the new one's, the old top held in place.
-//    DESIGN "Token interpolation" (calm): colours tween token by token, the face
-//    swaps at half-way.
+//    DESIGN "Token interpolation" (calm, the `interpolate` transition): colours
+//    tween token by token in OKLCH, the face swaps at half-way.
 // 2. With the colours fully moved, the old top shrinks away into the centre and fades.
 // 3. The new round's first puzzle grows in.
 //
-// Accessibility Floor: each colour tweens monotonically in sRGB, so a light ↔ dark
+// The other calm transitions are in `transition-looks` and `snow-field`.
+//
+// Accessibility Floor: each colour tweens monotonically (sRGB or OKLCH), so a light ↔ dark
 // change passes through mid-luminance frames on its way, and no pixel ever shows a
 // surface still on the far side of the change: the old top only uncovers the field
 // once the field has reached the new theme. So the field and the old top's
@@ -110,20 +112,24 @@ const NUMBER_KEYS = [
   'inset',
 ] as const;
 
+/** How two `#RRGGBB` colours mix at `t` (sRGB `mixHex`, or OKLCH `mixOklch`). */
+export type ColorMix = (a: string, b: string, t: number) => string;
+
 /**
  * The theme `t` of the way from `from` to `to` (DESIGN token interpolation): every
- * colour role mixed, every width, size and alpha interpolated, and the discrete
- * tokens (face, weights, join, id, mode) taken from `from` before half-way and
- * `to` from then on. At 0 it is `from`, at 1 `to`.
+ * colour role mixed (`mix`: sRGB by default, OKLCH for the interpolate transition),
+ * every width, size and alpha interpolated, and the discrete tokens (face, weights,
+ * join, id, mode) taken from `from` before half-way and `to` from then on. At 0 it
+ * is `from`, at 1 `to`.
  */
-export function blendTheme(from: ThemeTokens, to: ThemeTokens, t: number): ThemeTokens {
+export function blendTheme(from: ThemeTokens, to: ThemeTokens, t: number, mix: ColorMix = mixHex): ThemeTokens {
   const u = clamp01(t);
   if (u <= 0) return from;
   if (u >= 1) return to;
   const base = u < 0.5 ? from : to;
-  const colors = Object.fromEntries(COLOR_KEYS.map((k) => [k, mixHex(from[k], to[k], u)]));
+  const colors = Object.fromEntries(COLOR_KEYS.map((k) => [k, mix(from[k], to[k], u)]));
   const numbers = Object.fromEntries(NUMBER_KEYS.map((k) => [k, lerp(from[k], to[k], u)]));
-  const sunk = from.numberSunk !== null && to.numberSunk !== null ? mixHex(from.numberSunk, to.numberSunk, u) : base.numberSunk;
+  const sunk = from.numberSunk !== null && to.numberSunk !== null ? mix(from.numberSunk, to.numberSunk, u) : base.numberSunk;
   return { ...base, ...colors, ...numbers, numberSunk: sunk } as ThemeTokens;
 }
 

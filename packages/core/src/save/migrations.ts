@@ -60,6 +60,22 @@ function addSettings(payload: unknown): unknown {
   return { ...payload, game: { ...game, settings } };
 }
 
+/**
+ * 4 → 5: every round gains `transitionId: 'interpolate'`, the token-interpolation
+ * look every round change before the transition library drew. Anything not shaped
+ * like a v4 payload passes through unchanged, for `checkGameState` to reject.
+ */
+function addTransition(payload: unknown): unknown {
+  if (!isRecord(payload) || !isRecord(payload.game)) return payload;
+  const game = payload.game;
+  if (!isRecord(game.rounds) || !isRecord(game.rounds.byId)) return payload;
+  const rounds = game.rounds;
+  const byId = Object.fromEntries(
+    Object.entries(rounds.byId as Record<string, unknown>).map(([id, r]) => [id, isRecord(r) ? { transitionId: 'interpolate', ...r } : r]),
+  );
+  return { ...payload, game: { ...game, rounds: { ...rounds, byId } } };
+}
+
 /** Forward-only migrations, keyed by the version they upgrade from (AD-10). */
 export type SaveMigrations = Readonly<Record<number, SaveMigration>>;
 
@@ -72,10 +88,12 @@ export type SaveMigrations = Readonly<Record<number, SaveMigration>>;
  * - 1 → 2: `softMissLineSeen`, and each round's `softMiss` and `guideLine` (`addSoftMiss`).
  * - 2 → 3: each round's `themeId` and `previousThemeId` (`addTheme`).
  * - 3 → 4: the settings' theme selection, playlist and feedback switches (`addSettings`).
+ * - 4 → 5: each round's `transitionId` (`addTransition`).
  */
 export const MIGRATIONS: SaveMigrations = {
   0: (payload) => ({ game: payload }),
   1: addSoftMiss,
   2: addTheme,
   3: addSettings,
+  4: addTransition,
 };

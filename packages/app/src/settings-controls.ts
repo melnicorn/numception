@@ -15,6 +15,12 @@ export type SettingsControls = {
   readonly set: (change: SettingChange) => void;
   /** The theme ids the catalogue holds, for a playlist. */
   readonly themeIds: readonly string[];
+  /** The transition ids the catalogue holds, for the dev override. */
+  readonly transitionIds: readonly string[];
+  /** The dev transition override (`SetTransitionOverride`), or null. */
+  readonly transitionOverride: () => string | null;
+  /** Dispatches `SetTransitionOverride`. */
+  readonly setTransitionOverride: (transitionId: string | null) => void;
 };
 
 /** The settings of `state`'s active profile, or null. */
@@ -24,12 +30,22 @@ export function settingsView(state: AppState): SettingsView | null {
 }
 
 /** Settings controls over a game: reads `getState`, changes through `dispatch` (the scheduler's, so play time stays exact). */
-export function createSettingsControls(getState: () => AppState, dispatch: (command: Command) => unknown, themeIds: readonly string[]): SettingsControls {
+export function createSettingsControls(
+  getState: () => AppState,
+  dispatch: (command: Command) => unknown,
+  themeIds: readonly string[],
+  transitionIds: readonly string[] = [],
+): SettingsControls {
   return {
     get: () => settingsView(getState()),
     set: (change) => {
       dispatch({ type: 'SetSetting', ...change } as Command);
     },
     themeIds: [...themeIds],
+    transitionIds: [...transitionIds],
+    transitionOverride: () => getState().overrides.transitionId,
+    setTransitionOverride: (transitionId) => {
+      dispatch({ type: 'SetTransitionOverride', transitionId });
+    },
   };
 }

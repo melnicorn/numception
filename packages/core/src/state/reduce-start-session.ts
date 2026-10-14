@@ -1,4 +1,7 @@
 import type { ThemeCatalog } from '../theme/theme-catalog';
+import type { TransitionCatalog } from '../transition/transition-catalog';
+import { motionOf } from './motion-of';
+import { transitionSource } from './transition-source';
 import type { TuningConfig } from '../tuning/tuning-config';
 import type { TuningsByVersion } from '../tuning/tunings-by-version';
 import type { AppState } from './app-state';
@@ -27,13 +30,13 @@ import { withGame } from './with-game';
  * saved in is completed to its end state (AD-20), so the first frame is the
  * puzzle, idle. A `restore` that is not a loadable game is rejected.
  */
-export function reduceStartSession(state: AppState, ctx: CommandContext, tuning: TuningConfig, themes: ThemeCatalog, tunings: TuningsByVersion, restore?: unknown): StepResult {
+export function reduceStartSession(state: AppState, ctx: CommandContext, tuning: TuningConfig, themes: ThemeCatalog, tunings: TuningsByVersion, transitions: TransitionCatalog, restore?: unknown): StepResult {
   if (restore !== undefined) {
     const bad = checkGameState(restore);
     if (bad !== undefined) return reject(state, 'StartSession', { code: 'invalid-command', message: `restore: ${bad.message}` });
     const restored = withGame(state, restore as GameState);
-    const completed = completePresentation(restored, tuning, themes, tunings);
-    const started = reduceStartSession(completed.state, ctx, tuning, themes, tunings);
+    const completed = completePresentation(restored, tuning, themes, tunings, transitions);
+    const started = reduceStartSession(completed.state, ctx, tuning, themes, tunings, transitions);
     if (started.events.some((e) => e.type === 'CommandRejected')) return { state, events: started.events };
     return { state: started.state, events: [...completed.events, ...started.events] };
   }
@@ -45,9 +48,13 @@ export function reduceStartSession(state: AppState, ctx: CommandContext, tuning:
   if (active !== undefined) return { state: withGame(state, game), events };
 
   const roundId = existing === undefined ? ctx.entropy.ids[1] : ctx.entropy.ids[0];
-  const round = startRound(roundId, game, tuning, idleAt(game.clockMs), game.clockMs, themes, null);
+  const round = startRound(roundId, game, tuning, idleAt(game.clockMs), game.clockMs, themes, null, {
+    transitions: transitionSource(state, transitions),
+    motion: motionOf(state, game),
+    previousTransitionId: null,
+  });
   if (!round.ok) return reject(state, 'StartSession', round.error);
-  events.push({ type: 'RoundStarted', roundId, roundOrdinal: game.roundOrdinal });
+  events.push({ type: 'RoundStarted', roundId, roundOrdinal: game.roundOrdinal, transitionId: round.value.transitionId });
   const next = { ...game, rounds: { activeRoundId: roundId, byId: { ...game.rounds.byId, [roundId]: round.value } } };
   return { state: withGame(state, next), events };
 }

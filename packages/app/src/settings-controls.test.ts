@@ -39,6 +39,20 @@ describe('createSettingsControls', () => {
     expect(controls.get()).toMatchObject({ settings: { motion: 'calm' }, effectiveMotion: 'minimal' });
   });
 
+  it('reads and sets the dev transition override through SetTransitionOverride', () => {
+    let state: AppState = initialAppState();
+    const dispatch = (command: Command) => {
+      state = step(state, { command, ctx: { nowMs: 0, localDate: '2026-10-14', utcDate: '2026-10-14', entropy: { ids: ['a', 'b'], seed32: [1, 2] } } }, tuning).state;
+    };
+    const controls = createSettingsControls(() => state, dispatch, ['kiln'], ['fade', 'ripple']);
+    expect(controls.transitionIds).toEqual(['fade', 'ripple']);
+    expect(controls.transitionOverride()).toBeNull();
+    controls.setTransitionOverride('ripple');
+    expect(controls.transitionOverride()).toBe('ripple');
+    controls.setTransitionOverride(null);
+    expect(controls.transitionOverride()).toBeNull();
+  });
+
   it('the no-op prefs port reports Reduce Motion off once', () => {
     const seen: boolean[] = [];
     noAccessibilityPrefs.start((p) => seen.push(p.reduceMotion))();

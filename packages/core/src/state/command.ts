@@ -23,6 +23,8 @@ import type { PauseReason } from './pause-reason';
  *   over a paused board); a Motion change applies from the next beat.
  * - `SetOsPreferences { reduceMotion }`: what the OS reports (AD-16
  *   `AccessibilityPrefsPort`); device-scoped runtime state, with or without a profile.
+ * - `SetTransitionOverride { transitionId }`: a dev override forcing every round
+ *   change's transition (null clears it); device-scoped runtime state.
  */
 export type Command =
   | { readonly type: 'StartSession'; readonly restore?: GameState }
@@ -33,4 +35,5 @@ export type Command =
   | { readonly type: 'Pause'; readonly reason: PauseReason }
   | { readonly type: 'Resume'; readonly reason: PauseReason }
   | ({ readonly type: 'SetSetting' } & SettingChange)
-  | { readonly type: 'SetOsPreferences'; readonly reduceMotion: boolean };
+  | { readonly type: 'SetOsPreferences'; readonly reduceMotion: boolean }
+  | { readonly type: 'SetTransitionOverride'; readonly transitionId: string | null };

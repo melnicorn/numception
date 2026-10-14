@@ -27,6 +27,7 @@ export {
   type FeedbackDirectorOptions,
   hapticsFor,
   solveStep,
+  transitionCue,
 } from './feedback-director';
 export {
   DEMO_NODE_ID,
@@ -46,6 +47,7 @@ export {
   type RoundInspectorView,
 } from './inspect-round';
 export { type LoadedThemeCatalog, loadThemeCatalog, type RejectedTheme } from './theme-catalog';
+export { type LoadedTransitionCatalog, loadTransitionCatalog, type RejectedTransition } from './transition-catalog';
 export { type RoundInspectorOptions, roundInspectorOptions, type TuningInspectorOptions } from './round-inspector-options';
 
 // For the adapters and the composition root: render and ui may import core only as
@@ -79,6 +81,8 @@ export {
   type ThemeCatalog,
   type ThemeSelection,
   type ThemeTokens,
+  type Transition,
+  type TransitionCatalog,
   type TuningConfig,
   type TuningsByVersion,
 } from '@numception/core';

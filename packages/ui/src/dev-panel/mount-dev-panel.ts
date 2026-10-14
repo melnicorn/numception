@@ -10,7 +10,13 @@ import { DevPanel } from './dev-panel';
  * `tunings` maps each bundled tuning's version (e.g. `"1"`) to its JSON, passed
  * through unvalidated: core validates it (AD-7) and the panel shows any error.
  * `settings` reads and changes the active profile's settings (the Settings and Sound blocks).
+ * `preview` replays a round change as a given transition (the Transitions block).
  */
-export function mountDevPanel(el: HTMLElement, tunings: Readonly<Record<string, unknown>>, settings?: SettingsControls): void {
-  render(h(DevPanel, settings === undefined ? { tunings } : { tunings, settings }), el);
+export function mountDevPanel(
+  el: HTMLElement,
+  tunings: Readonly<Record<string, unknown>>,
+  settings?: SettingsControls,
+  preview?: (transitionId: string) => boolean,
+): void {
+  render(h(DevPanel, { tunings, ...(settings === undefined ? {} : { settings }), ...(preview === undefined ? {} : { preview }) }), el);
 }

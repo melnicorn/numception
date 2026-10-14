@@ -63,7 +63,7 @@ describe('serializeGame / parseSave', () => {
     const game = midRound();
     const doc = serializeGame(game, 7);
     expect(doc).toMatchObject({ kind: 'GameSave', schemaVersion: 1, saveFormatVersion: SAVE_FORMAT_VERSION, generation: 7 });
-    expect(SAVE_FORMAT_VERSION).toBe(4);
+    expect(SAVE_FORMAT_VERSION).toBe(5);
     expect(doc.checksum).toBe(saveChecksum({ game }));
     const back = parseSave(JSON.stringify(doc));
     expect(back).toEqual({ ok: true, value: { game, generation: 7, saveFormatVersion: SAVE_FORMAT_VERSION } });
@@ -170,6 +170,42 @@ describe('serializeGame / parseSave', () => {
       game: { settings: { themeSelection: 'randomize', playlist: [], effects: false, music: false, haptics: true } },
     });
     expect(MIGRATIONS[3]?.({ game: 'junk' })).toEqual({ game: 'junk' });
+  });
+
+  it('migrates a v4 save (no transitions) to v5: every round brought in by token interpolation', () => {
+    const game = midRound();
+    const v4Game = {
+      ...game,
+      rounds: { ...game.rounds, byId: Object.fromEntries(Object.entries(game.rounds.byId).map(([id, { transitionId: _t, ...r }]) => [id, r])) },
+    };
+    const v4Payload = { game: v4Game };
+    const v4 = { kind: 'GameSave', schemaVersion: 1, saveFormatVersion: 4, generation: 8, checksum: saveChecksum(v4Payload), payload: v4Payload };
+    // Without the 4 → 5 step the v4 game is not loadable at v5.
+    const withoutStep = { version: 5, migrations: { 0: MIGRATIONS[0], 1: MIGRATIONS[1], 2: MIGRATIONS[2], 3: MIGRATIONS[3] } as Record<number, SaveMigration> };
+    expect(parseSave(JSON.stringify(v4), withoutStep)).toMatchObject({ ok: false, error: { code: 'invalid-save' } });
+    // Read as v5 as is, the round without a transition is refused.
+    const asV5 = { ...v4, saveFormatVersion: 5 };
+    expect(parseSave(JSON.stringify(asV5))).toMatchObject({ ok: false, error: { code: 'invalid-save', message: expect.stringMatching(/transitionId/) } });
+    const back = parseSave(JSON.stringify(v4));
+    const round = back.ok ? back.value.game.rounds.byId[back.value.game.rounds.activeRoundId ?? ''] : undefined;
+    expect(round?.transitionId).toBe('interpolate');
+    // A transition already there is kept; a payload not shaped like v4 passes through.
+    expect(MIGRATIONS[4]?.({ game: { rounds: { byId: { r: { transitionId: 'ripple' }, s: {} } } } })).toEqual({
+      game: { rounds: { byId: { r: { transitionId: 'ripple' }, s: { transitionId: 'interpolate' } } } },
+    });
+    expect(MIGRATIONS[4]?.({ game: 'junk' })).toEqual({ game: 'junk' });
+  });
+
+  it('keeps the round’s transition across save and load, and rejects a save without one', () => {
+    const game = midRound();
+    const id = game.rounds.activeRoundId ?? '';
+    const rippled: GameState = { ...game, rounds: { ...game.rounds, byId: { ...game.rounds.byId, [id]: { ...(game.rounds.byId[id] as Round), transitionId: 'ripple' } } } };
+    const back = parseSave(JSON.stringify(serializeGame(rippled, 9)));
+    expect(back.ok && back.value.game.rounds.byId[id]?.transitionId).toBe('ripple');
+    const bad = { ...rippled, rounds: { ...rippled.rounds, byId: { [id]: { ...(rippled.rounds.byId[id] as Round), transitionId: '' } } } };
+    const payload = { game: bad };
+    const doc = { ...serializeGame(rippled, 9), checksum: saveChecksum(payload), payload };
+    expect(parseSave(JSON.stringify(doc))).toMatchObject({ ok: false, error: { code: 'invalid-save', message: expect.stringMatching(/transitionId/) } });
   });
 
   it('keeps every setting across save and load, and rejects malformed settings', () => {

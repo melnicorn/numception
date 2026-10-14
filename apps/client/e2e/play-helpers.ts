@@ -255,3 +255,14 @@ export async function pageOf(page: Page, point: Point): Promise<Point> {
   expect(at).not.toBeNull();
   return at as Point;
 }
+
+/**
+ * Forces every round change from now to draw `transitionId` through the dev panel's
+ * Transitions block (`SetTransitionOverride`), for specs about one transition's look.
+ */
+export async function forceTransition(page: Page, transitionId: string): Promise<void> {
+  const toggle = page.getByRole('button', { name: 'Dev panel' });
+  await toggle.click();
+  await page.getByRole('combobox', { name: /Round changes/ }).selectOption(transitionId);
+  await toggle.click();
+}

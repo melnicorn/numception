@@ -117,3 +117,77 @@ describe('selectPresentation: Playlist', () => {
     expect(pick('moonwater', ['moonwater'])).toBe('moonwater');
   });
 });
+
+describe('selectPresentation: transitions (AD-15, FR-26)', () => {
+  const t = (transitionId: string, tag: 'calm' | 'intense' = 'calm') =>
+    ({ kind: 'Transition', schemaVersion: 1, transitionId, name: transitionId, tag, start: 'after-tap', maxFlashesPerSecond: 1, audioCue: 'whoosh' }) as const;
+  const LIBRARY = [t('crossfade'), t('fade'), t('interpolate'), t('ripple'), t('snow'), t('radiate', 'intense'), t('fracture', 'intense')];
+  const CALM = ['fade', 'interpolate', 'ripple', 'snow'];
+  type Req = Parameters<typeof selectPresentation>[0];
+  const draw = (over: Partial<Req>, catalog = LIBRARY) =>
+    selectPresentation({ mode: 'zen', previousThemeId: 'kiln', roundSeed: 1, ...over }, tuning, ZEN2, catalog).transitionId;
+  /** A run of transitions from `rootSeed`, each drawn after the last. */
+  const run = (rootSeed: number, count: number, over: Partial<Req>) => {
+    const out: string[] = [];
+    let previous: string | null = null;
+    for (let ordinal = 0; ordinal < count; ordinal += 1) {
+      const id = draw({ ...over, roundSeed: deriveSeed(rootSeed, ordinal), previousTransitionId: previous });
+      out.push(id);
+      previous = id;
+    }
+    return out;
+  };
+
+  it('Zen and Calm only ever pick calm transitions, and never the Minimal crossfade', () => {
+    for (const motion of ['full', 'calm'] as const) {
+      for (const seed of [1, 99, 0xdeadbeef]) {
+        const ids = run(seed, 300, { motion });
+        for (const id of ids) expect(CALM).toContain(id);
+        expect([...new Set(ids)].sort()).toEqual(CALM);
+      }
+    }
+    // Normal at Calm: calm only too.
+    for (const id of run(4, 200, { mode: 'normal', motion: 'calm' })) expect(CALM).toContain(id);
+  });
+
+  it('Minimal always crossfades, in every mode and with any override', () => {
+    for (const mode of ['zen', 'normal'] as const) {
+      for (const id of run(7, 50, { mode, motion: 'minimal', transitionOverride: 'ripple' })) expect(id).toBe('crossfade');
+    }
+    expect(draw({ motion: 'minimal' }, [])).toBe('crossfade');
+  });
+
+  it('only Normal at Full may draw intense transitions', () => {
+    const ids = new Set(run(12, 300, { mode: 'normal', motion: 'full' }));
+    expect(ids.has('radiate') || ids.has('fracture')).toBe(true);
+    expect(ids.has('crossfade')).toBe(false);
+  });
+
+  it('never repeats the previous round change’s transition while another is available', () => {
+    for (const seed of [3, 5, 8]) {
+      const ids = run(seed, 300, { motion: 'calm' });
+      for (let i = 1; i < ids.length; i += 1) expect(ids[i]).not.toBe(ids[i - 1]);
+    }
+    expect(run(3, 4, { motion: 'calm' })).toEqual(run(3, 4, { motion: 'calm' }));
+  });
+
+  it('keeps the one calm transition there is, and falls back to interpolate with none', () => {
+    expect(draw({ motion: 'calm', previousTransitionId: 'ripple' }, [t('ripple'), t('crossfade')])).toBe('ripple');
+    expect(draw({ motion: 'calm' }, [t('crossfade'), t('radiate', 'intense')])).toBe('interpolate');
+    expect(draw({ motion: 'calm' }, [])).toBe('interpolate');
+  });
+
+  it('takes an override in the pool, and ignores one that is not', () => {
+    expect(draw({ motion: 'calm', transitionOverride: 'snow', previousTransitionId: 'snow' })).toBe('snow');
+    expect(CALM).toContain(draw({ motion: 'calm', transitionOverride: 'radiate' }));
+    expect(CALM).toContain(draw({ motion: 'calm', transitionOverride: 'nowhere' }));
+  });
+
+  it('leaves the theme draw as it was', () => {
+    for (let seed = 0; seed < 50; seed += 1) {
+      const plain = selectPresentation({ mode: 'zen', previousThemeId: 'kiln', roundSeed: seed }, tuning, MIXED).themeId;
+      const withTransitions = selectPresentation({ mode: 'zen', previousThemeId: 'kiln', roundSeed: seed, motion: 'calm', previousTransitionId: 'fade' }, tuning, MIXED, LIBRARY).themeId;
+      expect(withTransitions).toBe(plain);
+    }
+  });
+});

@@ -1,5 +1,5 @@
 import { expect, type Page, test } from '@playwright/test';
-import { answerCell, clickUnit, colorDistance, frameInk, pixelAt, rgbOf, solve, view, waitBeat, waitForPuzzle, waitIdle } from './play-helpers';
+import { answerCell, clickUnit, colorDistance, forceTransition, frameInk, pixelAt, rgbOf, solve, view, waitBeat, waitForPuzzle, waitIdle } from './play-helpers';
 
 // A new theme each round (FR-25, AD-15) on the playtest build: core picks the
 // round's theme from the bundled catalogue (Kiln and Moonwater, both Zen), the
@@ -55,6 +55,8 @@ test('the round change shifts the whole frame through a mid-luminance surface be
   await page.setViewportSize({ width: 390, height: 844 });
   await page.goto('./');
   await waitForPuzzle(page);
+  // Token interpolation: the whole field shifts colour first.
+  await forceTransition(page, 'interpolate');
   for (let k = 0; k < 3; k += 1) await solve(page);
   const top = await waitIdle(page);
   expect(top.nodeId).toEqual({ tier: 2, index: 0 });

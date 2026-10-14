@@ -6,6 +6,7 @@ import {
   colorDistance,
   eventLog,
   events,
+  forceTransition,
   frameInk,
   pageOf,
   parentToView,
@@ -175,6 +176,8 @@ test('the solve, collapse and round change are drawn: mid-beat frames carry from
   test.setTimeout(60_000);
   await page.goto('./');
   await waitForPuzzle(page);
+  // The round-change checks below are about token interpolation's look.
+  await forceTransition(page, 'interpolate');
   const idle = await frameInk(page);
   expect(idle.ink).toBeGreaterThan(0.05);
 

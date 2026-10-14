@@ -9,6 +9,7 @@ import { endBeat, type TimelineResult } from './end-beat';
 import type { GameEvent } from './game-event';
 import type { GameState } from './game-state';
 import { isPlayable } from './is-playable';
+import type { TransitionSource } from './transition-source';
 import { withRound } from './with-round';
 
 /** A timeline run: the game and events, plus the error a beat end failed with (null when none did). */
@@ -18,7 +19,8 @@ export type TimelineRun = TimelineResult & { readonly error: DomainError | null 
  * Runs `game`'s active round's timeline (AD-20): while a beat is running and
  * `endOf` gives it an end time, ends it there (`endBeat`) and goes on with the beat
  * that follows, so one call may cross several beats. Stops at idle, or at a beat
- * `endOf` leaves running (null). The beats it starts run at Motion level `motion`.
+ * `endOf` leaves running (null). The beats it starts run at Motion level `motion`;
+ * a round change's transition is drawn from `transitions`.
  *
  * If a beat end fails (a leaf that cannot be realised, a round that cannot be
  * planned), the round is settled idle on what is in view at `game.clockMs`, without
@@ -32,6 +34,7 @@ export function runTimeline(
   themes: ThemeCatalog,
   tunings: TuningsByVersion,
   motion: MotionLevel,
+  transitions: TransitionSource,
 ): TimelineRun {
   let current = game;
   const events: GameEvent[] = [];
@@ -41,7 +44,7 @@ export function runTimeline(
     if (round === undefined || round.presentation.kind === 'idle') break;
     const endAt = endOf(round.presentation);
     if (endAt === null) break;
-    const ended = endBeat(current, round, endAt, tuning, themes, tunings, motion);
+    const ended = endBeat(current, round, endAt, tuning, themes, tunings, motion, transitions);
     if (!ended.ok) {
       const inView = round.viewPath[round.viewPath.length - 1];
       const shown = inView !== undefined && isPlayable(round, inView) ? current.clockMs : null;

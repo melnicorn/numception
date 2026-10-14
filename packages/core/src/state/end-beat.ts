@@ -16,6 +16,7 @@ import type { Round } from './round';
 import { roundPuzzle } from './round-puzzle';
 import { serveNode } from './serve-node';
 import { startRound } from './start-round';
+import type { TransitionSource } from './transition-source';
 import { withRound } from './with-round';
 
 /** A game after part of its timeline ran, with the events that produced it. */
@@ -58,7 +59,8 @@ function settle(round: Round, atMs: number): Round {
  * - `solve`: the node in view joins `solved`. If that completes the round
  *   (`RoundType.isComplete`): `RoundCompleted`, `roundOrdinal` + 1, and the next
  *   round (id `nextRoundId`) opens on `roundStart` (`RoundStarted`) in a theme
- *   from `themes` other than the completed round's; the completed round is dropped. Else, if it completed a group (`RoundType.onSolve`), the view
+ *   from `themes` other than the completed round's, drawing a transition from
+ *   `transitions` other than the completed round's (its `transitionId`); the completed round is dropped. Else, if it completed a group (`RoundType.onSolve`), the view
  *   moves to the parent and a `collapse` runs (`RoundCollapsed`; the first one sets
  *   `firstCollapseSeen`). Else `advance`.
  * - `collapse`: `advance`, or idle when the parent collapsed into is itself the next puzzle.
@@ -79,6 +81,7 @@ export function endBeat(
   themes: ThemeCatalog,
   tunings: TuningsByVersion,
   motion: MotionLevel,
+  transitions: TransitionSource,
 ): Result<TimelineResult, DomainError> {
   const inView = round.viewPath[round.viewPath.length - 1];
   if (inView === undefined) return err(invalid('no puzzle in view'));
@@ -100,7 +103,7 @@ export function endBeat(
       const solved: Round = { ...round, solved: [...round.solved, nodeKey(inView)] };
       const rt = ROUND_TYPES[round.type];
       const isSolved = (node: Parameters<typeof isNodeSolved>[1]) => isNodeSolved(solved, node);
-      if (rt.isComplete(round.plan, isSolved)) return completeRound(game, round, endAt, tuning, themes, motion);
+      if (rt.isComplete(round.plan, isSolved)) return completeRound(game, round, endAt, tuning, themes, motion, transitions);
       const { collapsesInto } = rt.onSolve(round.plan, inView, isSolved);
       if (collapsesInto !== null) {
         const collapsing: Round = {
@@ -128,6 +131,7 @@ function completeRound(
   tuning: TuningConfig,
   themes: ThemeCatalog,
   motion: MotionLevel,
+  transitions: TransitionSource,
 ): Result<TimelineResult, DomainError> {
   const nextId = round.nextRoundId;
   if (nextId === null) return err(invalid('the next round has no reserved id'));
@@ -135,17 +139,23 @@ function completeRound(
   // The theme the completed round was drawn in (a saved id the catalogue lacks drew
   // as Kiln), so the next round is never a repeat of what was on screen.
   const drawnThemeId = themeById(themes, round.themeId).themeId;
-  const next = startRound(nextId, { ...game, roundOrdinal }, tuning, beatAt('roundStart', endAt, tuning, game, motion), null, themes, drawnThemeId);
+  const next = startRound(nextId, { ...game, roundOrdinal }, tuning, beatAt('roundStart', endAt, tuning, game, motion), null, themes, drawnThemeId, {
+    transitions,
+    motion,
+    previousTransitionId: round.transitionId,
+  });
   if (!next.ok) return next;
+  // The round change draws the new round's transition (AD-15).
+  const presentation = { ...next.value.presentation, transitionId: next.value.transitionId };
   const { [round.roundId]: _completed, ...rest } = game.rounds.byId;
   const inView = round.viewPath[round.viewPath.length - 1];
   const top = inView === undefined ? undefined : roundPuzzle(round, inView);
-  const opened: Round = { ...next.value, previousTop: top ?? null };
+  const opened: Round = { ...next.value, presentation, previousTop: top ?? null };
   return ok({
     game: { ...game, roundOrdinal, rounds: { activeRoundId: nextId, byId: { ...rest, [nextId]: opened } } },
     events: [
       { type: 'RoundCompleted', roundId: round.roundId, roundOrdinal: game.roundOrdinal },
-      { type: 'RoundStarted', roundId: nextId, roundOrdinal },
+      { type: 'RoundStarted', roundId: nextId, roundOrdinal, transitionId: opened.transitionId },
     ],
   });
 }

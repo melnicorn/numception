@@ -1,4 +1,4 @@
-import { hitTestView, type LayoutPoint, type NodeCellRef, type PlayVM } from '@numception/app';
+import { hitTestView, type LayoutPoint, type NodeCellRef, type PlayVM, type ThemeTokens } from '@numception/app';
 // The browser environment (events, text, graphics pipes) and the WebGL renderer are
 // imported statically and initialised with `manageImports: false`, so no lazy chunk
 // sits between script load and the first puzzle frame (autoDetectRenderer and the
@@ -27,7 +27,10 @@ import { blendScale, sizingTransform } from './numeral-size';
 import { paintView } from './paint-view';
 import type { RenderPort } from './render-port';
 import { resumeButton } from './resume-button';
-import { blendTheme, crossfadeLook, inTheme, roundChangeLook, scaleAbout } from './round-change';
+import { mixOklch } from './oklch';
+import { blendTheme, crossfadeLook, inTheme, mixHex, roundChangeLook, scaleAbout } from './round-change';
+import { clumpScale, flakeAt, fullCover, type SnowField, SNOW_SWAP, snowColors, snowField } from './snow-field';
+import { crossesLightDark, fadeLook, farthestCorner, RIPPLE_RINGS, rippleLook, transitionStyle } from './transition-looks';
 import { ScenePool } from './scene-pool';
 import { ARROW_WIDTH_PX, arrowAlpha, ghostArrow, pulseLook } from './soft-miss-motion';
 import { contextTransform, fitRect, idleTransform, nestTransform, shapeBox, toScreen, toUnit, type ViewTransform } from './view-transform';
@@ -68,15 +71,26 @@ export type Renderer = RenderPort & {
    * WebGL context is lost) and scene rebuilds after a restored context.
    */
   readonly stats: () => RendererStats;
+  /**
+   * Dev panel only: replays the last round change drawn (or, before any, the view
+   * in view changing into `theme`) as transition `transitionId`, self-timed over
+   * `durationMs` (the replayed beat's own when omitted). Any new beat cancels it.
+   * False when there is nothing to replay yet (not mounted, no view).
+   */
+  readonly replayRoundChange: (transitionId: string, options?: { readonly theme?: ThemeTokens; readonly durationMs?: number }) => boolean;
 };
 
 /**
  * How a frame drew its beat, for the test hooks: `idle`; `solve`; `zoom` (an
  * advance or collapse moving the camera); `cut` (an advance or collapse at
- * Minimal motion: the views crossfade at rest, no camera move); `themeChange` (the
- * round change); `crossfade` (the round change at Minimal motion).
+ * Minimal motion: the views crossfade at rest, no camera move); the round change
+ * by transition: `themeChange` (token interpolation, `interpolate`), `crossfade`
+ * (Minimal motion), `fade`, `ripple` and `snow`.
  */
-export type BeatStyle = 'idle' | 'solve' | 'zoom' | 'cut' | 'themeChange' | 'crossfade';
+export type BeatStyle = 'idle' | 'solve' | 'zoom' | 'cut' | 'themeChange' | 'crossfade' | 'fade' | 'ripple' | 'snow';
+
+/** A replayed round change's length when the replayed view has none (the Calm round change at tuning 2). */
+const REPLAY_DEFAULT_MS = 1125;
 
 /** The core transition id of the Minimal-motion beats (core `CROSSFADE_TRANSITION_ID`). */
 const CROSSFADE = 'crossfade';
@@ -104,9 +118,19 @@ export function createRenderer(options: RendererOptions): Renderer {
   let app: { renderer: WebGLRenderer; stage: Container; ticker: Ticker; canvas: HTMLCanvasElement; render: () => void } | undefined;
   let resizeObserver: ResizeObserver | undefined;
   let pool: ScenePool | undefined;
+  /** The new round revealed through a mask (ripple), over the base pool. */
+  let revealLayer: Container | undefined;
+  let revealPool: ScenePool | undefined;
+  let revealMask: Graphics | undefined;
+  /** Transition effects over both (ripple rings, snow). */
+  let fxPool: ScenePool | undefined;
+  let snowCache: { key: string; field: SnowField } | undefined;
+  /** The last round change drawn, for the dev replay, and the replay running. */
+  let lastRoundChange: PlayVM | null = null;
+  let replay: { readonly view: PlayVM; readonly startedAt: number; readonly durationMs: number } | null = null;
   let presses: Container | undefined;
   let host: HTMLElement | undefined;
-  let vm: PlayVM | null = null;
+  let latest: PlayVM | null = null;
   let transform: ViewTransform | undefined;
   let destroyed = false;
   let drawnKey: string | undefined;
@@ -121,10 +145,28 @@ export function createRenderer(options: RendererOptions): Renderer {
   };
   const activePointers = new Set<number>();
 
-  /** Sets the frame's background; the page hears of a change once the frame is presented (`flushSurface`). */
-  function setSurface(color: string): void {
+  /**
+   * Sets the frame's background; the page hears of a change once the frame is
+   * presented (`flushSurface`), as `page` when the page band shows another colour
+   * than the canvas background (a ripple that has passed the top edge).
+   */
+  function setSurface(color: string, page: string = color): void {
     if (app !== undefined) app.renderer.background.color = color;
-    surfacePending = color;
+    surfacePending = page;
+  }
+
+  /** The view this frame draws: the dev replay's at its progress, else the latest. */
+  function frameView(): PlayVM | null {
+    if (replay === null) return latest;
+    const progress = Math.min(1, (performance.now() - replay.startedAt) / replay.durationMs);
+    return { ...replay.view, presentation: { ...replay.view.presentation, progress } };
+  }
+
+  /** The snow field for this frame size and tap point, laid out once. */
+  function snowFor(width: number, height: number, tap: readonly [number, number]): SnowField {
+    const key = `${width}x${height}@${Math.round(tap[0])},${Math.round(tap[1])}`;
+    if (snowCache?.key !== key) snowCache = { key, field: snowField(width, height, tap) };
+    return snowCache.field;
   }
 
   /** After a frame is rendered: tells the page its new surface, so the page and canvas change together. */
@@ -146,15 +188,24 @@ export function createRenderer(options: RendererOptions): Renderer {
    * (`contextTransform`), so the super-shape stays in frame through every beat.
    */
   function draw(): void {
-    if (app === undefined || pool === undefined) return;
-    pool.begin();
+    if (app === undefined || pool === undefined || revealPool === undefined || fxPool === undefined || revealLayer === undefined || revealMask === undefined) return;
+    const vm = frameView();
+    const pools = [pool, revealPool, fxPool];
+    for (const each of pools) each.begin();
+    revealLayer.mask = null;
+    revealMask.clear();
     const theme = vm?.theme;
     if (vm === null || theme === undefined) {
       setSurface(DEFAULT_SURFACE);
       transform = undefined;
-      pool.end();
+      for (const each of pools) each.end();
       return;
     }
+    const base = pool;
+    const reveal = revealPool;
+    const fx = fxPool;
+    const mask = revealMask;
+    const masked = revealLayer;
     const { width, height } = size();
     const restOf = (view: PlayVM) => idleTransform(view, width, height);
     const rest = restOf(vm);
@@ -168,27 +219,134 @@ export function createRenderer(options: RendererOptions): Renderer {
      * `followCamera` says. `cellFade` defaults to leaving out the view's own cell,
      * so the puzzle looks as it does at the top and nothing stacks beneath it.
      */
-    const paintContext = (view: PlayVM, t: ViewTransform, alpha: number, followCamera: boolean, cellFade?: Record<number, number>) => {
+    const paintContext = (view: PlayVM, t: ViewTransform, alpha: number, followCamera: boolean, cellFade?: Record<number, number>, into: ScenePool = base) => {
       const context = view.context;
       const parentT = contextTransform(t, view);
       const parentRest = contextTransform(restOf(view), view);
       if (context === undefined || parentT === undefined || parentRest === undefined || alpha <= 0) return;
       const fade = cellFade ?? { [context.cellIndex]: 0 };
-      paintView(pool as ScenePool, context.parent, parentT, sizingTransform(parentT, parentRest, followCamera), contextLook(fade, alpha), width, {
+      paintView(into, context.parent, parentT, sizingTransform(parentT, parentRest, followCamera), contextLook(fade, alpha), width, {
         rest: parentRest,
         quiet: 1,
       });
+    };
+    /** The old round's answer cell, where the player tapped, on screen; the frame centre without one. */
+    const tapPoint = (view: PlayVM): readonly [number, number] => {
+      const cell = view.solvedAnswer === null ? undefined : view.cells[view.solvedAnswer];
+      return cell === undefined ? [width / 2, height / 2] : toScreen(restOf(view), cell.labelPoint);
+    };
+    const drawRoundChange = (from: PlayVM, to: PlayVM, progress: number, style: ReturnType<typeof transitionStyle>) => {
+      drew(style === 'interpolate' ? 'themeChange' : style);
+      const [cx, cy] = [width / 2, height / 2];
+      const fromRest = restOf(from);
+      const toRest = restOf(to);
+      const arrive = (view: PlayVM, t: ViewTransform, alpha: number, into: ScenePool = base) => {
+        paintContext(view, t, alpha, true, undefined, into);
+        paintView(into, view, t, t, { ...IDLE_LOOK, alpha }, width, { rest: toRest, quiet: 0 });
+      };
+      const leave = (view: PlayVM, t: ViewTransform, alpha: number) => {
+        paintView(base, view, t, t, settled(view, alpha), width, { rest: fromRest, quiet: 0 });
+      };
+      if (style === 'interpolate' || style === 'crossfade') {
+        // The old top shrinks away into the frame's centre while the field changes
+        // colour (OKLCH), then the new puzzle (with its parent) grows in, both drawn
+        // in the frame's blended theme. At Minimal: an sRGB crossfade in place.
+        const look = style === 'crossfade' ? crossfadeLook(progress) : roundChangeLook(progress);
+        const frameTheme = blendTheme(from.theme, to.theme, look.color, style === 'crossfade' ? mixHex : mixOklch);
+        setSurface(frameTheme.surface);
+        if (look.fromAlpha > 0) leave(inTheme(from, frameTheme), scaleAbout(fromRest, look.fromScale, cx, cy), look.fromAlpha);
+        if (look.toAlpha > 0) arrive(inTheme(to, frameTheme), scaleAbout(toRest, look.toScale, cx, cy), look.toAlpha);
+        return;
+      }
+      if (style === 'fade') {
+        // The new round resolves in under the old one, which then dissolves; each in its own theme.
+        const look = fadeLook(progress);
+        setSurface(mixOklch(from.theme.surface, to.theme.surface, look.color));
+        if (look.toAlpha > 0) arrive(to, scaleAbout(toRest, look.toScale, cx, cy), look.toAlpha);
+        if (look.fromAlpha > 0) leave(from, scaleAbout(fromRest, look.fromScale, cx, cy), look.fromAlpha);
+        return;
+      }
+      const tap = tapPoint(from);
+      const bridge = crossesLightDark(from.theme, to.theme);
+      if (style === 'ripple') {
+        // A circle from the tap point reveals the new round (a stencil mask, no filter), rings at its front.
+        const look = rippleLook(progress, bridge);
+        const oldTheme = blendTheme(from.theme, to.theme, look.oldBlend, mixOklch);
+        const newTheme = blendTheme(from.theme, to.theme, look.newBlend, mixOklch);
+        const maxR = farthestCorner(tap, width, height) + 4;
+        const radius = maxR * look.reach;
+        const topCovered = radius >= Math.max(Math.hypot(tap[0], tap[1]), Math.hypot(width - tap[0], tap[1]));
+        setSurface(oldTheme.surface, topCovered ? newTheme.surface : oldTheme.surface);
+        if (radius < maxR) leave(inTheme(from, oldTheme), fromRest, 1);
+        if (radius > 0) {
+          mask.circle(tap[0], tap[1], radius).fill(0xffffff);
+          masked.mask = mask;
+          reveal.takeGraphics().rect(0, 0, width, height).fill({ color: hex(newTheme.surface) });
+          arrive(inTheme(to, newTheme), toRest, 1, reveal);
+        }
+        if (look.rings > 0 && radius < maxR) {
+          const rings = fx.takeGraphics();
+          for (const ring of RIPPLE_RINGS) {
+            const r = radius - ring.behind * maxR;
+            if (r > 0) rings.circle(tap[0], tap[1], r).stroke({ width: ring.width, color: hex(newTheme.accent), alpha: ring.alpha * look.rings });
+          }
+        }
+        return;
+      }
+      // Snow / embers: the blanket lands over the old round, the rounds swap under full cover, then it melts from the tap.
+      const colors = snowColors(from.theme, to.theme, bridge);
+      const field = snowFor(width, height, tap);
+      const swapped = progress >= SNOW_SWAP;
+      const page = progress < 0.3 ? from.theme.surface : progress < 0.8 ? colors.blanket : to.theme.surface;
+      setSurface(swapped ? to.theme.surface : from.theme.surface, page);
+      if (swapped) arrive(to, toRest, 1);
+      else leave(from, fromRest, 1);
+      const rim = fx.takeGraphics();
+      const blanket = fx.takeGraphics();
+      const lift = colors.embers ? -1.8 : 2.6;
+      let any = false;
+      for (const c of field.clumps) {
+        const k = clumpScale(c, progress);
+        if (k <= 0.001) continue;
+        any = true;
+        rim.circle(c.x, c.y + lift, c.r * k);
+        blanket.circle(c.x, c.y, c.r * k);
+      }
+      if (fullCover(progress)) {
+        blanket.rect(0, 0, width, height);
+        any = true;
+      }
+      if (any) {
+        rim.fill({ color: hex(colors.rim) });
+        blanket.fill({ color: hex(colors.blanket) });
+      }
+      const flakes = fx.takeGraphics();
+      const halos = colors.embers ? fx.takeGraphics() : undefined;
+      let falling = 0;
+      for (const f of field.flakes) {
+        const at = flakeAt(f, progress);
+        if (at === null) continue;
+        falling += 1;
+        halos?.circle(at[0], at[1], f.r * 2.6);
+        flakes.circle(at[0], at[1], colors.embers ? f.r * 0.8 : f.r);
+      }
+      if (falling > 0) {
+        if (halos !== undefined) {
+          halos.fill({ color: hex(colors.accent), alpha: 0.22 });
+          flakes.fill({ color: hex(mixHex(colors.accent, '#FFFFFF', 0.5)) });
+          // Embers glow over the blanket: drawn after it.
+          halos.zIndex = blanket.zIndex + 0.5;
+        } else {
+          flakes.fill({ color: hex(colors.flake) }).stroke({ width: 0.7, color: hex(colors.accent), alpha: 0.6 });
+        }
+      }
     };
     const p = vm.presentation;
     const to = p.to ?? vm;
     const { from, camera } = p;
     // At Minimal motion core marks the moving beats `crossfade`: zooms become cuts with a crossfade (EXPERIENCE).
     const crossfade = p.transitionId === CROSSFADE;
-    const roundChange =
-      p.kind === 'roundStart' && from !== undefined ? (crossfade ? crossfadeLook(p.progress) : roundChangeLook(p.progress)) : undefined;
-    // In a round change the whole frame moves from the old round's theme to the new one's.
-    const frameTheme = roundChange === undefined || from === undefined ? theme : blendTheme(from.theme, to.theme, roundChange.color);
-    setSurface(frameTheme.surface);
+    setSurface(theme.surface);
     if (p.kind === 'solve' && p.cellIndex !== null) {
       drew('solve');
       paintContext(vm, rest, 1, false);
@@ -257,23 +415,10 @@ export function createRenderer(options: RendererOptions): Renderer {
         paintView(pool, from, fromT, sizingTransform(fromT, restOf(from), true), settled(from, fromAlpha), width, { rest: restOf(from), quiet: 0 });
         paintView(pool, to, toT, sizingTransform(toT, restOf(to), true), { ...IDLE_LOOK, alpha: toAlpha }, width, { rest: restOf(to), quiet: 0 });
       }
-    } else if (roundChange !== undefined && from !== undefined) {
-      // The round change (`round-change`): the old top shrinks away into the frame's
-      // centre while the field changes colour, then the new puzzle (with its parent)
-      // grows in, both drawn in the frame's blended theme. At Minimal: a crossfade in place.
-      drew(crossfade ? 'crossfade' : 'themeChange');
-      const [cx, cy] = [width / 2, height / 2];
-      const old = inTheme(from, frameTheme);
-      const next = inTheme(to, frameTheme);
-      if (roundChange.fromAlpha > 0) {
-        const fromT = scaleAbout(restOf(from), roundChange.fromScale, cx, cy);
-        paintView(pool, old, fromT, fromT, settled(old, roundChange.fromAlpha), width, { rest: restOf(from), quiet: 0 });
-      }
-      if (roundChange.toAlpha > 0) {
-        const toT = scaleAbout(restOf(to), roundChange.toScale, cx, cy);
-        paintContext(next, toT, roundChange.toAlpha, true);
-        paintView(pool, next, toT, toT, { ...IDLE_LOOK, alpha: roundChange.toAlpha }, width, { rest: restOf(to), quiet: 0 });
-      }
+    } else if (p.kind === 'roundStart' && from !== undefined) {
+      // The round change (AD-15): core's transition for it, drawn from `transition-looks`.
+      if (latest === vm && replay === null) lastRoundChange = vm;
+      drawRoundChange(from, to, p.progress, crossfade ? 'crossfade' : transitionStyle(p.transitionId));
     } else {
       drew('idle');
       paintContext(vm, rest, 1, false);
@@ -317,14 +462,15 @@ export function createRenderer(options: RendererOptions): Renderer {
         .poly(button.triangle.flat())
         .fill({ color: hex(theme.solvedNumber) });
     }
-    pool.end();
+    for (const each of pools) each.end();
   }
 
   /** After a lost WebGL context is restored: fresh GPU objects, rebuilt from the latest view (AD-14). */
   function rebuild(): void {
     rebuilds += 1;
     surfaceShown = undefined;
-    pool?.reset();
+    for (const each of [pool, revealPool, fxPool]) each?.reset();
+    snowCache = undefined;
     draw();
     app?.render();
   }
@@ -336,7 +482,7 @@ export function createRenderer(options: RendererOptions): Renderer {
 
   function press(point: LayoutPoint): void {
     if (app === undefined || presses === undefined) return;
-    const dot = new Graphics().circle(point[0], point[1], PRESS_RADIUS_PX).fill({ color: hex(vm?.theme.press ?? '#AC644E') });
+    const dot = new Graphics().circle(point[0], point[1], PRESS_RADIUS_PX).fill({ color: hex(latest?.theme.press ?? '#AC644E') });
     dot.alpha = PRESS_ALPHA;
     presses.addChild(dot);
     const ticker = app.ticker;
@@ -356,8 +502,8 @@ export function createRenderer(options: RendererOptions): Renderer {
 
   function hitTest(point: LayoutPoint): NodeCellRef | null {
     // While a beat runs (AD-14) taps resolve to nothing; the press acknowledgement still draws.
-    if (vm === null || vm.inputLocked || transform === undefined) return null;
-    return hitTestView(vm, toUnit(transform, point), EDGE_TOLERANCE_PX / transform.scale);
+    if (latest === null || latest.inputLocked || transform === undefined) return null;
+    return hitTestView(latest, toUnit(transform, point), EDGE_TOLERANCE_PX / transform.scale);
   }
 
   const onPointerDown = (event: PointerEvent) => {
@@ -393,7 +539,7 @@ export function createRenderer(options: RendererOptions): Renderer {
       const renderer = new WebGLRenderer();
       await renderer.init({
         manageImports: false,
-        background: vm?.theme.surface ?? DEFAULT_SURFACE,
+        background: latest?.theme.surface ?? DEFAULT_SURFACE,
         width: Math.max(1, el.clientWidth),
         height: Math.max(1, el.clientHeight),
         resolution: globalThis.devicePixelRatio || 1,
@@ -409,10 +555,21 @@ export function createRenderer(options: RendererOptions): Renderer {
       app = { renderer, stage, ticker, canvas: renderer.canvas, render: () => renderer.render(stage) };
       const scene = new Container();
       pool = new ScenePool(scene);
+      revealLayer = new Container();
+      revealPool = new ScenePool(revealLayer);
+      revealMask = new Graphics();
+      const fxLayer = new Container();
+      fxPool = new ScenePool(fxLayer);
       presses = new Container();
-      stage.addChild(scene, presses);
+      stage.addChild(scene, revealLayer, revealMask, fxLayer, presses);
       ticker.add(() => {
         if (contextLost) return;
+        if (replay !== null) {
+          // The dev replay runs on the ticker's clock, then hands back to the latest view.
+          if (performance.now() - replay.startedAt >= replay.durationMs) replay = null;
+          drawnKey = undefined;
+          draw();
+        }
         renderer.render(stage);
         framesRendered += 1;
         flushSurface();
@@ -446,7 +603,9 @@ export function createRenderer(options: RendererOptions): Renderer {
     },
     render(next) {
       const key = drawKey(next);
-      vm = next;
+      latest = next;
+      // A beat of the game's own cancels a dev replay.
+      if (replay !== null && next !== null && next.presentation.kind !== 'idle') replay = null;
       // Every frame of a beat carries a new progress and redraws; an unchanged idle view does not.
       if (key === drawnKey) return;
       drawnKey = key;
@@ -454,6 +613,29 @@ export function createRenderer(options: RendererOptions): Renderer {
     },
     hitTest,
     stats: () => ({ framesRendered, rebuilds, beats: { ...beats } }),
+    replayRoundChange(transitionId, options = {}) {
+      if (app === undefined || latest === null) return false;
+      const last = lastRoundChange;
+      const base: PlayVM =
+        last ??
+        ({
+          ...latest,
+          presentation: {
+            kind: 'roundStart',
+            progress: 0,
+            durationMs: options.durationMs ?? REPLAY_DEFAULT_MS,
+            transitionId,
+            cellIndex: null,
+            from: { ...latest, presentation: { ...latest.presentation, kind: 'idle', progress: 1 } },
+            to: options.theme === undefined ? latest : inTheme(latest, options.theme),
+          },
+        } satisfies PlayVM);
+      const durationMs = options.durationMs ?? (base.presentation.durationMs > 0 ? base.presentation.durationMs : REPLAY_DEFAULT_MS);
+      replay = { view: { ...base, presentation: { ...base.presentation, transitionId } }, startedAt: performance.now(), durationMs };
+      drawnKey = undefined;
+      draw();
+      return true;
+    },
     pagePoint(point) {
       if (app === undefined || transform === undefined) return null;
       const rect = app.canvas.getBoundingClientRect();
@@ -477,6 +659,11 @@ export function createRenderer(options: RendererOptions): Renderer {
       app.renderer.destroy(true);
       app = undefined;
       pool = undefined;
+      revealPool = undefined;
+      fxPool = undefined;
+      revealLayer = undefined;
+      revealMask = undefined;
+      replay = null;
       presses = undefined;
       transform = undefined;
     },

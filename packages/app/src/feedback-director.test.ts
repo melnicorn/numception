@@ -1,7 +1,7 @@
 import { type GameEvent, initialAppState, type NodeId, parseTuning, step } from '@numception/core';
 import { describe, expect, it } from 'vitest';
 import type { AudioChannels, AudioPort, CueId, CueParams } from './audio-port';
-import { createFeedbackDirector, cuesFor, hapticsFor, solveStep } from './feedback-director';
+import { createFeedbackDirector, cuesFor, hapticsFor, solveStep, transitionCue } from './feedback-director';
 import { DEFAULT_FEEDBACK_FLAGS, type FeedbackFlags, feedbackFlagsOf } from './feedback-flags';
 import { type HapticKind, type HapticsPort, noHaptics } from './haptics-port';
 
@@ -57,24 +57,39 @@ describe('cuesFor', () => {
       'a round change',
       [
         { type: 'RoundCompleted', roundId: 'r', roundOrdinal: 0 },
-        { type: 'RoundStarted', roundId: 's', roundOrdinal: 1 },
+        { type: 'RoundStarted', roundId: 's', roundOrdinal: 1, transitionId: 'interpolate' },
       ],
       [{ cue: 'whoosh' }],
     ],
-    ['a session opening its first round', [{ type: 'ProfileCreated', profileId: 'p' }, { type: 'RoundStarted', roundId: 'r', roundOrdinal: 0 }], []],
+    ['a session opening its first round', [{ type: 'ProfileCreated', profileId: 'p' }, { type: 'RoundStarted', roundId: 'r', roundOrdinal: 0, transitionId: 'interpolate' }], []],
     ['RoundCollapsed', [{ type: 'RoundCollapsed', roundId: 'r', nodeId: node(2) }], []],
     ['InputDropped', [{ type: 'InputDropped', command: 'TapCell', presentation: 'solve' }], []],
     [
       'a lifecycle pause that completes a round change',
       [
         { type: 'RoundCompleted', roundId: 'r', roundOrdinal: 0 },
-        { type: 'RoundStarted', roundId: 's', roundOrdinal: 1 },
+        { type: 'RoundStarted', roundId: 's', roundOrdinal: 1, transitionId: 'interpolate' },
         { type: 'Paused', reason: 'lifecycle', pauseReasons: ['lifecycle'] },
       ],
       [],
     ],
   ])('%s', (_name, events, expected) => {
     expect(cuesFor(events)).toEqual(expected);
+  });
+
+  it('plays the round change’s transition cue from its data: none for a null cue, the whoosh for an unknown transition', () => {
+    const change = (transitionId: string): GameEvent[] => [
+      { type: 'RoundCompleted', roundId: 'r', roundOrdinal: 0 },
+      { type: 'RoundStarted', roundId: 's', roundOrdinal: 1, transitionId },
+    ];
+    const t = (transitionId: string, audioCue: string | null) =>
+      ({ kind: 'Transition', schemaVersion: 1, transitionId, name: transitionId, tag: 'calm', start: 'on-tap', maxFlashesPerSecond: 1, audioCue }) as const;
+    const catalog = [t('ripple', 'whoosh'), t('hush', null), t('chime', 'chime')];
+    expect(cuesFor(change('ripple'), catalog)).toEqual([{ cue: 'whoosh' }]);
+    expect(cuesFor(change('hush'), catalog)).toEqual([]);
+    expect(cuesFor(change('chime'), catalog)).toEqual([]);
+    expect(cuesFor(change('retired'), catalog)).toEqual([{ cue: 'whoosh' }]);
+    expect(transitionCue('hush', catalog)).toBeNull();
   });
 
   it('steps the solve down one scale step per tier', () => {
@@ -93,7 +108,7 @@ describe('hapticsFor', () => {
       'a round change',
       [
         { type: 'RoundCompleted', roundId: 'r', roundOrdinal: 0 },
-        { type: 'RoundStarted', roundId: 's', roundOrdinal: 1 },
+        { type: 'RoundStarted', roundId: 's', roundOrdinal: 1, transitionId: 'interpolate' },
       ],
       [],
     ],
@@ -114,7 +129,7 @@ describe('createFeedbackDirector', () => {
     director.handle([{ type: 'WrongTap', nodeId: node(1), ...tap }]);
     director.handle([
       { type: 'RoundCompleted', roundId: 'r', roundOrdinal: 0 },
-      { type: 'RoundStarted', roundId: 's', roundOrdinal: 1 },
+      { type: 'RoundStarted', roundId: 's', roundOrdinal: 1, transitionId: 'interpolate' },
     ]);
     director.handle([solved(2)]);
     expect(impacts).toEqual(['light', 'light']);

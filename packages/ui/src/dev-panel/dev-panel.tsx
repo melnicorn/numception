@@ -4,6 +4,7 @@ import { PuzzleBlock } from './puzzle-block';
 import { RoundInspector } from './round-inspector';
 import { SettingsBlock } from './settings-block';
 import { SoundBlock } from './sound-block';
+import { TransitionBlock } from './transition-block';
 
 /**
  * Id of the panel region. Also the dev-panel marker that tools/check-flavours.mjs
@@ -46,9 +47,18 @@ const panelStyle = {
  * tuning's version to its JSON, as the composition root passed it in (AD-7); the
  * panel never loads tuning itself. The demo Puzzle block uses version 1 (else the
  * lowest); the round inspector can choose any of them. `settings`, when passed,
- * shows the profile settings (Motion, themes) and the sound toggles.
+ * shows the profile settings (Motion, themes), the sound toggles and the
+ * transition override; `preview` replays a round change as a given transition.
  */
-export function DevPanel({ tunings, settings }: { tunings: Readonly<Record<string, unknown>>; settings?: SettingsControls }) {
+export function DevPanel({
+  tunings,
+  settings,
+  preview,
+}: {
+  tunings: Readonly<Record<string, unknown>>;
+  settings?: SettingsControls;
+  preview?: (transitionId: string) => boolean;
+}) {
   const [open, setOpen] = useState(false);
   const options = useMemo(() => roundInspectorOptions(tunings), [tunings]);
   const demoTuning = options.defaultTuningVersion === undefined ? undefined : tunings[String(options.defaultTuningVersion)];
@@ -71,6 +81,9 @@ export function DevPanel({ tunings, settings }: { tunings: Readonly<Record<strin
           </h2>
           {settings !== undefined && <SettingsBlock settings={settings} />}
           {settings !== undefined && <SoundBlock settings={settings} />}
+          {settings !== undefined && (
+            <TransitionBlock settings={settings} {...(preview === undefined ? {} : { preview })} onPreview={() => setOpen(false)} />
+          )}
           <PuzzleBlock tuning={demoTuning} />
           <RoundInspector tunings={tunings} options={options} />
         </section>
