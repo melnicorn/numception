@@ -6,9 +6,9 @@ import { DevPanel } from './dev-panel';
 
 /**
  * Renders the dev panel into `el`, so callers never import Preact themselves.
- * `tuning` is the bundled tuning JSON, passed through unvalidated: core validates it
- * (AD-7) and the panel shows any error.
+ * `tunings` maps each bundled tuning's version (e.g. `"1"`) to its JSON, passed
+ * through unvalidated: core validates it (AD-7) and the panel shows any error.
  */
-export function mountDevPanel(el: HTMLElement, tuning: unknown): void {
-  render(h(DevPanel, { tuning }), el);
+export function mountDevPanel(el: HTMLElement, tunings: Readonly<Record<string, unknown>>): void {
+  render(h(DevPanel, { tunings }), el);
 }

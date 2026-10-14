@@ -8,14 +8,33 @@ if (!root) {
 mountTracer(root);
 
 // Dev panel: dev and playtest only. The constant is a literal `false` in prod, so
-// the bundler drops this branch and emits no dev-panel chunk (AD-18). The tuning
-// JSON is imported here too, so prod never bundles it, and passed in explicitly (AD-7).
+// the bundler drops this branch and emits no dev-panel chunk (AD-18). Every bundled
+// tuning file (content/tuning/<tuningVersion>.json; shipped.json is the shipped-hash
+// list, not a tuning) is globbed lazily here too, so prod never bundles one, and the
+// map, keyed by tuning version, is passed in explicitly (AD-7).
 if (__NUMCEPTION_DEV_PANEL__) {
   const host = document.createElement('div');
   document.body.append(host);
-  void Promise.all([import('@numception/ui/dev-panel'), import('../../../content/tuning/1.json')]).then(
-    ([{ mountDevPanel }, tuning]) => mountDevPanel(host, tuning.default),
+  const tuningFiles = import.meta.glob<unknown>(['../../../content/tuning/*.json', '!../../../content/tuning/shipped.json'], {
+    import: 'default',
+  });
+  // A tuning that fails to load is left out (and logged); the panel still mounts
+  // with the rest. A failed panel chunk is logged too, never left unhandled.
+  const loadTunings = Promise.allSettled(
+    Object.entries(tuningFiles).map(async ([path, load]) => [path.replace(/^.*\/|\.json$/g, ''), await load()] as const),
+  ).then((results) =>
+    results.flatMap((r) => {
+      if (r.status === 'fulfilled') return [r.value];
+      console.warn('Dev panel: a tuning file failed to load', r.reason);
+      return [];
+    }),
   );
+  void Promise.all([import('@numception/ui/dev-panel'), loadTunings])
+    .then(([{ mountDevPanel }, entries]) => mountDevPanel(host, Object.fromEntries(entries)))
+    .catch((error: unknown) => {
+      console.warn('Dev panel failed to load', error);
+      host.textContent = `Dev panel failed to load: ${error instanceof Error ? error.message : String(error)}`;
+    });
 }
 
 // Offline PWA (NFR-2): playtest and prod only. The constant is a literal `false` in

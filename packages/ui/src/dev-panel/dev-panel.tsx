@@ -1,5 +1,7 @@
-import { useState } from 'preact/hooks';
+import { roundInspectorOptions } from '@numception/app';
+import { useMemo, useState } from 'preact/hooks';
 import { PuzzleBlock } from './puzzle-block';
+import { RoundInspector } from './round-inspector';
 
 /**
  * Id of the panel region. Also the dev-panel marker that tools/check-flavours.mjs
@@ -22,6 +24,14 @@ const panelStyle = {
   bottom: 'calc(env(safe-area-inset-bottom) + 40px)',
   zIndex: 1000,
   minWidth: '200px',
+  // Stays usable on a phone: never wider or taller than the safe area (a Tower at
+  // n = 9 lists 91 puzzles), scrolling inside itself.
+  maxWidth: 'calc(100vw - env(safe-area-inset-left) - env(safe-area-inset-right) - 16px)',
+  maxHeight: 'calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 56px)',
+  overflowY: 'auto',
+  overscrollBehavior: 'contain',
+  WebkitOverflowScrolling: 'touch',
+  boxSizing: 'border-box',
   padding: '8px 12px',
   background: '#fff',
   color: '#000',
@@ -30,11 +40,15 @@ const panelStyle = {
 };
 
 /**
- * Dev panel: a toggle that opens the panel region. `tuning` is the tuning JSON the
- * composition root bundled and passed in (AD-7); the panel never loads it itself.
+ * Dev panel: a toggle that opens the panel region. `tunings` maps every bundled
+ * tuning's version to its JSON, as the composition root passed it in (AD-7); the
+ * panel never loads tuning itself. The demo Puzzle block uses version 1 (else the
+ * lowest); the round inspector can choose any of them.
  */
-export function DevPanel({ tuning }: { tuning: unknown }) {
+export function DevPanel({ tunings }: { tunings: Readonly<Record<string, unknown>> }) {
   const [open, setOpen] = useState(false);
+  const options = useMemo(() => roundInspectorOptions(tunings), [tunings]);
+  const demoTuning = options.defaultTuningVersion === undefined ? undefined : tunings[String(options.defaultTuningVersion)];
   return (
     <>
       <button
@@ -52,7 +66,8 @@ export function DevPanel({ tuning }: { tuning: unknown }) {
           <h2 id={`${DEV_PANEL_ID}-heading`} style={{ margin: 0, fontSize: '14px' }}>
             Dev panel
           </h2>
-          <PuzzleBlock tuning={tuning} />
+          <PuzzleBlock tuning={demoTuning} />
+          <RoundInspector tunings={tunings} options={options} />
         </section>
       )}
     </>
