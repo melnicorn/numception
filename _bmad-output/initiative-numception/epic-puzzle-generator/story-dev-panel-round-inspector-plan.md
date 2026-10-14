@@ -3,7 +3,7 @@ title: 'Dev panel round inspector'
 type: 'feature'
 ticket: '11'
 created: '2026-10-13'
-status: 'built'
+status: done
 baseline_revision: 'f2e689723a15fb16f160cfc6285e7155939acada'
 route: 'full'
 route_source: 'auto'

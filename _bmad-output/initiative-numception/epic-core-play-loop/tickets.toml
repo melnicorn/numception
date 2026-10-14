@@ -62,27 +62,27 @@ risk = "high"
 references = ["_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-10-persistence-through-one-port-crash-safe", "_bmad-output/initiative-numception/architecture-numception/architecture-numception.md#ad-17-time-comes-from-the-shell-pauses-are-a-set"]
 
 [[entry]]
-id = 5
-type = "story"
-title = "Keyboard play and accessible cells"
-description = "Adds web keyboard play (arrow keys in core/layout focus order, Enter or Space to tap, a visible focus ring, Esc reserved for the control surface) and a DOM accessible tree with one button per cell named by its number that hides cell values and announces 'Board hidden. Tap to continue.' while the board is blurred, with cells at least 48 pt and Kid cells at least 56 pt."
-verify = "A WebKit e2e solves a Classic round using only the keyboard, an accessibility check finds a named button for every cell, and a layout test confirms every n=3 cell's inscribed circle is at least 56 pt for the Kid profile at the iPhone 16 Pro viewport."
-covers = ["CAP-3"]
-after = [4]
-hitl = false
-risk = "medium"
-references = ["_bmad-output/initiative-numception/ux-numception/DESIGN.md"]
-
-[[entry]]
 id = 6
 type = "story"
 title = "Soft miss presentation and − rounds"
 description = "Extends nextRoundRequest to Classic +, Tower +, Classic −, Tower − and presents the FR-4 soft miss (pulse on the tapped cell, ghost arrow toward the answer, and the 'Tap the answer' line shown once per profile through a persisted softMissLineSeen flag), never treated as a wrong tap."
 verify = "In a − round, tapping the soft-miss cell shows the pulse and ghost arrow and leaves the puzzle unsolved with no penalty, and the line appears only the first time, including after a reload."
 covers = ["CAP-3"]
-after = [5]
+after = [4]
 hitl = false
 risk = "low"
+
+[[entry]]
+id = 5
+type = "story"
+title = "Keyboard play and accessible cells"
+description = "Adds web keyboard play (arrow keys in core/layout focus order, Enter or Space to tap, a visible focus ring, Esc reserved for the control surface) and a DOM accessible tree with one button per cell named by its number that hides cell values and announces 'Board hidden. Tap to continue.' while the board is blurred, with cells at least 48 pt and Kid cells at least 56 pt."
+verify = "A WebKit e2e solves a Classic round using only the keyboard, an accessibility check finds a named button for every cell, and a layout test confirms every n=3 cell's inscribed circle is at least 56 pt for the Kid profile at the iPhone 16 Pro viewport."
+covers = ["CAP-3"]
+after = [6]
+hitl = false
+risk = "medium"
+references = ["_bmad-output/initiative-numception/ux-numception/DESIGN.md"]
 
 [[entry]]
 id = 7

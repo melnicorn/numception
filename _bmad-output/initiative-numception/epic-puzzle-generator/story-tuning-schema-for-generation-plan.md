@@ -3,7 +3,7 @@ title: 'Tuning schema for generation'
 type: 'feature'
 ticket: '3'
 created: '2026-10-11'
-status: 'built'
+status: done
 baseline_revision: 'e139ac0e31529e297780d540ce47f3803fc485fd'
 route: 'full'
 route_source: 'auto'

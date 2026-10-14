@@ -3,7 +3,7 @@ title: 'Bake-off scene in PixiJS v8'
 type: 'feature'
 ticket: '9'
 created: '2026-10-09'
-status: 'built'
+status: done
 baseline_revision: 'b6656c2716d95a169f77aade1ab594ddfebb3da4'
 route: 'full'
 route_source: 'auto'

@@ -3,7 +3,7 @@ title: 'Golden seeds and generator versioning'
 type: 'feature'
 ticket: '2'
 created: '2026-10-11'
-status: 'built'
+status: done
 baseline_revision: 'f67172c729170979f345d6fe336f9211c24662f5'
 route: 'full'
 route_source: 'auto'

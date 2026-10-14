@@ -3,7 +3,7 @@ title: 'Bake-off scene in Phaser 4'
 type: 'feature'
 ticket: '8'
 created: '2026-10-09'
-status: 'built'
+status: done
 baseline_revision: '556abb8e6e3bb4864958e9e4a0d9fab7e46355e2'
 route: 'full'
 route_source: 'auto'

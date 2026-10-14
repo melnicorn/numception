@@ -3,7 +3,7 @@ title: 'Offline playtest PWA and size budget'
 type: 'feature'
 ticket: '6'
 created: '2026-10-11'
-status: 'built'
+status: done
 baseline_revision: '60a9e26f714d3fd21d8e94bf0806d3dd089e4748'
 route: 'full'
 route_source: 'auto'

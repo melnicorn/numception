@@ -3,7 +3,7 @@ title: 'Bucket features and bucketId'
 type: 'feature'
 ticket: '7'
 created: '2026-10-13'
-status: 'built'
+status: done
 baseline_revision: '2175176881fc6bfda74af06ae04aa4ec4f446288'
 route: 'oneshot'
 route_source: 'auto'

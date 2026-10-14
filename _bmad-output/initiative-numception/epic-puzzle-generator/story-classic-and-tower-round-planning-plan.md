@@ -3,7 +3,7 @@ title: 'Classic and Tower round planning'
 type: 'feature'
 ticket: '5'
 created: '2026-10-11'
-status: 'built'
+status: done
 baseline_revision: '1c31f72a96c6ffdb280507c67057882be14535b2'
 route: 'full'
 route_source: 'auto'

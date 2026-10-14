@@ -3,7 +3,7 @@ title: 'Nightly 100,000-puzzle check'
 type: 'chore'
 ticket: '10'
 created: '2026-10-13'
-status: 'built'
+status: done
 baseline_revision: '5f6916f04796d8c93c8510757bcb04ab36fec8d7'
 route: 'oneshot'
 route_source: 'auto'

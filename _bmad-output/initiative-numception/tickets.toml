@@ -21,6 +21,13 @@ covers = ["CAP-3", "CAP-4", "CAP-5"]
 after = [{ epic = 1, needs = "the renderer decision" }, { epic = 2, needs = "round planning and realisation API" }]
 
 [[epic]]
+id = 6
+slug = "epic-themes-and-feedback"
+title = "Themes, transitions, motion levels, sound and haptics"
+covers = ["CAP-11", "CAP-17"]
+after = [{ epic = 1, needs = "the renderer decision" }, { epic = 3, needs = "solve and collapse events and the presentation timeline" }]
+
+[[epic]]
 id = 4
 slug = "epic-zen-normal-onboarding"
 title = "Zen, Normal and guided first rounds"
@@ -33,13 +40,6 @@ slug = "epic-adaptive-difficulty"
 title = "Difficulty prior, ratings, level pin and event logging"
 covers = ["CAP-8", "CAP-19"]
 after = [{ epic = 2, needs = "bucket features and tuning schema" }, { epic = 3, needs = "answered-puzzle events from the play loop" }]
-
-[[epic]]
-id = 6
-slug = "epic-themes-and-feedback"
-title = "Themes, transitions, motion levels, sound and haptics"
-covers = ["CAP-11", "CAP-17"]
-after = [{ epic = 1, needs = "the renderer decision" }, { epic = 3, needs = "solve and collapse events and the presentation timeline" }]
 
 [[epic]]
 id = 7

@@ -3,7 +3,7 @@ title: 'Super-shape outline around the zoomed puzzle'
 type: 'feature'
 ticket: '9'
 created: '2026-10-14'
-status: 'built'
+status: done
 baseline_revision: 'd3045d20872ca15baf33c2a1efeb6c8ab4b601ce'
 route: 'full'
 route_source: 'auto'

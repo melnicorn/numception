@@ -3,7 +3,7 @@ title: 'Save and resume'
 type: 'feature'
 ticket: '4'
 created: '2026-10-14'
-status: 'built'
+status: done
 baseline_revision: 'af00e09eb59f9010c469d8924d653b8eebc6ca9b'
 route: 'full'
 route_source: 'auto'

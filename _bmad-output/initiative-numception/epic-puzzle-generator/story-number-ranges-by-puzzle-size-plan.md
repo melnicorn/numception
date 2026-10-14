@@ -3,7 +3,7 @@ title: 'Number ranges by puzzle size'
 type: 'feature'
 ticket: '13'
 created: '2026-10-14'
-status: 'built'
+status: done
 baseline_revision: 'f70fcb30e1f1ea9d63f58fc8e74ed62548568691'
 route: 'full'
 route_source: 'auto'

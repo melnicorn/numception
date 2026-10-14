@@ -3,7 +3,7 @@ title: 'Tap classification and soft miss'
 type: 'feature'
 ticket: '6'
 created: '2026-10-13'
-status: 'built'
+status: done
 baseline_revision: '18aff275f68015aead3c8ec33ae5632fd86b2f1b'
 route: 'oneshot'
 route_source: 'auto'

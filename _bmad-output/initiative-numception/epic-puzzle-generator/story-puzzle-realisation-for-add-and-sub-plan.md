@@ -3,7 +3,7 @@ title: 'Puzzle realisation for + and −'
 type: 'feature'
 ticket: '4'
 created: '2026-10-11'
-status: 'built'
+status: done
 baseline_revision: '2d3e92d725e325d160b2c458a71c3ebb57ed9929'
 route: 'full'
 route_source: 'auto'

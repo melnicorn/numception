@@ -3,7 +3,7 @@ title: 'Solve and collapse transitions'
 type: 'feature'
 ticket: '3'
 created: '2026-10-14'
-status: 'built'
+status: done
 baseline_revision: '7ec0efe77039b71625b4e6857fc0227c41644e27'
 route: 'full'
 route_source: 'auto'

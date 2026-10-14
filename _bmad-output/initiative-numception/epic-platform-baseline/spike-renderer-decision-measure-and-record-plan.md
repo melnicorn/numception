@@ -3,7 +3,7 @@ title: 'Renderer decision: measure and record'
 type: 'chore'
 ticket: '3'
 created: '2026-10-10'
-status: 'built'
+status: done
 baseline_revision: 'da0c89ef7bbe382093e75b25b07c70378fcb9783'
 route: 'oneshot'
 route_source: 'pinned'

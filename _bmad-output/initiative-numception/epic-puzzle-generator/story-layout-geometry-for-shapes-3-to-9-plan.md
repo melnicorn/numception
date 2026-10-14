@@ -3,7 +3,7 @@ title: 'Layout geometry for shapes 3 to 9'
 type: 'feature'
 ticket: '8'
 created: '2026-10-13'
-status: 'built'
+status: done
 baseline_revision: '1cc9944df268205adaab47530eda8305d71e750a'
 route: 'full'
 route_source: 'auto'

@@ -3,7 +3,7 @@ title: 'Workspace and CI tracer'
 type: 'chore'
 ticket: '1'
 created: '2026-10-09'
-status: 'built'
+status: done
 baseline_revision: '770889ea451715b49e9b929ecb5c14841cc8f498'
 route: 'full'
 route_source: 'auto'

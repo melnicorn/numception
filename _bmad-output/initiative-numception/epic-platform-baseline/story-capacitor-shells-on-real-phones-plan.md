@@ -3,7 +3,7 @@ title: 'Capacitor shells on real phones'
 type: 'feature'
 ticket: '2'
 created: '2026-10-09'
-status: 'built'
+status: done
 baseline_revision: '8f0ee6a9b68da0e44595140d4a2b89f2de53e79d'
 route: 'oneshot'
 route_source: 'auto'

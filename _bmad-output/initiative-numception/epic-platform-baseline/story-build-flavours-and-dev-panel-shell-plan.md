@@ -3,7 +3,7 @@ title: 'Build flavours and dev panel shell'
 type: 'feature'
 ticket: '5'
 created: '2026-10-11'
-status: 'built'
+status: done
 baseline_revision: '314fff70dda35de9d19f5ed51ebb7f09f3d461ce'
 route: 'full'
 route_source: 'auto'

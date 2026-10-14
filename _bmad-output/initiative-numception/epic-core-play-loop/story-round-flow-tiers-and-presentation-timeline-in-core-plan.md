@@ -3,7 +3,7 @@ title: 'Round flow, tiers and presentation timeline in core'
 type: 'feature'
 ticket: '2'
 created: '2026-10-14'
-status: 'built'
+status: done
 baseline_revision: 'a1c39ed3651cc0496ca90ec373415e794a00738b'
 route: 'full'
 route_source: 'auto'

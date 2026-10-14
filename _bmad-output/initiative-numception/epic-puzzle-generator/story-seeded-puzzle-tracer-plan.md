@@ -3,7 +3,7 @@ title: 'Seeded puzzle tracer'
 type: 'feature'
 ticket: '1'
 created: '2026-10-11'
-status: 'built'
+status: done
 baseline_revision: '952545fe89a7775b722a5994bd04b22a8de06098'
 route: 'full'
 route_source: 'auto'

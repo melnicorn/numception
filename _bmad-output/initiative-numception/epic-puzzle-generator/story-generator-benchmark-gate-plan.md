@@ -3,7 +3,7 @@ title: 'Generator benchmark gate'
 type: 'chore'
 ticket: '9'
 created: '2026-10-13'
-status: 'built'
+status: done
 baseline_revision: '9e546765fa12cb21782ea3a6847e71a6cbd26950'
 route: 'oneshot'
 route_source: 'auto'

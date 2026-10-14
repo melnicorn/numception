@@ -3,7 +3,7 @@ title: 'Tap a puzzle tracer'
 type: 'feature'
 ticket: '1'
 created: '2026-10-14'
-status: 'built'
+status: done
 baseline_revision: '084a813e2b41ec259f8e8fee738a526ebc540dc4'
 route: 'full'
 route_source: 'auto'

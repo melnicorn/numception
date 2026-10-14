@@ -3,7 +3,7 @@ title: 'Dependency boundaries and banned-list lint'
 type: 'chore'
 ticket: '4'
 created: '2026-10-09'
-status: 'built'
+status: done
 baseline_revision: 'db4ac65fc09957a34f3a65a4df610a1d4f2c1f25'
 route: 'full'
 route_source: 'auto'
