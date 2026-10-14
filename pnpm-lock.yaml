@@ -198,8 +198,8 @@ importers:
   .:
     devDependencies:
       '@melnicorn/bmad-dash':
-        specifier: ~1.0.2
-        version: 1.0.2(@vue/compiler-sfc@3.5.44)(rolldown@1.2.13)(rollup@4.64.5)(supports-color@7.2.0)(typescript@6.0.3)(vite@8.3.4(@types/node@24.19.1)(terser@5.51.2)(yaml@2.9.1))
+        specifier: ~1.2.0
+        version: 1.2.0(@huggingface/transformers@3.8.1)(@vue/compiler-sfc@3.5.44)(rolldown@1.2.13)(rollup@4.64.5)(supports-color@7.2.0)(typescript@6.0.3)(vite@8.3.4(@types/node@24.19.1)(terser@5.51.2)(yaml@2.9.1))
       '@playwright/test':
         specifier: ~1.64.0
         version: 1.64.0
@@ -1135,10 +1135,20 @@ packages:
   '@kwsites/promise-deferred@1.1.1':
     resolution: {integrity: sha512-GaHYm+c0O9MjZRu0ongGBRbinu8gVAMd2UZjji6jVmqKtZluZnptXGWhz1E8j8D2HJ3f/yMxKAUC0b+57wncIw==}
 
-  '@melnicorn/bmad-dash@1.0.2':
-    resolution: {integrity: sha512-QX/LvDr29mw/JHDmZKdAKhi8DpnRPrvm3T3k8SlOnVrsYqn+miiMPxxSGmxAHbBsgXTvmdA5Xt1XdVFYBbwJgA==}
+  '@lucide/vue@1.56.0':
+    resolution: {integrity: sha512-IA7xSJwb5NQ6zamA1+zUmbVrWeX8TFPxCeqTRKJGLjb7jJmR2+USChuVRy+Opf9T545xkCSz/UJT2g44zyGgng==}
+    peerDependencies:
+      vue: '>=3.0.1'
+
+  '@melnicorn/bmad-dash@1.2.0':
+    resolution: {integrity: sha512-lgERW/hchSiiCQUFq5Xl45m565r/Vcrb0zuwnMVPbdqcJeh+EHoZqhKNYNy7+k5wjp8ARKPDWNENKAz56mJ55g==}
     engines: {node: '>=18.0.0'}
     hasBin: true
+    peerDependencies:
+      '@huggingface/transformers': ^3.8.1
+    peerDependenciesMeta:
+      '@huggingface/transformers':
+        optional: true
 
   '@mermaid-js/parser@1.2.1':
     resolution: {integrity: sha512-n12NohV3mrUyUL2o93IgG/ifeW9FTyeJn3zDxkhwa8MJ9Fxg3HQMlA3RiGmD/3UnJvheztkjjQAjA2T4LmUcpw==}
@@ -3608,6 +3618,10 @@ packages:
     resolution: {integrity: sha512-RQsvleCbF8cVHEv+xuDGaA4pOizFqJ0GgjtMSRo6oP8pnN7WsigHgVGey6aILRBKv4W2YOMHLqbKdnB6hpB9fw==}
     engines: {node: '>=20.0.0'}
 
+  smol-toml@1.9.1:
+    resolution: {integrity: sha512-j7WyPdf0CJoutMzMoPLF/bVXHtKZIT9Rb4eGeEbWw8X2t5oirjPgpL+OpaENZrILYaXqYwnVH+qgUwVbl+pUJQ==}
+    engines: {node: '>= 18'}
+
   source-map-js@1.2.2:
     resolution: {integrity: sha512-KGj/8Y43x35aZVDtt+J4mK1hoLGHULMYfSkODJNQjNDC3oW1PqPoxMwo0pLUsWM/UEGzON/NxeHywEfNXNP3Vw==}
     engines: {node: '>=0.10.0'}
@@ -5194,8 +5208,13 @@ snapshots:
 
   '@kwsites/promise-deferred@1.1.1': {}
 
-  '@melnicorn/bmad-dash@1.0.2(@vue/compiler-sfc@3.5.44)(rolldown@1.2.13)(rollup@4.64.5)(supports-color@7.2.0)(typescript@6.0.3)(vite@8.3.4(@types/node@24.19.1)(terser@5.51.2)(yaml@2.9.1))':
+  '@lucide/vue@1.56.0(vue@3.5.44(typescript@6.0.3))':
     dependencies:
+      vue: 3.5.44(typescript@6.0.3)
+
+  '@melnicorn/bmad-dash@1.2.0(@huggingface/transformers@3.8.1)(@vue/compiler-sfc@3.5.44)(rolldown@1.2.13)(rollup@4.64.5)(supports-color@7.2.0)(typescript@6.0.3)(vite@8.3.4(@types/node@24.19.1)(terser@5.51.2)(yaml@2.9.1))':
+    dependencies:
+      '@lucide/vue': 1.56.0(vue@3.5.44(typescript@6.0.3))
       chokidar: 5.0.0
       express: 4.22.3(supports-color@7.2.0)
       highlight.js: 11.12.0
@@ -5208,6 +5227,7 @@ snapshots:
       remark-parse: 11.0.0(supports-color@7.2.0)
       remark-stringify: 11.0.0
       simple-git: 3.36.0(supports-color@7.2.0)
+      smol-toml: 1.9.1
       svg-pan-zoom: 3.6.2
       unified: 11.0.5
       vue: 3.5.44(typescript@6.0.3)
@@ -8051,6 +8071,8 @@ snapshots:
       is-fullwidth-code-point: 3.0.0
 
   smob@1.6.2: {}
+
+  smol-toml@1.9.1: {}
 
   source-map-js@1.2.2: {}
 

@@ -3,7 +3,7 @@ title: 'Save and resume'
 type: 'feature'
 ticket: '4'
 created: '2026-10-14'
-status: 'in-review'
+status: 'built'
 baseline_revision: 'af00e09eb59f9010c469d8924d653b8eebc6ca9b'
 route: 'full'
 route_source: 'auto'
@@ -163,3 +163,18 @@ deferred:
 
 **Commands:**
 - The acceptance chain above. Expected: everything exits 0.
+
+## Auto Run Result
+
+**Summary:**
+- **Saves:** versioned A/B save snapshots (FNV-1a checksum, forward migrations, save-too-new protection) in a per-flavour IndexedDB.
+- **Writer:** single-flight, with silent retry and urgent saves on pause.
+- **Boot:** recovers from the snapshots in one read, so a torn device record no longer orphans a profile.
+- **Connection:** a dead IndexedDB connection is reopened.
+- **Pause/Resume (AD-17):** completes any running beat and shows a veiled board with no visible numbers and a centred play button; the first tap only lifts the veil.
+
+**Hitl verdict (user, iPhone 16 Pro, 2026-10-14):** the veil initially read as "disabled", so a play button was added. The numbers still showed faded, so they are now hidden. The user then tested and found it "looking decent".
+
+**Review findings:** 5 patches applied (4 medium, 1 low), 1 deferred (two tabs of one flavour), 0 rejected. Playtest follow-ups: the play button, and hidden numerals.
+
+**Verification:** typecheck, lint, 940 unit tests (including kill-mid-write, migration and recovery), build, flavour and budget checks, and e2e (24 passed, 1 skipped) all pass. Checked on the device by the user.

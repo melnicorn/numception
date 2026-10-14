@@ -8,3 +8,6 @@ allowBuilds:
   onnxruntime-node: false
   protobufjs: false
   sharp: false
+
+minimumReleaseAgeExclude:
+  - '@melnicorn/bmad-dash@1.2.0'

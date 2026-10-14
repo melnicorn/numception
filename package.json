@@ -16,10 +16,10 @@
     "check:flavours": "node tools/check-flavours.mjs",
     "check:budget": "node tools/check-budget.mjs",
     "e2e": "playwright test",
-    "dash": "bmad-dash ."
+    "dash": "bmad-dash . --bmad-version tickets"
   },
   "devDependencies": {
-    "@melnicorn/bmad-dash": "~1.0.2",
+    "@melnicorn/bmad-dash": "~1.2.0",
     "@playwright/test": "~1.64.0",
     "@types/node": "~24.19.1",
     "dependency-cruiser": "~18.5.0",
