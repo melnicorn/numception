@@ -3,7 +3,7 @@ title: 'Super-shape outline around the zoomed puzzle'
 type: 'feature'
 ticket: '9'
 created: '2026-10-14'
-status: 'in-review'
+status: 'built'
 baseline_revision: 'd3045d20872ca15baf33c2a1efeb6c8ab4b601ce'
 route: 'full'
 route_source: 'auto'
@@ -107,9 +107,33 @@ deferred: []
 
 ## Review Triage Log
 
+### 2026-10-14 — Review pass
+- verdicts: 3 findings — high 0, medium 1, low 2, false 0, maybe-false 0
+- findings:
+  - `[medium]` `[patch]` Solved siblings' answers composited at about 1.58:1 against their quiet tiles, below DESIGN's ≥ 3:1 for dimmed numerals. Fixed: solved parent tiles at 0.75 alpha with full-alpha answers (about 3.3:1, still quieter than the puzzle's 5.1:1), with a unit test computing contrast from KILN_TOKENS.
+  - `[low]` `[patch]` The parent's cell under the current puzzle showed through the puzzle's translucent operator wash, and stacked during Tower collapses. Fixed: per-cell fade (`cellFade`), so the parent and grandparent never draw the cell the puzzle occupies.
+  - `[low]` `[patch]` The collapse dropped DESIGN's number-solved boost for the parent's other answers. Fixed: all solved answers reach number-solved by 60% of the beat and ease back (`collapseOthersBoost`).
+
 ## Verification
 
 **Commands:**
 - the acceptance chain above -- expected: all exit 0
 
 **Result (2026-10-14):** with and without `BASE_PATH=/numception/`: `pnpm typecheck`, `lint:deps`, `test` (891), `build`, `check:flavours`, `check:budget` and `CI=1 pnpm e2e` (21 passed, 1 skipped: real WebGL context restore) all pass. Headless WebKit screenshots at 390 × 844 checked frame continuity at solve → advance, advance → idle and solve → collapse (≈ 0.5 % of pixels differ, from the solve's last frame step).
+
+## Auto Run Result
+
+**Summary:** Puzzles below the round's top sit at 75% of the frame inside their parent's quiet outline, with solved siblings showing their answers and unsolved ones as empty tiles, running off the frame edges. The framing carries through advances and collapses, so the collapse resolves the shape the player has been seeing. Taps outside the current puzzle are inert.
+
+**Hitl verdict (user, iPhone 16 Pro, 2026-10-14):**
+- "Much better visually."
+- The collapse into the large puzzle was then too slow, so durations were shortened to 1200 ms first and 800 ms later (commit ba2b963).
+- After the change: "Good to go. Fine for now, might tweak later."
+
+**Review findings:** 3 patches applied (1 medium, 2 low), 0 deferred, 0 rejected.
+
+**Follow-up review recommended:** false.
+
+**Verification:** with and without `BASE_PATH=/numception/`, typecheck, lint, 893 unit tests, build, flavour and budget checks, and e2e (21 passed, 1 skipped) all pass. The user played it on the iPhone.
+
+**Idea for later:** live dev-panel sliders for the `presentation` tuning values, so timings can be adjusted on the phone without a rebuild (user: "might be nice to have these settings defined in one place"; they already are, in `content/tuning/1.json`).
