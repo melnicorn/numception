@@ -21,6 +21,12 @@ export type KilnTokens = {
   /** The DESIGN hero sizes at n = 3 in a 375-wide frame, px. */
   readonly numberSizePx: number;
   readonly operatorSizePx: number;
+  /** `typography.number-solved`: a solved answer, one step larger. */
+  readonly numberSolvedSizePx: number;
+  /** `typography.operator-tier2`: the operator of an upper-tier puzzle. */
+  readonly operatorTier2SizePx: number;
+  /** The tier-2 operator's strength until its tier opens (DESIGN operator-cell: 25–45%; mock ~32%). */
+  readonly operatorDimAlpha: number;
 };
 
 /** Kiln, the default Zen and first-run theme (DESIGN.md). */
@@ -40,4 +46,7 @@ export const KILN_TOKENS: KilnTokens = Object.freeze({
   fontWeight: '500',
   numberSizePx: 44,
   operatorSizePx: 32,
+  numberSolvedSizePx: 58,
+  operatorTier2SizePx: 38,
+  operatorDimAlpha: 0.32,
 });

@@ -2,7 +2,7 @@
 // e2e specs. Installed only behind `__NUMCEPTION_DEV_PANEL__`, so prod never ships
 // it; tools/check-flavours.mjs checks the marker below is absent from prod builds.
 import type { Game, GameEvent, LayoutPoint, PlayVM } from '@numception/app';
-import type { Renderer } from '@numception/render';
+import type { Renderer, RendererStats } from '@numception/render';
 
 /** The hook's global name; also the marker tools/check-flavours.mjs looks for. */
 export const TEST_HOOK_NAME = '__numception';
@@ -14,6 +14,8 @@ export type TestHook = {
   readonly pagePoint: (point: LayoutPoint) => LayoutPoint | null;
   /** Every event dispatched since the hook was installed, oldest first. */
   readonly events: () => readonly GameEvent[];
+  /** The renderer's frame and context-restore rebuild counters. */
+  readonly renderStats: () => RendererStats;
 };
 
 /** Installs the hook on `window`. */
@@ -26,6 +28,7 @@ export function installTestHook(game: Game, renderer: Renderer): void {
     view: () => structuredClone(game.getView()),
     pagePoint: (point) => renderer.pagePoint(point),
     events: () => structuredClone(events),
+    renderStats: () => renderer.stats(),
   };
   Object.defineProperty(window, TEST_HOOK_NAME, { value: Object.freeze(hook), writable: false, configurable: false });
 }

@@ -1,6 +1,6 @@
 import type { PlayVM } from '@numception/app';
 import { describe, expect, it } from 'vitest';
-import { numeralSize } from './numeral-size';
+import { numeralSize, sizingTransform } from './numeral-size';
 import { fitView, GUTTER_PX, toScreen, toUnit } from './view-transform';
 
 // 3A's outline (core/layout): apex (0.5, 0), base corners at y = 0.75.
@@ -67,5 +67,25 @@ describe('numeralSize', () => {
     const t = { scale: 200, left: 0, top: 0, aspect: 1 };
     expect(numeralSize({ numberSizePx: 44 }, t, 0.125, 375)).toBeCloseTo(27.5, 6);
     expect(numeralSize({ numberSizePx: 44 }, { ...t, scale: 50 }, 0.125, 375)).toBe(20);
+  });
+});
+
+describe('sizingTransform', () => {
+  const rest = fitView(vm3A, 375, 667);
+  const shrunk = { ...rest, scale: rest.scale / 2 };
+
+  it('in an advance, sizes numerals from the current scale: a layer at half size gets half-size numerals', () => {
+    const atRest = numeralSize({ numberSizePx: 44 }, sizingTransform(rest, rest, true), 0.125, 375);
+    const atHalf = numeralSize({ numberSizePx: 44 }, sizingTransform(shrunk, rest, true), 0.125, 375);
+    expect(atRest).toBe(44);
+    expect(atHalf).toBeLessThan(atRest);
+    expect(atHalf).toBeCloseTo(1.1 * 0.125 * shrunk.scale, 6);
+    // Never below the 20 px floor, however far the camera is out.
+    expect(numeralSize({ numberSizePx: 44 }, sizingTransform({ ...rest, scale: rest.scale / 10 }, rest, true), 0.125, 375)).toBe(20);
+  });
+
+  it('in a collapse, keeps the rest size whatever the camera does', () => {
+    expect(sizingTransform(shrunk, rest, false)).toBe(rest);
+    expect(numeralSize({ numberSizePx: 44 }, sizingTransform(shrunk, rest, false), 0.125, 375)).toBe(44);
   });
 });

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { answerCell, clickUnit, eventLog, events, solve, solvedCount, view, waitForPuzzle, waitIdle } from './play-helpers';
+import { answerCell, clickUnit, eventLog, events, frameInk, pixelAt, solve, solvedCount, view, waitBeat, waitForPuzzle, waitIdle } from './play-helpers';
 
 // The play-loop tracer on the playtest build (playwright.config.ts serves FLAVOUR=playtest):
 // a tap travels render -> app -> core -> app -> render.
@@ -138,4 +138,123 @@ test('round 1 is a Tower: 9, then 3, then 1 puzzles, collapsing after each group
   expect(next.nodeId).toEqual({ tier: 1, index: 0 });
   expect(next.kind).toBe('puzzle');
   expect(next.cells.every((c) => c.state === 'unsolved')).toBe(true);
+});
+
+test('the solve, collapse and round crossfade are drawn: mid-beat frames carry from/to views and are not blank', async ({ page }) => {
+  test.setTimeout(60_000);
+  await page.goto('./');
+  await waitForPuzzle(page);
+  const idle = await frameInk(page);
+  expect(idle.ink).toBeGreaterThan(0.05);
+
+  // Solve: the tapped answer fires at once.
+  const first = await view(page);
+  await clickUnit(page, answerCell(first).labelPoint);
+  const solving = await waitBeat(page, 'solve', 0, 1);
+  expect(solving.presentation.cellIndex).toBe(answerCell(first).index);
+  await waitIdle(page);
+  await solve(page);
+
+  // The third leaf's solve collapses the round into the tier-2 puzzle: the first
+  // collapse is the long one, so the frame is sampled well inside it.
+  const third = await view(page);
+  await clickUnit(page, answerCell(third).labelPoint);
+  const collapsing = await waitBeat(page, 'collapse', 0.15, 0.6);
+  expect(collapsing.presentation.durationMs).toBe(3000);
+  expect(collapsing.presentation.from?.nodeId).toEqual({ tier: 1, index: 2 });
+  expect(collapsing.presentation.from?.solvedAnswer).not.toBeNull();
+  expect(collapsing.presentation.to?.nodeId).toEqual({ tier: 2, index: 0 });
+  expect(collapsing.presentation.camera?.from.width).toBeLessThan(collapsing.presentation.camera?.to.width ?? 0);
+  const mid = await frameInk(page);
+  expect(mid.ink).toBeGreaterThan(0.1);
+  expect(mid.fired).toBeGreaterThan(0.02);
+  const top = await waitIdle(page);
+  expect(top.nodeId).toEqual({ tier: 2, index: 0 });
+
+  // The top's solve crossfades into the next round.
+  await clickUnit(page, answerCell(top).labelPoint);
+  const crossfading = await waitBeat(page, 'roundStart', 0, 1);
+  expect(crossfading.presentation.from?.nodeId).toEqual({ tier: 2, index: 0 });
+  expect(crossfading.presentation.to?.nodeId).toEqual({ tier: 1, index: 0 });
+  expect(crossfading.presentation.camera).toBeUndefined();
+  // Second half of the crossfade: only the new round is drawn. The old top fused
+  // into the solved fill (#A14E36) must not show through the new operator's faint
+  // wash; sampled half-way between the operator's centre (its + glyph) and a corner.
+  const late = await waitBeat(page, 'roundStart', 0.55, 0.95);
+  const corner = late.operator.polygon[0] ?? late.operator.labelPoint;
+  const probe: [number, number] = [(late.operator.labelPoint[0] + corner[0]) / 2, (late.operator.labelPoint[1] + corner[1]) / 2];
+  const probeAt = await page.evaluate((p) => (window as unknown as { __numception: { pagePoint(q: number[]): number[] } }).__numception.pagePoint(p), probe);
+  const [lateFrame, operatorPixel] = await Promise.all([frameInk(page), pixelAt(page, [probeAt[0] ?? 0, probeAt[1] ?? 0])]);
+  expect(lateFrame.ink).toBeGreaterThan(0.05);
+  const solvedFill = [0xa1, 0x4e, 0x36];
+  const distance = Math.max(...operatorPixel.map((c, i) => Math.abs(c - (solvedFill[i] ?? 0))));
+  expect(distance, `operator region ${operatorPixel.join(',')}`).toBeGreaterThan(40);
+  const next = await waitIdle(page);
+  expect(next.presentation.from).toBeUndefined();
+});
+
+test('context loss events pause drawing, and the restore rebuilds the scene from the latest view', async ({ page }) => {
+  await page.goto('./');
+  await waitForPuzzle(page);
+  type Stats = { framesRendered: number; rebuilds: number };
+  const stats = () => page.evaluate(() => (window as unknown as { __numception: { renderStats(): Stats } }).__numception.renderStats());
+  // Synthetic events on a live context drive the renderer's own lost/restored path
+  // (headless WebKit never fires a real webglcontextrestored, see the next test).
+  const during = await page.evaluate(async () => {
+    const hook = (window as unknown as { __numception: { renderStats(): Stats } }).__numception;
+    const canvas = document.querySelector('#app canvas');
+    if (canvas === null) throw new Error('no canvas');
+    const frames = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => requestAnimationFrame(resolve))));
+    await frames();
+    const before = hook.renderStats();
+    canvas.dispatchEvent(new Event('webglcontextlost', { cancelable: true }));
+    const atLoss = hook.renderStats();
+    await frames();
+    const whileLost = hook.renderStats();
+    canvas.dispatchEvent(new Event('webglcontextrestored'));
+    const atRestore = hook.renderStats();
+    await frames();
+    return { before, atLoss, whileLost, atRestore, after: hook.renderStats() };
+  });
+  expect(during.before.framesRendered).toBeGreaterThan(0);
+  // No frame is rendered between lost and restored.
+  expect(during.whileLost.framesRendered).toBe(during.atLoss.framesRendered);
+  // The restore rebuilds once, and frames resume.
+  expect(during.atRestore.rebuilds).toBe(during.before.rebuilds + 1);
+  expect(during.after.framesRendered).toBeGreaterThan(during.whileLost.framesRendered);
+  expect((await stats()).rebuilds).toBe(during.before.rebuilds + 1);
+  const frame = await frameInk(page);
+  expect(frame.ink).toBeGreaterThan(0.05);
+  const next = await solve(page);
+  expect(next.nodeId).toEqual({ tier: 1, index: 1 });
+});
+
+test('a real lost WebGL context is rebuilt from the latest view once restored', async ({ page }) => {
+  await page.goto('./');
+  await waitForPuzzle(page);
+  const restored = await page.evaluate(async () => {
+    const canvas = document.querySelector('#app canvas') as HTMLCanvasElement | null;
+    const gl = (canvas?.getContext('webgl2') ?? canvas?.getContext('webgl')) as WebGLRenderingContext | null;
+    const lose = gl?.getExtension('WEBGL_lose_context');
+    if (canvas === null || lose == null) return 'unsupported';
+    // Resolves on the event, or false after 3 s.
+    const wait = (type: string) =>
+      new Promise<boolean>((resolve) => {
+        canvas.addEventListener(type, () => resolve(true), { once: true });
+        setTimeout(() => resolve(false), 3000);
+      });
+    const lost = wait('webglcontextlost');
+    lose.loseContext();
+    if (!(await lost)) return 'unsupported';
+    const back = wait('webglcontextrestored');
+    lose.restoreContext();
+    if (!(await back)) return 'unsupported';
+    await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    return 'restored';
+  });
+  test.skip(restored === 'unsupported', 'this browser cannot lose and restore a WebGL context on demand');
+  const frame = await frameInk(page);
+  expect(frame.ink).toBeGreaterThan(0.05);
+  const next = await solve(page);
+  expect(next.nodeId).toEqual({ tier: 1, index: 1 });
 });

@@ -43,6 +43,7 @@ export function startRound(
     presentation,
     shownAtMs,
     nextRoundId: null,
+    previousTop: null,
   };
   return serveNode(round, first, tuning);
 }

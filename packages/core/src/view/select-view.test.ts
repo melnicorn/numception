@@ -78,7 +78,7 @@ describe('selectView', () => {
     expect(vm.aspect).toBe(SHAPES['3A'].aspect);
     expect(vm.kind).toBe('puzzle');
     expect(vm.inputLocked).toBe(false);
-    expect(vm.presentation).toEqual({ kind: 'idle', progress: 1, durationMs: 0, transitionId: 'none' });
+    expect(vm.presentation).toEqual({ kind: 'idle', progress: 1, durationMs: 0, transitionId: 'none', cellIndex: null });
     expect(vm.theme).toBe(KILN_TOKENS);
     expect(vm.operator.symbol).toBe('+');
     expect(vm.operator.polygon).toEqual(SHAPES['3A'].operator.polygon);
@@ -94,6 +94,7 @@ describe('selectView', () => {
         state: 'unsolved',
         enters: null,
       });
+      expect(vm.solvedAnswer).toBeNull();
     });
   });
 
@@ -134,7 +135,7 @@ describe('selectView: overview and presentation', () => {
     let state = run(start, { type: 'TapCell', nodeId: p.nodeId, cellIndex: p.answerIndex }, 1);
     let vm = selectView(state, tuning);
     expect(vm?.inputLocked).toBe(true);
-    expect(vm?.presentation).toEqual({ kind: 'solve', progress: 0, durationMs: 475, transitionId: 'default' });
+    expect(vm?.presentation).toEqual({ kind: 'solve', progress: 0, durationMs: 475, transitionId: 'default', cellIndex: p.answerIndex });
     state = run(state, { type: 'Tick', elapsedMs: 190 }, 2);
     vm = selectView(state, tuning);
     expect(vm?.presentation.progress).toBeCloseTo(0.4);

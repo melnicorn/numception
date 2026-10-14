@@ -4,12 +4,27 @@ import { hitTestView, type LayoutPoint, type NodeCellRef, type PlayVM } from '@n
 // sits between script load and the first puzzle frame (autoDetectRenderer and the
 // environment loader would each fetch one).
 import 'pixi.js/browser';
-import { Container, Graphics, Text, Ticker, WebGLRenderer } from 'pixi.js';
+import { Container, Graphics, Ticker, WebGLRenderer } from 'pixi.js';
+import {
+  advanceCameraT,
+  advanceFromAlpha,
+  cameraAt,
+  collapseCameraT,
+  collapseFromAlpha,
+  collapseToLook,
+  crossfade,
+  fusedLook,
+  IDLE_LOOK,
+  type LayerLook,
+  solveLook,
+} from './beat-motion';
 import { drawKey } from './draw-key';
 import { isPrimaryPress } from './is-primary-press';
-import { numeralSize } from './numeral-size';
+import { sizingTransform } from './numeral-size';
+import { paintView } from './paint-view';
 import type { RenderPort } from './render-port';
-import { fitView, toScreen, toUnit, type ViewTransform } from './view-transform';
+import { ScenePool } from './scene-pool';
+import { fitRect, fitView, nestTransform, shapeBox, toScreen, toUnit, type ViewTransform } from './view-transform';
 
 /** Taps within this many CSS px of a shared edge are no-ops (DESIGN: "a few px"). */
 export const EDGE_TOLERANCE_PX = 3;
@@ -30,7 +45,14 @@ export type RendererOptions = {
 export type Renderer = RenderPort & {
   /** A unit-box point of the current view in page (client) coordinates, or null before mount. */
   readonly pagePoint: (point: LayoutPoint) => LayoutPoint | null;
+  /**
+   * For dev and playtest test hooks: frames the ticker has rendered (none while the
+   * WebGL context is lost) and scene rebuilds after a restored context.
+   */
+  readonly stats: () => RendererStats;
 };
+
+export type RendererStats = { readonly framesRendered: number; readonly rebuilds: number };
 
 function hex(color: string): number {
   return Number.parseInt(color.replace('#', ''), 16);
@@ -38,76 +60,83 @@ function hex(color: string): number {
 
 /**
  * The play-view canvas (AD-14) on PixiJS 8: device pixel ratio with autoDensity,
- * resize-aware, no filters. Every `render` rebuilds the scene from the PlayVM.
- * Pointer down draws a press acknowledgement at the pointer, whatever is under it
+ * resize-aware, no filters. Every `render` with a new view, or a beat's new
+ * progress, redraws the frame from the PlayVM alone (`paintView`, `beat-motion`),
+ * reusing pooled Graphics and Text; render keeps no game state. A lost WebGL
+ * context is rebuilt from the latest view once restored (AD-14). Pointer down draws a press acknowledgement at the pointer, whatever is under it
  * (AD-2: not a verdict); pointer up hit-tests and calls `onTap`.
  */
 export function createRenderer(options: RendererOptions): Renderer {
   let app: { renderer: WebGLRenderer; stage: Container; ticker: Ticker; canvas: HTMLCanvasElement; render: () => void } | undefined;
   let resizeObserver: ResizeObserver | undefined;
-  let scene: Container | undefined;
+  let pool: ScenePool | undefined;
   let presses: Container | undefined;
   let host: HTMLElement | undefined;
   let vm: PlayVM | null = null;
   let transform: ViewTransform | undefined;
   let destroyed = false;
   let drawnKey: string | undefined;
+  let contextLost = false;
+  let framesRendered = 0;
+  let rebuilds = 0;
   const activePointers = new Set<number>();
 
   function size(): { width: number; height: number } {
     return { width: app?.renderer.screen.width ?? 0, height: app?.renderer.screen.height ?? 0 };
   }
 
+  /** Draws the frame for the latest view: its beat interpolated from `presentation.progress` (AD-14). */
   function draw(): void {
-    if (app === undefined || scene === undefined) return;
-    for (const child of scene.removeChildren()) child.destroy({ children: true });
+    if (app === undefined || pool === undefined) return;
+    pool.begin();
     const theme = vm?.theme;
     app.renderer.background.color = theme?.surface ?? DEFAULT_SURFACE;
     if (vm === null || theme === undefined) {
       transform = undefined;
+      pool.end();
       return;
     }
     const { width, height } = size();
-    const t = fitView(vm, width, height);
-    transform = t;
-    const flat = (polygon: readonly LayoutPoint[]) => polygon.flatMap((p) => toScreen(t, p));
-
-    const wash = new Graphics().poly(flat(vm.operator.polygon)).fill({ color: hex(theme.operator), alpha: theme.operatorWashAlpha });
-    scene.addChild(wash);
-    let numberSize = theme.numberSizePx;
-    for (const cell of vm.cells) {
-      const solved = cell.state === 'solved';
-      const tile = new Graphics()
-        .poly(flat(cell.polygon))
-        .fill({ color: hex(solved ? theme.solvedFill : theme.cellFill) })
-        .stroke({ width: theme.lineWidth, color: hex(theme.line), join: 'round' });
-      scene.addChild(tile);
-      numberSize = numeralSize(theme, t, cell.inscribedRadius, width);
-      const label = new Text({
-        text: cell.text,
-        style: {
-          fontFamily: theme.fontFamily,
-          fontWeight: theme.fontWeight,
-          fontSize: numberSize,
-          fill: hex(solved ? theme.solvedNumber : theme.number),
-        },
-      });
-      label.anchor.set(0.5);
-      label.position.set(...toScreen(t, cell.labelPoint));
-      scene.addChild(label);
+    const rest = fitView(vm, width, height);
+    // Hit-testing reads the idle transform; taps resolve to nothing during beats anyway.
+    transform = rest;
+    const restOf = (view: PlayVM) => fitView(view, width, height);
+    const settled = (view: PlayVM, alpha: number): LayerLook =>
+      view.solvedAnswer === null ? { ...IDLE_LOOK, alpha } : fusedLook(view.solvedAnswer, alpha);
+    const p = vm.presentation;
+    const to = p.to ?? vm;
+    const { from, camera } = p;
+    if (p.kind === 'solve' && p.cellIndex !== null) {
+      paintView(pool, vm, rest, rest, solveLook(p.cellIndex, p.progress), width);
+    } else if ((p.kind === 'advance' || p.kind === 'collapse') && from !== undefined && camera !== undefined) {
+      const collapse = p.kind === 'collapse';
+      const cam = cameraAt(camera, collapse ? collapseCameraT(p.progress) : advanceCameraT(p.progress));
+      const toT = fitRect(cam, to.aspect, width, height);
+      const fromT = nestTransform(toT, camera.from, shapeBox(from), from.aspect);
+      if (collapse) {
+        const cell = p.cellIndex ?? 0;
+        paintView(pool, to, toT, sizingTransform(toT, restOf(to), false), collapseToLook(cell, p.progress, theme.operatorDimAlpha), width);
+        paintView(pool, from, fromT, sizingTransform(fromT, restOf(from), false), settled(from, collapseFromAlpha(p.progress)), width);
+      } else {
+        paintView(pool, from, fromT, sizingTransform(fromT, restOf(from), true), settled(from, advanceFromAlpha(p.progress)), width);
+        paintView(pool, to, toT, sizingTransform(toT, restOf(to), true), IDLE_LOOK, width);
+      }
+    } else if (p.kind === 'roundStart' && from !== undefined) {
+      const fade = crossfade(p.progress);
+      paintView(pool, from, restOf(from), restOf(from), settled(from, fade.from), width);
+      paintView(pool, to, restOf(to), restOf(to), { ...IDLE_LOOK, alpha: fade.to }, width);
+    } else {
+      paintView(pool, vm, rest, rest, settled(vm, 1), width);
     }
-    const symbol = new Text({
-      text: vm.operator.symbol,
-      style: {
-        fontFamily: theme.fontFamily,
-        fontWeight: theme.fontWeight,
-        fontSize: (numberSize * theme.operatorSizePx) / theme.numberSizePx,
-        fill: hex(theme.operator),
-      },
-    });
-    symbol.anchor.set(0.5);
-    symbol.position.set(...toScreen(t, vm.operator.labelPoint));
-    scene.addChild(symbol);
+    pool.end();
+  }
+
+  /** After a lost WebGL context is restored: fresh GPU objects, rebuilt from the latest view (AD-14). */
+  function rebuild(): void {
+    rebuilds += 1;
+    pool?.reset();
+    draw();
+    app?.render();
   }
 
   function localPoint(event: PointerEvent): LayoutPoint {
@@ -132,7 +161,7 @@ export function createRenderer(options: RendererOptions): Renderer {
     };
     ticker.add(fade);
     // Same frame: draw the acknowledgement now rather than on the next tick.
-    app.render();
+    if (!contextLost) app.render();
   }
 
   function hitTest(point: LayoutPoint): NodeCellRef | null {
@@ -157,6 +186,16 @@ export function createRenderer(options: RendererOptions): Renderer {
   const onContextMenu = (event: Event) => {
     event.preventDefault();
   };
+  // Pixi's context system prevents the default (so the browser may restore the
+  // context) and re-initialises the GL state on restore; render then rebuilds the
+  // scene from the latest view. Frames are skipped while the context is lost.
+  const onContextLost = () => {
+    contextLost = true;
+  };
+  const onContextRestored = () => {
+    contextLost = false;
+    rebuild();
+  };
 
   return {
     async mount(el) {
@@ -178,10 +217,15 @@ export function createRenderer(options: RendererOptions): Renderer {
       const stage = new Container();
       const ticker = new Ticker();
       app = { renderer, stage, ticker, canvas: renderer.canvas, render: () => renderer.render(stage) };
-      scene = new Container();
+      const scene = new Container();
+      pool = new ScenePool(scene);
       presses = new Container();
       stage.addChild(scene, presses);
-      ticker.add(() => renderer.render(stage));
+      ticker.add(() => {
+        if (contextLost) return;
+        renderer.render(stage);
+        framesRendered += 1;
+      });
       // Resize-aware: follow the mount element and rebuild from the latest view.
       resizeObserver = new ResizeObserver(() => {
         if (app === undefined) return;
@@ -200,6 +244,8 @@ export function createRenderer(options: RendererOptions): Renderer {
       canvas.addEventListener('pointerup', onPointerUp);
       canvas.addEventListener('pointercancel', onPointerCancel);
       canvas.addEventListener('contextmenu', onContextMenu);
+      canvas.addEventListener('webglcontextlost', onContextLost);
+      canvas.addEventListener('webglcontextrestored', onContextRestored);
       // Draw before the canvas is attached, so its first visible frame is the view.
       draw();
       renderer.render(stage);
@@ -209,13 +255,13 @@ export function createRenderer(options: RendererOptions): Renderer {
     render(next) {
       const key = drawKey(next);
       vm = next;
-      // Beats re-render every frame with a new progress; until transitions are drawn
-      // (entry 3) the scene only changes when what is drawn does.
+      // Every frame of a beat carries a new progress and redraws; an unchanged idle view does not.
       if (key === drawnKey) return;
       drawnKey = key;
       draw();
     },
     hitTest,
+    stats: () => ({ framesRendered, rebuilds }),
     pagePoint(point) {
       if (app === undefined || transform === undefined) return null;
       const rect = app.canvas.getBoundingClientRect();
@@ -230,13 +276,15 @@ export function createRenderer(options: RendererOptions): Renderer {
       canvas.removeEventListener('pointerup', onPointerUp);
       canvas.removeEventListener('pointercancel', onPointerCancel);
       canvas.removeEventListener('contextmenu', onContextMenu);
+      canvas.removeEventListener('webglcontextlost', onContextLost);
+      canvas.removeEventListener('webglcontextrestored', onContextRestored);
       resizeObserver?.disconnect();
       resizeObserver = undefined;
       app.ticker.destroy();
       app.stage.destroy({ children: true });
       app.renderer.destroy(true);
       app = undefined;
-      scene = undefined;
+      pool = undefined;
       presses = undefined;
       transform = undefined;
     },

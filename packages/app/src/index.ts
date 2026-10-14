@@ -23,6 +23,8 @@ export { type RoundInspectorOptions, roundInspectorOptions, type TuningInspector
 // For the adapters and the composition root: render and ui may import core only as
 // types (AD-1), so the view and hit-test API they need comes through here.
 export {
+  type CameraRect,
+  type CameraVM,
   type Command,
   type CommandContext,
   type GameEvent,

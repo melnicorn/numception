@@ -11,10 +11,21 @@ export type View = {
   kind: 'puzzle' | 'overview';
   shapeId: string;
   cells: CellView[];
-  operator: { labelPoint: Point; symbol: string };
+  operator: { polygon: Point[]; labelPoint: Point; symbol: string };
+  solvedAnswer: number | null;
   inputLocked: boolean;
-  presentation: { kind: string; progress: number; durationMs: number };
+  presentation: {
+    kind: string;
+    progress: number;
+    durationMs: number;
+    cellIndex: number | null;
+    from?: View;
+    to?: View;
+    camera?: { from: Rect; to: Rect };
+  };
 };
+
+export type Rect = { x: number; y: number; width: number; height: number };
 
 export type HookEvent = { type: string; nodeId?: NodeId; roundOrdinal?: number };
 
@@ -85,4 +96,69 @@ export async function solve(page: Page): Promise<View> {
   await clickUnit(page, answerCell(v).labelPoint);
   await expect.poll(() => solvedCount(page)).toBe(before + 1);
   return waitIdle(page);
+}
+
+/**
+ * Screenshots the canvas and reports how much of it is not bare surface: the share
+ * of pixels away from the Kiln surface colour, and the share near the fired-tile
+ * colour (`cell-solved`). A blank frame scores 0 on both.
+ */
+export async function frameInk(page: Page): Promise<{ ink: number; fired: number }> {
+  const png = await page.locator('#app canvas').screenshot();
+  return page.evaluate(async (base64) => {
+    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    if (ctx === null) throw new Error('no 2d context');
+    ctx.drawImage(bitmap, 0, 0);
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    const near = (i: number, rgb: number[], tolerance: number) =>
+      Math.abs((data[i] ?? 0) - (rgb[0] ?? 0)) <= tolerance &&
+      Math.abs((data[i + 1] ?? 0) - (rgb[1] ?? 0)) <= tolerance &&
+      Math.abs((data[i + 2] ?? 0) - (rgb[2] ?? 0)) <= tolerance;
+    let ink = 0;
+    let fired = 0;
+    const pixels = data.length / 4;
+    for (let i = 0; i < data.length; i += 4) {
+      if (!near(i, [0xec, 0xe3, 0xd7], 12)) ink += 1;
+      if (near(i, [0xa1, 0x4e, 0x36], 16)) fired += 1;
+    }
+    return { ink: ink / pixels, fired: fired / pixels };
+  }, png.toString('base64'));
+}
+
+/** Waits until the view is in a `kind` beat with progress inside `[min, max]`; returns it. */
+export async function waitBeat(page: Page, kind: string, min: number, max: number): Promise<View> {
+  await page.waitForFunction(
+    ([k, lo, hi]) => {
+      const p = (window as unknown as { __numception: Hook }).__numception.view()?.presentation;
+      return p?.kind === k && p.progress >= (lo as number) && p.progress <= (hi as number);
+    },
+    [kind, min, max] as const,
+    { timeout: 15_000, polling: 'raf' },
+  );
+  return view(page);
+}
+
+/** The colour of the page at page point `at` (CSS px), from a screenshot, as [r, g, b]. */
+export async function pixelAt(page: Page, at: Point): Promise<[number, number, number]> {
+  const png = await page.screenshot({ scale: 'css' });
+  return page.evaluate(
+    async ([base64, x, y]) => {
+      const bytes = Uint8Array.from(atob(base64 as string), (c) => c.charCodeAt(0));
+      const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+      const canvas = document.createElement('canvas');
+      canvas.width = bitmap.width;
+      canvas.height = bitmap.height;
+      const ctx = canvas.getContext('2d');
+      if (ctx === null) throw new Error('no 2d context');
+      ctx.drawImage(bitmap, 0, 0);
+      const d = ctx.getImageData(Math.round(x as number), Math.round(y as number), 1, 1).data;
+      return [d[0] ?? 0, d[1] ?? 0, d[2] ?? 0] as [number, number, number];
+    },
+    [png.toString('base64'), at[0], at[1]] as const,
+  );
 }

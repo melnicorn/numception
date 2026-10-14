@@ -10,6 +10,7 @@ import { isNodeSolved } from './is-node-solved';
 import { nextUnsolved } from './next-unsolved';
 import { nodeKey } from './node-key';
 import type { Round } from './round';
+import { roundPuzzle } from './round-puzzle';
 import { serveNode } from './serve-node';
 import { startRound } from './start-round';
 import { withRound } from './with-round';
@@ -105,8 +106,11 @@ function completeRound(game: GameState, round: Round, endAt: number, tuning: Tun
   const next = startRound(nextId, { ...game, roundOrdinal }, tuning, beatAt('roundStart', endAt, tuning, game), null);
   if (!next.ok) return next;
   const { [round.roundId]: _completed, ...rest } = game.rounds.byId;
+  const inView = round.viewPath[round.viewPath.length - 1];
+  const top = inView === undefined ? undefined : roundPuzzle(round, inView);
+  const opened: Round = { ...next.value, previousTop: top ?? null };
   return ok({
-    game: { ...game, roundOrdinal, rounds: { activeRoundId: nextId, byId: { ...rest, [nextId]: next.value } } },
+    game: { ...game, roundOrdinal, rounds: { activeRoundId: nextId, byId: { ...rest, [nextId]: opened } } },
     events: [
       { type: 'RoundCompleted', roundId: round.roundId, roundOrdinal: game.roundOrdinal },
       { type: 'RoundStarted', roundId: nextId, roundOrdinal },

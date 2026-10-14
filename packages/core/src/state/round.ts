@@ -21,6 +21,9 @@ import type { NodeKey } from './node-key';
  *   which `responseMs` counts from; null while an overview is in view.
  * - `nextRoundId`: the id the next round takes, reserved from the tap that solved
  *   the top (AD-22), so the round's end needs no entropy of its own.
+ * - `previousTop`: the solved top puzzle of the round this one followed, null for
+ *   a session's first round. View data only (AD-13): the completed round is
+ *   dropped, and the `roundStart` crossfade draws its top fading out.
  */
 export type Round = {
   readonly roundId: string;
@@ -35,4 +38,5 @@ export type Round = {
   readonly presentation: Presentation;
   readonly shownAtMs: number | null;
   readonly nextRoundId: string | null;
+  readonly previousTop: Puzzle | null;
 };
