@@ -8,11 +8,15 @@ import { Container, Graphics, Ticker, WebGLRenderer } from 'pixi.js';
 import {
   advanceCameraT,
   advanceFromAlpha,
+  advanceToAlpha,
   cameraAt,
   collapseCameraT,
   collapseFromAlpha,
   collapseToLook,
+  contextFadeIn,
+  contextLook,
   crossfade,
+  easeOut,
   fusedLook,
   IDLE_LOOK,
   type LayerLook,
@@ -20,11 +24,11 @@ import {
 } from './beat-motion';
 import { drawKey } from './draw-key';
 import { isPrimaryPress } from './is-primary-press';
-import { sizingTransform } from './numeral-size';
+import { blendScale, sizingTransform } from './numeral-size';
 import { paintView } from './paint-view';
 import type { RenderPort } from './render-port';
 import { ScenePool } from './scene-pool';
-import { fitRect, fitView, nestTransform, shapeBox, toScreen, toUnit, type ViewTransform } from './view-transform';
+import { contextTransform, fitRect, idleTransform, nestTransform, shapeBox, toScreen, toUnit, type ViewTransform } from './view-transform';
 
 /** Taps within this many CSS px of a shared edge are no-ops (DESIGN: "a few px"). */
 export const EDGE_TOLERANCE_PX = 3;
@@ -85,7 +89,12 @@ export function createRenderer(options: RendererOptions): Renderer {
     return { width: app?.renderer.screen.width ?? 0, height: app?.renderer.screen.height ?? 0 };
   }
 
-  /** Draws the frame for the latest view: its beat interpolated from `presentation.progress` (AD-14). */
+  /**
+   * Draws the frame for the latest view: its beat interpolated from
+   * `presentation.progress` (AD-14). A view with a `context` (entry 9) has its
+   * parent drawn quietly around it, placed from wherever the view itself is drawn
+   * (`contextTransform`), so the super-shape stays in frame through every beat.
+   */
   function draw(): void {
     if (app === undefined || pool === undefined) return;
     pool.begin();
@@ -97,35 +106,89 @@ export function createRenderer(options: RendererOptions): Renderer {
       return;
     }
     const { width, height } = size();
-    const rest = fitView(vm, width, height);
-    // Hit-testing reads the idle transform; taps resolve to nothing during beats anyway.
+    const restOf = (view: PlayVM) => idleTransform(view, width, height);
+    const rest = restOf(vm);
+    // Hit-testing reads the idle transform of the puzzle in view only: its parent
+    // and siblings are dead space. Taps resolve to nothing during beats anyway.
     transform = rest;
-    const restOf = (view: PlayVM) => fitView(view, width, height);
     const settled = (view: PlayVM, alpha: number): LayerLook =>
       view.solvedAnswer === null ? { ...IDLE_LOOK, alpha } : fusedLook(view.solvedAnswer, alpha);
+    /**
+     * The view's context parent, around the view drawn at `t`; numerals sized as
+     * `followCamera` says. `cellFade` defaults to leaving out the view's own cell,
+     * so the puzzle looks as it does at the top and nothing stacks beneath it.
+     */
+    const paintContext = (view: PlayVM, t: ViewTransform, alpha: number, followCamera: boolean, cellFade?: Record<number, number>) => {
+      const context = view.context;
+      const parentT = contextTransform(t, view);
+      const parentRest = contextTransform(restOf(view), view);
+      if (context === undefined || parentT === undefined || parentRest === undefined || alpha <= 0) return;
+      const fade = cellFade ?? { [context.cellIndex]: 0 };
+      paintView(pool as ScenePool, context.parent, parentT, sizingTransform(parentT, parentRest, followCamera), contextLook(fade, alpha), width);
+    };
     const p = vm.presentation;
     const to = p.to ?? vm;
     const { from, camera } = p;
     if (p.kind === 'solve' && p.cellIndex !== null) {
+      paintContext(vm, rest, 1, false);
       paintView(pool, vm, rest, rest, solveLook(p.cellIndex, p.progress), width);
     } else if ((p.kind === 'advance' || p.kind === 'collapse') && from !== undefined && camera !== undefined) {
       const collapse = p.kind === 'collapse';
       const cam = cameraAt(camera, collapse ? collapseCameraT(p.progress) : advanceCameraT(p.progress));
       const toT = fitRect(cam, to.aspect, width, height);
-      const fromT = nestTransform(toT, camera.from, shapeBox(from), from.aspect);
+      const fromT = nestTransform(toT, camera.fromBox, shapeBox(from), from.aspect);
       if (collapse) {
+        // `to` is the child's context parent: it takes over from it, quiet at first.
+        // Its own parent (a grandparent, Tower) was not on screen, so it fades in.
+        paintContext(to, toT, contextFadeIn(p.progress), false);
         const cell = p.cellIndex ?? 0;
-        paintView(pool, to, toT, sizingTransform(toT, restOf(to), false), collapseToLook(cell, p.progress, theme.operatorDimAlpha), width);
+        // Numerals start at the size the context parent had and settle to the rest size.
+        const fromParentRest = contextTransform(restOf(from), from) ?? restOf(to);
+        const sizing = blendScale(fromParentRest, restOf(to), easeOut(p.progress));
+        paintView(pool, to, toT, sizing, collapseToLook(cell, p.progress, theme.operatorDimAlpha), width);
         paintView(pool, from, fromT, sizingTransform(fromT, restOf(from), false), settled(from, collapseFromAlpha(p.progress)), width);
       } else {
-        paintView(pool, from, fromT, sizingTransform(fromT, restOf(from), true), settled(from, advanceFromAlpha(p.progress)), width);
-        paintView(pool, to, toT, sizingTransform(toT, restOf(to), true), IDLE_LOOK, width);
+        // Inside a shared parent it stays put; when the parents differ (Tower,
+        // tier-2 puzzle → the next group's leaf) the old one fades as the new one
+        // appears. The higher tier is drawn first: it holds the other. A parent's
+        // cell under a moving puzzle crossfades with it (left out while the puzzle
+        // on it is opaque).
+        const fromAlpha = advanceFromAlpha(p.progress);
+        const toAlpha = advanceToAlpha(p.progress);
+        const fromCtx = from.context;
+        const toCtx = to.context;
+        const fromParent = fromCtx?.parent.nodeId;
+        const toParent = toCtx?.parent.nodeId;
+        const shared = fromParent !== undefined && toParent !== undefined && fromParent.tier === toParent.tier && fromParent.index === toParent.index;
+        if (shared && toCtx !== undefined && fromCtx !== undefined) {
+          paintContext(to, toT, 1, true, { [fromCtx.cellIndex]: 1 - fromAlpha, [toCtx.cellIndex]: 1 - toAlpha });
+        } else {
+          const n = fromCtx?.parent.cells.length ?? 0;
+          // The old parent's cell that holds the new parent fades as the new parent appears.
+          const holdsNew =
+            fromParent !== undefined && toParent !== undefined && toParent.tier === fromParent.tier - 1 && n > 0 && Math.floor(toParent.index / n) === fromParent.index
+              ? toParent.index % n
+              : undefined;
+          const appear = contextFadeIn(p.progress);
+          const fromFade: Record<number, number> = fromCtx === undefined ? {} : { [fromCtx.cellIndex]: 1 - fromAlpha };
+          if (holdsNew !== undefined) fromFade[holdsNew] = 1 - appear;
+          const layers = [
+            { view: from, t: fromT, alpha: fromAlpha, tier: fromParent?.tier ?? 0, fade: fromFade },
+            { view: to, t: toT, alpha: appear, tier: toParent?.tier ?? 0, fade: toCtx === undefined ? {} : { [toCtx.cellIndex]: 1 - toAlpha } },
+          ].sort((a, b) => b.tier - a.tier);
+          for (const layer of layers) paintContext(layer.view, layer.t, layer.alpha, true, layer.fade);
+        }
+        paintView(pool, from, fromT, sizingTransform(fromT, restOf(from), true), settled(from, fromAlpha), width);
+        paintView(pool, to, toT, sizingTransform(toT, restOf(to), true), { ...IDLE_LOOK, alpha: toAlpha }, width);
       }
     } else if (p.kind === 'roundStart' && from !== undefined) {
       const fade = crossfade(p.progress);
+      paintContext(from, restOf(from), fade.from, false);
       paintView(pool, from, restOf(from), restOf(from), settled(from, fade.from), width);
+      paintContext(to, restOf(to), fade.to, false);
       paintView(pool, to, restOf(to), restOf(to), { ...IDLE_LOOK, alpha: fade.to }, width);
     } else {
+      paintContext(vm, rest, 1, false);
       paintView(pool, vm, rest, rest, settled(vm, 1), width);
     }
     pool.end();

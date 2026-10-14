@@ -10,6 +10,7 @@ import type { Round } from '../state/round';
 import { roundPuzzle } from '../state/round-puzzle';
 import { step } from '../state/step';
 import { parseTuning } from '../tuning/parse-tuning';
+import { boundsOf, CONTEXT_CELL_SHARE, contextCamera } from './camera-rect';
 import { hitTestView } from './hit-test-view';
 import { KILN_TOKENS } from './kiln-tokens';
 import { selectView } from './select-view';
@@ -110,6 +111,79 @@ describe('selectView', () => {
       expect(cell.text).toBe(String(leaf.cells[leaf.answerIndex]?.n));
       expect(cell.state).toBe('solved');
     });
+  });
+});
+
+function contains(outer: { x: number; y: number; width: number; height: number }, inner: typeof outer): boolean {
+  const e = 1e-9;
+  return inner.x >= outer.x - e && inner.y >= outer.y - e && inner.x + inner.width <= outer.x + outer.width + e && inner.y + inner.height <= outer.y + outer.height + e;
+}
+
+describe('selectView: context (the parent around the puzzle, entry 9)', () => {
+  it('a first leaf has its parent as context: an overview of empty tiles, the cell it fills, and a camera around that cell', () => {
+    const vm = selectView(start, tuning);
+    const context = vm?.context;
+    expect(context).toBeDefined();
+    if (context === undefined) return;
+    expect(context.parent.nodeId).toEqual({ tier: 2, index: 0 });
+    expect(context.parent.kind).toBe('overview');
+    expect(context.parent.context).toBeUndefined();
+    expect(context.parent.solvedAnswer).toBeNull();
+    expect(context.parent.cells.map((c) => [c.text, c.state, c.enters])).toEqual([
+      ['', 'unsolved', null],
+      ['', 'unsolved', null],
+      ['', 'unsolved', null],
+    ]);
+    expect(context.cellIndex).toBe(0);
+    expect(context.camera).toEqual(contextCamera(SHAPES['3A'], 0));
+    // The camera holds the whole cell, which takes CONTEXT_CELL_SHARE of it, centred.
+    const cell = boundsOf(SHAPES['3A'].cells[0]?.polygon ?? []);
+    expect(contains(context.camera, cell)).toBe(true);
+    expect(cell.width / context.camera.width).toBeCloseTo(CONTEXT_CELL_SHARE, 9);
+    expect(cell.height / context.camera.height).toBeCloseTo(CONTEXT_CELL_SHARE, 9);
+    expect(context.camera.x + context.camera.width / 2).toBeCloseTo(cell.x + cell.width / 2, 9);
+    expect(CONTEXT_CELL_SHARE).toBeGreaterThanOrEqual(0.7);
+    expect(CONTEXT_CELL_SHARE).toBeLessThanOrEqual(0.8);
+  });
+
+  it('a later leaf fills its own cell, and its solved sibling shows its answer in the parent', () => {
+    const state = solveAndSettle(start, 1);
+    const vm = selectView(state, tuning);
+    expect(vm?.nodeId).toEqual({ tier: 1, index: 1 });
+    expect(vm?.context?.cellIndex).toBe(1);
+    const leaf = round(state).puzzles['1.0'] as Puzzle;
+    expect(vm?.context?.parent.cells.map((c) => [c.text, c.state])).toEqual([
+      [String(leaf.cells[leaf.answerIndex]?.n), 'solved'],
+      ['', 'unsolved'],
+      ['', 'unsolved'],
+    ]);
+    const camera = vm?.context?.camera;
+    const cell = boundsOf(SHAPES['3A'].cells[1]?.polygon ?? []);
+    expect(camera !== undefined && contains(camera, cell)).toBe(true);
+  });
+
+  it('the round top has no context (Classic tier 2, Tower top); a Tower leaf’s context is its tier-2 node', () => {
+    let state = start;
+    for (let k = 1; k <= 3; k += 1) state = solveAndSettle(state, k);
+    expect(selectView(state, tuning)?.nodeId).toEqual({ tier: 2, index: 0 });
+    expect(selectView(state, tuning)?.context).toBeUndefined();
+    state = solveAndSettle(state, 4); // round 1: Tower
+    for (let k = 5; k <= 8; k += 1) state = solveAndSettle(state, k);
+    const leaf = selectView(state, tuning);
+    expect(leaf?.nodeId).toEqual({ tier: 1, index: 4 });
+    expect(leaf?.context?.parent.nodeId).toEqual({ tier: 2, index: 1 });
+    expect(leaf?.context?.cellIndex).toBe(1);
+    // Leaf 1.3 is solved: cell 0 of tier-2 node 1 shows its answer.
+    expect(leaf?.context?.parent.cells[0]?.state).toBe('solved');
+    for (let k = 9; k <= 13; k += 1) state = solveAndSettle(state, k);
+    const tier2 = selectView(state, tuning);
+    expect(tier2?.nodeId).toEqual({ tier: 2, index: 0 });
+    expect(tier2?.context?.parent.nodeId).toEqual({ tier: 3, index: 0 });
+    expect(tier2?.context?.cellIndex).toBe(0);
+    for (let k = 14; k <= 16; k += 1) state = solveAndSettle(state, k);
+    const top = selectView(state, tuning);
+    expect(top?.nodeId).toEqual({ tier: 3, index: 0 });
+    expect(top?.context).toBeUndefined();
   });
 });
 

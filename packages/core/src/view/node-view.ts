@@ -4,13 +4,14 @@ import type { Puzzle } from '../generator/puzzle';
 import { defaultShapeFor } from '../layout/default-shape-for';
 import { SHAPES } from '../layout/shapes/shapes';
 import { displayValue } from '../numbers/display-value';
-import { childrenOf } from '../rounds/round-node-id';
+import { childrenOf, parentOf } from '../rounds/round-node-id';
 import { isNodeSolved } from '../state/is-node-solved';
 import { isPlayable } from '../state/is-playable';
 import type { Round } from '../state/round';
 import { roundPuzzle } from '../state/round-puzzle';
+import { contextCamera } from './camera-rect';
 import { KILN_TOKENS } from './kiln-tokens';
-import type { PlayCellVM, PlayVM, PresentationVM } from './play-vm';
+import type { PlayCellVM, PlayContextVM, PlayVM, PresentationVM } from './play-vm';
 
 const SYMBOLS: Readonly<Record<Operator, string>> = { add: '+', sub: '−' };
 
@@ -31,15 +32,45 @@ function nested(p: NestedPresentation): PresentationVM {
  * - An overview shows the node's children as cells: a solved child shows its
  *   answer (`solved`), an unsolved one shows no numeral, and `enters` it when its
  *   own children are all solved (leaves always).
+ * - Below the round's top, `context` is its parent drawn around it (entry 9; see
+ *   `PlayContextVM`).
  *
  * Undefined when the node's puzzle is not realised or n has no shape.
  */
 export function nodeView(round: Round, node: NodeId, presentation: NestedPresentation, inputLocked: boolean): PlayVM | undefined {
+  const view = baseView(round, node, presentation, inputLocked, false);
+  if (view === undefined) return undefined;
+  const context = nodeContext(round, node, presentation);
+  return context === undefined ? view : { ...view, context };
+}
+
+/**
+ * The parent of `node` drawn around it (entry 9): the parent as an overview
+ * (solved cells show answers, unsolved ones are empty, nothing enterable), the
+ * cell `node` fills and the context camera. Undefined at the round's top.
+ */
+function nodeContext(round: Round, node: NodeId, presentation: NestedPresentation): PlayContextVM | undefined {
+  const { n, tiers } = round.plan;
+  const shapeId = defaultShapeFor(n);
+  if (node.tier >= tiers || !shapeId.ok) return undefined;
+  const { parent, cell } = parentOf(node, n);
+  const view = baseView(round, parent, presentation, true, true);
+  return view === undefined ? undefined : { parent: view, cellIndex: cell, camera: contextCamera(SHAPES[shapeId.value], cell) };
+}
+
+/** `nodeView` without its context; `asContext` draws the node as a context parent's overview. */
+function baseView(
+  round: Round,
+  node: NodeId,
+  presentation: NestedPresentation,
+  inputLocked: boolean,
+  asContext: boolean,
+): PlayVM | undefined {
   const puzzle = roundPuzzle(round, node);
   const shapeId = defaultShapeFor(round.plan.n);
   if (puzzle === undefined || !shapeId.ok) return undefined;
   const layout = SHAPES[shapeId.value];
-  const overview = !isPlayable(round, node);
+  const overview = asContext || !isPlayable(round, node);
   const children = node.tier > 1 ? childrenOf(node, round.plan.n) : [];
   const cells = layout.cells.map((cell): PlayCellVM => {
     const child = children[cell.index];
@@ -53,7 +84,7 @@ export function nodeView(round: Round, node: NodeId, presentation: NestedPresent
       inscribedRadius: cell.inscribedRadius,
       text: value === undefined || hidden ? '' : displayValue(value),
       state: solved ? 'solved' : 'unsolved',
-      enters: hidden && child !== undefined && isPlayable(round, child) ? child : null,
+      enters: !asContext && hidden && child !== undefined && isPlayable(round, child) ? child : null,
     };
   });
   return {
@@ -63,7 +94,7 @@ export function nodeView(round: Round, node: NodeId, presentation: NestedPresent
     aspect: layout.aspect,
     cells,
     operator: { polygon: layout.operator.polygon, labelPoint: layout.operator.labelPoint, symbol: SYMBOLS[round.plan.operator] },
-    solvedAnswer: isNodeSolved(round, node) ? puzzle.answerIndex : null,
+    solvedAnswer: !asContext && isNodeSolved(round, node) ? puzzle.answerIndex : null,
     inputLocked,
     presentation: nested(presentation),
     theme: KILN_TOKENS,

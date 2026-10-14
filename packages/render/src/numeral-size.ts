@@ -31,3 +31,13 @@ export function numeralSize(theme: Pick<KilnTokens, 'numberSizePx'>, t: ViewTran
 export function sizingTransform(current: ViewTransform, rest: ViewTransform, followCamera: boolean): ViewTransform {
   return followCamera ? current : rest;
 }
+
+/**
+ * A sizing transform between `a` and `b` (only the scale matters for sizing),
+ * geometric in `t`: a collapse's parent starts with the numeral sizes its context
+ * drawing had around the child and settles to its own rest sizes (entry 9).
+ */
+export function blendScale(a: ViewTransform, b: ViewTransform, t: number): ViewTransform {
+  const u = t <= 0 ? 0 : t >= 1 ? 1 : t;
+  return { ...b, scale: a.scale * (b.scale / a.scale) ** u };
+}

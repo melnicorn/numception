@@ -21,12 +21,26 @@ export type PlayCellVM = {
 
 /**
  * The camera of a moving beat (`advance`, `collapse`), in the unit box of its
- * `to` view: render fits `from` into the frame at progress 0 and `to` at 1
- * (`to` is always the whole shape's bounding box, the idle camera). The `from`
- * view is drawn with its whole shape's bounding box at `from`, so at progress 0
- * it fills the frame exactly as it did at idle.
+ * `to` view: render fits `from` into the frame at progress 0 and `to` at 1. Both
+ * are idle framings (`core/view/camera-rect` `idleCamera`): a view's whole shape
+ * box, or, when it has a `context`, its context camera, so a beat starts and lands
+ * exactly where idle is. `fromBox` is where the `from` view's whole shape box sits
+ * in the `to` view's unit box (render nests `from` there).
  */
-export type CameraVM = { readonly from: CameraRect; readonly to: CameraRect };
+export type CameraVM = { readonly from: CameraRect; readonly to: CameraRect; readonly fromBox: CameraRect };
+
+/**
+ * The super-shape around a puzzle (entry 9), present when the node in view has a
+ * parent:
+ * - `parent`: the parent drawn as an overview (solved cells show their answers,
+ *   unsolved ones are empty tiles; no `enters`, no context of its own);
+ * - `cellIndex`: the cell of `parent` the node in view fills;
+ * - `camera`: the region of the parent's unit box render fits to the frame (the
+ *   cell's box grown so the cell takes about 75 % of it, `CONTEXT_CELL_SHARE`).
+ *   The node in view is drawn in its cell; the parent and siblings run off the
+ *   frame's edges.
+ */
+export type PlayContextVM = { readonly parent: PlayVM; readonly cellIndex: number; readonly camera: CameraRect };
 
 /**
  * The presentation beat running (AD-20) as render reads it: `progress` runs 0..1
@@ -40,7 +54,7 @@ export type CameraVM = { readonly from: CameraRect; readonly to: CameraRect };
  *   pan and zoom between the two inside their shared ancestors' geometry.
  * - `collapse`: `from` (the solved child, fused), `to` (the parent it collapsed
  *   into) and `cellIndex`, the cell of `to` the child fills; `camera.from` is the
- *   child's frame inside that cell.
+ *   child's idle framing inside that cell.
  * - `roundStart`: `from` (the last round's solved top, fused) and `to` (the new
  *   round's first puzzle) for the crossfade; no camera.
  */
@@ -80,4 +94,6 @@ export type PlayVM = {
   readonly inputLocked: boolean;
   readonly presentation: PresentationVM;
   readonly theme: KilnTokens;
+  /** The parent drawn around the node in view (`PlayContextVM`); absent for the round's top. */
+  readonly context?: PlayContextVM;
 };

@@ -5,7 +5,7 @@ import { expect, type Page } from '@playwright/test';
 
 export type Point = [number, number];
 export type NodeId = { tier: number; index: number };
-export type CellView = { index: number; labelPoint: Point; text: string; state: 'unsolved' | 'solved'; enters: NodeId | null };
+export type CellView = { index: number; polygon: Point[]; labelPoint: Point; text: string; state: 'unsolved' | 'solved'; enters: NodeId | null };
 export type View = {
   nodeId: NodeId;
   kind: 'puzzle' | 'overview';
@@ -21,8 +21,10 @@ export type View = {
     cellIndex: number | null;
     from?: View;
     to?: View;
-    camera?: { from: Rect; to: Rect };
+    camera?: { from: Rect; to: Rect; fromBox: Rect };
   };
+  /** The parent drawn around the puzzle (entry 9); absent at the round's top. */
+  context?: { parent: View; cellIndex: number; camera: Rect };
 };
 
 export type Rect = { x: number; y: number; width: number; height: number };
@@ -161,4 +163,58 @@ export async function pixelAt(page: Page, at: Point): Promise<[number, number, n
     },
     [png.toString('base64'), at[0], at[1]] as const,
   );
+}
+
+/** The bounding box of `points`. */
+export function boundsOf(points: Point[]): Rect {
+  const xs = points.map((p) => p[0]);
+  const ys = points.map((p) => p[1]);
+  const x = Math.min(...xs);
+  const y = Math.min(...ys);
+  return { x, y, width: Math.max(...xs) - x, height: Math.max(...ys) - y };
+}
+
+/**
+ * A point of the view's context parent (its unit box) in the view's own unit box,
+ * for `pagePoint`: the view's whole shape box sits on its parent cell's bounding
+ * box (3A cells become the child, aspect 1), centred and fitted.
+ */
+export function parentToView(v: View, point: Point): Point {
+  const context = v.context;
+  if (context === undefined) throw new Error('no context');
+  const cell = boundsOf(context.parent.cells[context.cellIndex]?.polygon ?? []);
+  const own = boundsOf([...v.cells.flatMap((c) => c.polygon), ...v.operator.polygon]);
+  const k = Math.min(cell.width / own.width, cell.height / own.height);
+  const cx = cell.x + cell.width / 2;
+  const cy = cell.y + cell.height / 2;
+  return [own.x + own.width / 2 + (point[0] - cx) / k, own.y + own.height / 2 + (point[1] - cy) / k];
+}
+
+/** The share of pixels in page rect `clip` (CSS px) that are away from the Kiln surface colour. */
+export async function regionInk(page: Page, clip: Rect): Promise<number> {
+  const png = await page.screenshot({ clip, scale: 'css' });
+  return page.evaluate(async (base64) => {
+    const bytes = Uint8Array.from(atob(base64), (c) => c.charCodeAt(0));
+    const bitmap = await createImageBitmap(new Blob([bytes], { type: 'image/png' }));
+    const canvas = document.createElement('canvas');
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    const ctx = canvas.getContext('2d');
+    if (ctx === null) throw new Error('no 2d context');
+    ctx.drawImage(bitmap, 0, 0);
+    const { data } = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    let ink = 0;
+    for (let i = 0; i < data.length; i += 4) {
+      const off = Math.max(Math.abs((data[i] ?? 0) - 0xec), Math.abs((data[i + 1] ?? 0) - 0xe3), Math.abs((data[i + 2] ?? 0) - 0xd7));
+      if (off > 12) ink += 1;
+    }
+    return ink / (data.length / 4);
+  }, png.toString('base64'));
+}
+
+/** A unit-box point of the current view in page coordinates. */
+export async function pageOf(page: Page, point: Point): Promise<Point> {
+  const at = await page.evaluate((p) => (window as unknown as { __numception: Hook }).__numception.pagePoint(p), point);
+  expect(at).not.toBeNull();
+  return at as Point;
 }

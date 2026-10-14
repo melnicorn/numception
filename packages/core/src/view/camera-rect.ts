@@ -15,6 +15,17 @@ type Similarity = { readonly k: number; readonly tx: number; readonly ty: number
 
 const IDENTITY: Similarity = { k: 1, tx: 0, ty: 0 };
 
+/**
+ * How much of the frame the puzzle in view takes when its parent (the
+ * super-shape) is drawn around it (entry 9): its cell's bounding box is grown
+ * about its centre by `1 / CONTEXT_CELL_SHARE` to make the camera, so render's fit
+ * gives the cell 75 % of the limiting frame dimension (less the gutter): the
+ * width on a portrait phone, the height in a wide window, the shorter one either
+ * way. At 390 × 844 a 3A leaf's cells then keep an inscribed circle of about
+ * 77 pt, above DESIGN's Kid floor (56).
+ */
+export const CONTEXT_CELL_SHARE = 0.75;
+
 /** The bounding box of `points` (unit box), or the whole box when empty. */
 export function boundsOf(points: readonly LayoutPoint[]): CameraRect {
   if (points.length === 0) return { x: 0, y: 0, width: 1, height: 1 };
@@ -61,6 +72,19 @@ function apply(s: Similarity, rect: CameraRect): CameraRect {
 }
 
 /**
+ * The context camera of a puzzle that fills cell `cell` of its parent (entry 9),
+ * in the parent's unit box: the cell's bounding box grown about its centre by
+ * `1 / CONTEXT_CELL_SHARE`, so the parent's outline and the sibling cells show
+ * around the puzzle and run off the frame's edges.
+ */
+export function contextCamera(layout: ShapeLayout, cell: number): CameraRect {
+  const box = boundsOf(layout.cells[cell]?.polygon ?? []);
+  const width = box.width / CONTEXT_CELL_SHARE;
+  const height = box.height / CONTEXT_CELL_SHARE;
+  return { x: box.x + (box.width - width) / 2, y: box.y + (box.height - height) / 2, width, height };
+}
+
+/**
  * Where a child puzzle sits inside cell `cell` of its parent (drawn units of the
  * parent): its whole shape's box fitted into the cell polygon's bounding box,
  * centred. A cell that becomes the child (FR-9; 3A) has the child's outline, so
@@ -91,4 +115,20 @@ export function relativeCamera(layout: ShapeLayout, fromPath: readonly number[],
   const fromTop = frameInTop(layout, fromPath);
   const fromInTo = compose(invert(toTop), fromTop);
   return unit(apply(fromInTo, drawn(contentBox(layout), layout.aspect)), layout.aspect);
+}
+
+/**
+ * The idle camera of the node reached by `viewPath` (its whole shape when it is
+ * the round's top, else its `contextCamera` in its parent), as a rect of the unit
+ * box of the node reached by `toPath`: what a moving beat fits to the frame at
+ * either end so it starts and lands on the idle framing (cell paths as for
+ * `relativeCamera`).
+ */
+export function idleCamera(layout: ShapeLayout, viewPath: readonly number[], toPath: readonly number[]): CameraRect {
+  const last = viewPath[viewPath.length - 1];
+  const inTop =
+    last === undefined
+      ? drawn(contentBox(layout), layout.aspect)
+      : apply(frameInTop(layout, viewPath.slice(0, -1)), drawn(contextCamera(layout, last), layout.aspect));
+  return unit(apply(invert(frameInTop(layout, toPath)), inTop), layout.aspect);
 }

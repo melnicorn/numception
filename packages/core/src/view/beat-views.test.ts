@@ -8,7 +8,7 @@ import { initialAppState } from '../state/initial-app-state';
 import { roundPuzzle } from '../state/round-puzzle';
 import { step } from '../state/step';
 import { parseTuning } from '../tuning/parse-tuning';
-import { boundsOf, contentBox, relativeCamera } from './camera-rect';
+import { boundsOf, contentBox, contextCamera, idleCamera, relativeCamera } from './camera-rect';
 import type { PlayVM } from './play-vm';
 import { selectView } from './select-view';
 
@@ -97,6 +97,23 @@ describe('camera rects', () => {
   });
 });
 
+describe('idle cameras', () => {
+  it('the top’s is its whole shape; a child’s is its context camera, in its parent’s box and in its own', () => {
+    expect(idleCamera(layout, [], [])).toEqual(contentBox(layout));
+    const inParent = idleCamera(layout, [2], []);
+    const expected = contextCamera(layout, 2);
+    expect(inParent.x).toBeCloseTo(expected.x, 9);
+    expect(inParent.y).toBeCloseTo(expected.y, 9);
+    expect(inParent.width).toBeCloseTo(expected.width, 9);
+    // In the child's own box it holds the child's whole shape, grown by 1 / 0.75.
+    const own = idleCamera(layout, [2], [2]);
+    const box = contentBox(layout);
+    expect(own.width).toBeCloseTo(box.width / 0.75, 9);
+    expect(own.x).toBeLessThan(box.x);
+    expect(own.x + own.width).toBeGreaterThan(box.x + box.width);
+  });
+});
+
 describe('beat views', () => {
   it('idle: no from, to or camera', () => {
     const p = viewOf(start).presentation;
@@ -124,8 +141,17 @@ describe('beat views', () => {
     expect(from?.presentation.from).toBeUndefined();
     expect(to?.nodeId).toEqual({ tier: 1, index: 1 });
     expect(to?.solvedAnswer).toBeNull();
-    expect(camera?.to).toEqual(contentBox(layout));
-    expect(camera?.from).toEqual(relativeCamera(layout, [0], [1]));
+    // Both ends are the idle framings inside the shared parent: a straight pan.
+    expect(camera?.to).toEqual(idleCamera(layout, [1], [1]));
+    expect(camera?.from).toEqual(idleCamera(layout, [0], [1]));
+    expect(camera?.from.width).toBeCloseTo(camera?.to.width ?? 0, 9);
+    expect(camera?.fromBox).toEqual(relativeCamera(layout, [0], [1]));
+    // Both carry their context: the same parent, in their own cells.
+    expect(from?.context?.parent.nodeId).toEqual({ tier: 2, index: 0 });
+    expect(from?.context?.cellIndex).toBe(0);
+    expect(from?.context?.parent.cells[0]?.state).toBe('solved');
+    expect(to?.context?.parent.nodeId).toEqual({ tier: 2, index: 0 });
+    expect(to?.context?.cellIndex).toBe(1);
   });
 
   it('collapse: the last child (fused) into its cell of the parent, which takes over', () => {
@@ -140,8 +166,27 @@ describe('beat views', () => {
     expect(to?.nodeId).toEqual({ tier: 2, index: 0 });
     expect(to?.kind).toBe('puzzle');
     expect(vm.presentation.cellIndex).toBe(2);
-    expect(camera?.from).toEqual(relativeCamera(layout, [2], []));
+    // The pull-out starts on the child's context framing (no jump) and lands on the
+    // parent filling the frame (Classic: the top has no context).
+    expect(from?.context?.parent.nodeId).toEqual({ tier: 2, index: 0 });
+    expect(camera?.from).toEqual(from?.context?.camera);
+    expect(camera?.fromBox).toEqual(relativeCamera(layout, [2], []));
     expect(camera?.to).toEqual(contentBox(layout));
+    expect(to?.context).toBeUndefined();
+  });
+
+  it('Tower collapse into a tier-2 node lands on its own context framing in the top', () => {
+    let s = start;
+    for (let i = 0; i < 4; i += 1) s = solveAndSettle(s); // round 0, Classic
+    for (let i = 0; i < 2; i += 1) s = solveAndSettle(s);
+    const vm = viewOf(midBeat(tap(s), 'collapse'));
+    const { from, to, camera } = vm.presentation;
+    expect(from?.nodeId).toEqual({ tier: 1, index: 2 });
+    expect(to?.nodeId).toEqual({ tier: 2, index: 0 });
+    expect(to?.context?.parent.nodeId).toEqual({ tier: 3, index: 0 });
+    for (const key of ['x', 'y', 'width', 'height'] as const) expect(camera?.from[key]).toBeCloseTo(from?.context?.camera[key] ?? Number.NaN, 9);
+    expect(camera?.to).toEqual(idleCamera(layout, [0], [0]));
+    expect(camera?.to.width).toBeGreaterThan(contentBox(layout).width);
   });
 
   it('roundStart: from the solved top of the round before to the new first leaf; no camera', () => {
@@ -166,6 +211,11 @@ describe('beat views', () => {
     expect(from?.nodeId).toEqual({ tier: 2, index: 0 });
     expect(from?.solvedAnswer).toBeNull();
     expect(to?.nodeId).toEqual({ tier: 1, index: 3 });
-    expect(camera?.from).toEqual(relativeCamera(layout, [0], [1, 0]));
+    expect(camera?.fromBox).toEqual(relativeCamera(layout, [0], [1, 0]));
+    expect(camera?.from).toEqual(idleCamera(layout, [0], [1, 0]));
+    expect(camera?.to).toEqual(idleCamera(layout, [1, 0], [1, 0]));
+    // The parents differ: the top around the tier-2 puzzle, tier-2 node 1 around the leaf.
+    expect(from?.context?.parent.nodeId).toEqual({ tier: 3, index: 0 });
+    expect(to?.context?.parent.nodeId).toEqual({ tier: 2, index: 1 });
   });
 });

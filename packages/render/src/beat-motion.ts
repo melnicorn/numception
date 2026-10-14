@@ -39,7 +39,7 @@ export function mixColor(a: string, b: string, t: number): number {
  * Rects of equal size pan in a straight line. Rects of different proportions
  * (not served yet) also interpolate width and height geometrically.
  */
-export function cameraAt(camera: CameraVM, t: number): CameraRect {
+export function cameraAt(camera: Pick<CameraVM, 'from' | 'to'>, t: number): CameraRect {
   const { from: a, to: b } = camera;
   const u = clamp01(t);
   if (u === 0) return a;
@@ -80,6 +80,14 @@ export function cameraAt(camera: CameraVM, t: number): CameraRect {
  * - `boost`: 0..1, solved cells' numerals at `number-solved` size easing back to `number`.
  * - `operator`: the operator's strength (an overview's is dimmed until its tier opens).
  * - `focus`: one cell drawn at full strength while the rest of the shape fades in at `others`.
+ * - `quiet`: 0..1, how far the layer is drawn in the context style (`CONTEXT_STYLE`:
+ *   the parent around the puzzle in view, entry 9); a `focus` cell is never quiet.
+ * - `othersBoost`: with a `focus`, the `boost` of the other solved cells (null:
+ *   the same as `boost`).
+ * - `cellFade`: per-cell alpha multipliers (cell index → 0..1; absent cells 1).
+ *   A context parent leaves out (0) the cell the puzzle in view occupies, so that
+ *   puzzle looks exactly as it does at the top and nothing stacks under it; a beat
+ *   crossfades a cell as the puzzle on it fades.
  */
 export type LayerLook = {
   readonly alpha: number;
@@ -91,7 +99,29 @@ export type LayerLook = {
   readonly boost: number;
   readonly operator: number | null;
   readonly focus: { readonly cell: number; readonly others: number } | null;
+  readonly quiet: number;
+  readonly othersBoost: number | null;
+  readonly cellFade: Readonly<Record<number, number>>;
 };
+
+/**
+ * The context style (entry 9): the parent (super-shape) around the puzzle in view
+ * is drawn quieter than the puzzle. Its outline is Kiln `line` at `lineAlpha`;
+ * its open tiles and the operator wash are at `tileAlpha`, its fired (solved)
+ * tiles at `firedTileAlpha`; numerals on open tiles and the operator glyph are at
+ * `numeralAlpha`, answers on fired tiles at `solvedNumeralAlpha`; all numerals at
+ * `numeralScale` of their size. Fired tiles and their answers are stronger than
+ * the rest so a solved sibling's answer keeps ≥ 3:1 against its quiet tile
+ * (DESIGN: a dimmed numeral stays readable; ≈ 3.3:1 in Kiln, unit-tested).
+ */
+export const CONTEXT_STYLE = {
+  lineAlpha: 0.5,
+  tileAlpha: 0.45,
+  firedTileAlpha: 0.75,
+  numeralAlpha: 0.6,
+  solvedNumeralAlpha: 1,
+  numeralScale: 0.6,
+} as const;
 
 /** A view at rest: `fired` and `operator` null take the view kind's defaults. */
 export const IDLE_LOOK: LayerLook = {
@@ -104,7 +134,18 @@ export const IDLE_LOOK: LayerLook = {
   boost: 0,
   operator: null,
   focus: null,
+  quiet: 0,
+  othersBoost: null,
+  cellFade: {},
 };
+
+/**
+ * A context parent (entry 9): fully quiet, its cells faded by `cellFade` (the cell
+ * under the puzzle in view is left out: `{ [cell]: 0 }`).
+ */
+export function contextLook(cellFade: Readonly<Record<number, number>>, alpha = 1): LayerLook {
+  return { ...IDLE_LOOK, alpha, quiet: 1, cellFade };
+}
 
 /** A solved puzzle fused into its answer `answer` (the end of a solve beat). */
 export function fusedLook(answer: number, alpha = 1): LayerLook {
@@ -126,15 +167,43 @@ export function solveLook(answer: number, p: number): LayerLook {
   };
 }
 
-/** The collapse beat, as the parent (`to`) takes over around its cell `cell`. */
+/**
+ * The collapse beat, as the parent (`to`) takes over around its cell `cell`. It
+ * starts exactly as the context parent was drawn around the child (quiet, fired
+ * solved cells, dimmed operator) and settles into the full puzzle: the context
+ * style lifts over the first 60 %, so the shape the player has seen all along is
+ * the one that resolves.
+ */
 export function collapseToLook(cell: number, p: number, dimOperator: number): LayerLook {
   return {
     ...IDLE_LOOK,
     fired: 1 - ramp(p, 0.7, 1),
     boost: 1 - easeOut(p),
     operator: lerp(dimOperator, 1, ramp(p, 0.45, 0.9)),
-    focus: { cell, others: easeOut(ramp(p, 0, 0.25)) },
+    focus: { cell, others: 1 },
+    quiet: 1 - easeOut(ramp(p, 0, 0.6)),
+    othersBoost: collapseOthersBoost(p),
   };
+}
+
+/**
+ * The boost of a collapse parent's other solved answers (DESIGN round-collapse:
+ * answers stay one step larger, `number-solved`, then ease back to `number`).
+ * They start at the size the context parent drew them (no jump), grow to
+ * `number-solved` as the context style lifts (reached at 60 %, where `quiet` is
+ * 0), then ease back by the end.
+ */
+export function collapseOthersBoost(p: number): number {
+  return p < 0.6 ? easeOut(ramp(p, 0, 0.6)) : 1 - easeOut(ramp(p, 0.6, 1));
+}
+
+/**
+ * A layer that appears during a beat with nothing of it drawn at the start: the
+ * grandparent around a collapse's parent (Tower), or the next puzzle's parent
+ * when an advance changes parents. It fades in over the first 30 %.
+ */
+export function contextFadeIn(p: number): number {
+  return ramp(p, 0, 0.3);
 }
 
 /** The collapsing child (`from`), fused, fading as the parent's own fired cell takes its place. */
@@ -155,6 +224,15 @@ export function advanceCameraT(p: number): number {
 /** The puzzle an advance leaves fades in the second half, so nothing pops at the end. */
 export function advanceFromAlpha(p: number): number {
   return 1 - ramp(p, 0.5, 1);
+}
+
+/**
+ * The puzzle an advance arrives at fades in over the first half: with the parent
+ * drawn around the puzzle (entry 9) its cell was a quiet empty tile on screen at
+ * the start, so it must not pop in at full strength.
+ */
+export function advanceToAlpha(p: number): number {
+  return easeOut(ramp(p, 0, 0.5));
 }
 
 /**

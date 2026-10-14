@@ -5,7 +5,7 @@ import { parentOf } from '../rounds/round-node-id';
 import { isPlayable } from '../state/is-playable';
 import type { Round } from '../state/round';
 import { sameNode } from '../state/same-node';
-import { contentBox, relativeCamera } from './camera-rect';
+import { idleCamera, relativeCamera } from './camera-rect';
 import { type NestedPresentation, nodeView, solvedTopView } from './node-view';
 import type { PlayVM, PresentationVM } from './play-vm';
 
@@ -48,6 +48,12 @@ function advanceFrom(round: Round): NodeId | undefined {
  * - `collapse`: `from` is the child solved last, inside its cell (`cellIndex`) of `to`.
  * - `advance`: `from` is `advanceFrom`; the camera pans between the two frames in
  *   the round's top geometry, so it moves through their shared ancestors.
+ * - Both cameras run between the two views' idle framings (`idleCamera`): with
+ *   the parent drawn around a puzzle (entry 9) a collapse pulls out from the
+ *   child's context framing to the parent's own (its whole shape, or its context
+ *   in the grandparent), and an advance pans inside the shared parent.
+ * - `from` and `to` carry their own `context`, so render keeps the parent framing
+ *   throughout.
  * - `roundStart`: `from` is the last round's top (`Round.previousTop`).
  *
  * A `from` that cannot be found (it cannot happen through `step`) is left out, and
@@ -55,7 +61,11 @@ function advanceFrom(round: Round): NodeId | undefined {
  */
 export function beatViews(round: Round, to: PlayVM, layout: ShapeLayout, beat: NestedPresentation, answerIndex: number | null): BeatExtras {
   const { tiers, n } = round.plan;
-  const camera = (from: NodeId) => ({ from: relativeCamera(layout, cellPath(from, tiers, n), cellPath(to.nodeId, tiers, n)), to: contentBox(layout) });
+  const toPath = cellPath(to.nodeId, tiers, n);
+  const camera = (from: NodeId) => {
+    const fromPath = cellPath(from, tiers, n);
+    return { from: idleCamera(layout, fromPath, toPath), to: idleCamera(layout, toPath, toPath), fromBox: relativeCamera(layout, fromPath, toPath) };
+  };
   switch (beat.kind) {
     case 'idle':
       return { cellIndex: null };

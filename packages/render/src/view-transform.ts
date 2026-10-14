@@ -11,15 +11,19 @@ export const GUTTER_PX = 16;
  */
 export type ViewTransform = { readonly scale: number; readonly left: number; readonly top: number; readonly aspect: number };
 
-/** The bounding box of the view's shape (cells and operator), in its unit box: the idle camera. */
-export function shapeBox(vm: Pick<PlayVM, 'cells' | 'operator'>): CameraRect {
-  const points = [...vm.cells.flatMap((c) => c.polygon), ...vm.operator.polygon];
+/** The bounding box of `points` (unit box), or the whole box when empty. */
+function boundsOf(points: readonly LayoutPoint[]): CameraRect {
   if (points.length === 0) return { x: 0, y: 0, width: 1, height: 1 };
   const xs = points.map((p) => p[0]);
   const ys = points.map((p) => p[1]);
   const x0 = Math.min(...xs);
   const y0 = Math.min(...ys);
   return { x: x0, y: y0, width: Math.max(...xs) - x0, height: Math.max(...ys) - y0 };
+}
+
+/** The bounding box of the view's shape (cells and operator), in its unit box: the idle camera. */
+export function shapeBox(vm: Pick<PlayVM, 'cells' | 'operator'>): CameraRect {
+  return boundsOf([...vm.cells.flatMap((c) => c.polygon), ...vm.operator.polygon]);
 }
 
 /**
@@ -75,4 +79,41 @@ export function toScreen(t: ViewTransform, p: LayoutPoint): LayoutPoint {
 /** A mount-element px point in the unit box (inverse of `toScreen`). */
 export function toUnit(t: ViewTransform, p: LayoutPoint): LayoutPoint {
   return [(p[0] - t.left) / (t.aspect * t.scale), (p[1] - t.top) / t.scale];
+}
+
+/** The view's context (its parent drawn around it, entry 9), as far as placing it needs. */
+type Placed = Pick<PlayVM, 'aspect' | 'cells' | 'operator'> & {
+  readonly context?: { readonly parent: Pick<PlayVM, 'aspect' | 'cells'>; readonly cellIndex: number; readonly camera: CameraRect };
+};
+
+/** The bounding box of cell `cellIndex` of `vm`: where a child's shape box nests (core's `childInCell`). */
+export function cellBox(vm: Pick<PlayVM, 'cells'>, cellIndex: number): CameraRect {
+  return boundsOf(vm.cells[cellIndex]?.polygon ?? []);
+}
+
+/**
+ * The view's idle transform: with a context (entry 9) the parent's context camera
+ * is fitted to the frame and the view nested in its cell, so the puzzle takes
+ * about 75 % of the frame with its parent around it; without one, `fitView`.
+ */
+export function idleTransform(vm: Placed, width: number, height: number, gutter = GUTTER_PX): ViewTransform {
+  const context = vm.context;
+  if (context === undefined) return fitView(vm, width, height, gutter);
+  const parent = fitRect(context.camera, context.parent.aspect, width, height, gutter);
+  return nestTransform(parent, cellBox(context.parent, context.cellIndex), shapeBox(vm), vm.aspect);
+}
+
+/**
+ * The transform of the view's context parent, given the view's own transform `t`
+ * (the inverse of `nestTransform`): wherever a beat's camera puts the view, its
+ * parent is drawn around it. Undefined without a context.
+ */
+export function contextTransform(t: ViewTransform, vm: Placed): ViewTransform | undefined {
+  const context = vm.context;
+  if (context === undefined) return undefined;
+  const parentAspect = context.parent.aspect;
+  // The nesting alone (parent drawn units → screen as identity): view ↦ parent.
+  const s = nestTransform({ scale: 1, left: 0, top: 0, aspect: parentAspect }, cellBox(context.parent, context.cellIndex), shapeBox(vm), vm.aspect);
+  const scale = t.scale / s.scale;
+  return { scale, aspect: parentAspect, left: t.left - scale * s.left, top: t.top - scale * s.top };
 }

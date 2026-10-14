@@ -117,11 +117,11 @@ describe('beat looks', () => {
     expect(solveLook(1, 0.3).overlay).toBeLessThan(solveLook(1, 0.3).operands);
   });
 
-  it('collapse: the parent fades in around the cell, its answers ease back and its operator rises', () => {
+  it('collapse: the parent takes over from its quiet context look, its answers ease back and its operator rises', () => {
     const start = collapseToLook(2, 0, 0.32);
     const end = collapseToLook(2, 1, 0.32);
-    expect(start).toMatchObject({ fired: 1, boost: 1, operator: 0.32, focus: { cell: 2, others: 0 } });
-    expect(end).toMatchObject({ fired: 0, boost: 0, operator: 1, focus: { cell: 2, others: 1 } });
+    expect(start).toMatchObject({ fired: 1, boost: 1, operator: 0.32, focus: { cell: 2, others: 1 }, quiet: 1 });
+    expect(end).toMatchObject({ fired: 0, boost: 0, operator: 1, focus: { cell: 2, others: 1 }, quiet: 0 });
   });
 
   it('crossfade: the old round is gone by half-way, when the new one is opaque', () => {

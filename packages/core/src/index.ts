@@ -80,7 +80,7 @@ export { completePresentation } from './state/complete-presentation';
 
 export { KILN_TOKENS, type KilnTokens } from './view/kiln-tokens';
 export type { NodeCellRef } from './view/node-cell-ref';
-export type { CameraVM, PlayCellVM, PlayVM, PresentationVM } from './view/play-vm';
+export type { CameraVM, PlayCellVM, PlayContextVM, PlayVM, PresentationVM } from './view/play-vm';
 export type { CameraRect } from './view/camera-rect';
 export { tapCommand } from './view/tap-command';
 export { selectView } from './view/select-view';

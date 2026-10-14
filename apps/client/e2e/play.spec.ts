@@ -1,5 +1,21 @@
 import { expect, test } from '@playwright/test';
-import { answerCell, clickUnit, eventLog, events, frameInk, pixelAt, solve, solvedCount, view, waitBeat, waitForPuzzle, waitIdle } from './play-helpers';
+import {
+  answerCell,
+  clickUnit,
+  eventLog,
+  events,
+  frameInk,
+  pageOf,
+  parentToView,
+  pixelAt,
+  regionInk,
+  solve,
+  solvedCount,
+  view,
+  waitBeat,
+  waitForPuzzle,
+  waitIdle,
+} from './play-helpers';
 
 // The play-loop tracer on the playtest build (playwright.config.ts serves FLAVOUR=playtest):
 // a tap travels render -> app -> core -> app -> render.
@@ -165,6 +181,9 @@ test('the solve, collapse and round crossfade are drawn: mid-beat frames carry f
   expect(collapsing.presentation.from?.solvedAnswer).not.toBeNull();
   expect(collapsing.presentation.to?.nodeId).toEqual({ tier: 2, index: 0 });
   expect(collapsing.presentation.camera?.from.width).toBeLessThan(collapsing.presentation.camera?.to.width ?? 0);
+  // The pull-out starts on the child's parent framing (entry 9): the parent it collapses into.
+  expect(collapsing.presentation.from?.context?.parent.nodeId).toEqual({ tier: 2, index: 0 });
+  expect(collapsing.presentation.camera?.from).toEqual(collapsing.presentation.from?.context?.camera);
   const mid = await frameInk(page);
   expect(mid.ink).toBeGreaterThan(0.1);
   expect(mid.fired).toBeGreaterThan(0.02);
@@ -191,6 +210,48 @@ test('the solve, collapse and round crossfade are drawn: mid-beat frames carry f
   expect(distance, `operator region ${operatorPixel.join(',')}`).toBeGreaterThan(40);
   const next = await waitIdle(page);
   expect(next.presentation.from).toBeUndefined();
+});
+
+test('a puzzle sits inside its parent: the parent outline and siblings are drawn around it, and taps there do nothing', async ({ page }) => {
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.goto('./');
+  const first = await waitForPuzzle(page);
+  expect(first.context?.parent.nodeId).toEqual({ tier: 2, index: 0 });
+  expect(first.context?.parent.kind).toBe('overview');
+  expect(first.context?.cellIndex).toBe(0);
+
+  // Ink outside the puzzle's cell: the strip below the puzzle's base holds the
+  // parent's outline and its lower cells.
+  const base = await pageOf(page, [0.5, 0.75]);
+  const strip = { x: 0, y: base[1] + 6, width: 390, height: Math.min(200, 844 - base[1] - 12) };
+  expect(strip.height).toBeGreaterThan(40);
+  expect(await regionInk(page, strip)).toBeGreaterThan(0.002);
+
+  // Taps on a sibling cell and on the parent's operator dispatch nothing.
+  const before = await eventLog(page);
+  const parent = first.context?.parent;
+  if (parent === undefined) throw new Error('no parent');
+  const targets = [parent.cells[1]?.labelPoint, parent.cells[2]?.labelPoint, parent.operator.labelPoint];
+  for (const target of targets) {
+    if (target === undefined) throw new Error('no target');
+    const at = await pageOf(page, parentToView(first, target));
+    expect(at[0]).toBeGreaterThan(0);
+    expect(at[0]).toBeLessThan(390);
+    expect(at[1]).toBeLessThan(844);
+    // Not inside the puzzle in view: below its base.
+    expect(at[1]).toBeGreaterThan(base[1]);
+    await page.mouse.click(at[0], at[1]);
+  }
+  await page.waitForTimeout(150);
+  expect(await eventLog(page)).toEqual(before);
+  expect(await view(page)).toEqual(first);
+
+  // The answer still works; the next leaf fills the next cell, its solved sibling showing its answer.
+  const next = await solve(page);
+  expect(next.nodeId).toEqual({ tier: 1, index: 1 });
+  expect(next.context?.cellIndex).toBe(1);
+  expect(next.context?.parent.cells[0]?.text).toBe(answerCell(first).text);
+  expect(next.context?.parent.cells[0]?.state).toBe('solved');
 });
 
 test('context loss events pause drawing, and the restore rebuilds the scene from the latest view', async ({ page }) => {
