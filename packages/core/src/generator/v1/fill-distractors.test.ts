@@ -9,6 +9,7 @@ describe('fillDistractors', () => {
   it.each([
     ['narrow', { band: 2, minValue: 1, maxValue: 50, maxCarries: 1 }, [4, 9, 13]],
     ['wide', { band: 4, minValue: 10, maxValue: 999, maxCarries: 2 }, [120, 345, 465]],
+    ['wider than the lookup tables', { band: 5, minValue: 10, maxValue: 99999, maxCarries: 4 }, [1200, 34500, 35700]],
   ] as [string, PuzzleBand, number[]][])('keeps one triple and exactly the near-misses asked (%s band)', (_name, band, triple) => {
     let s = randomStream(11);
     let filled = 0;

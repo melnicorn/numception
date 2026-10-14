@@ -1,8 +1,8 @@
 // An independent consistency check of a RoundPlan (FR-2): every rule the planner
 // promises, re-derived from the plan's cells with its own brute force rather than
-// the generator's helpers. Used by the round tests, the content acceptance test and
-// the golden checks; the nightly round check (entry 10) and the dev panel round
-// inspector (entry 11) can reuse it. Integer-only (AD-3).
+// the generator's helpers. Used by the round tests and the content acceptance test
+// (tools/round-content.test.ts); not exported from the package index. Integer-only
+// (AD-3).
 import type { NodeId } from '../generator/node-id';
 import type { Puzzle } from '../generator/puzzle';
 import { realise } from '../generator/realise';
@@ -11,9 +11,7 @@ import type { TuningConfig } from '../tuning/tuning-config';
 import { LEAF_CHECK_BAND } from './plan-tiers';
 import type { RoundPlan, RoundPlanNode } from './round-plan';
 import { compareTopDown, nodeCount, parentOf, tierWidth } from './round-node-id';
-
-/** Tiers per round type. */
-const TIERS: { readonly [type: string]: number } = { classic: 2, tower: 3 };
+import { ROUND_TYPES } from './round-types';
 
 /** Cell index triples (i < j < k) where one value is the sum of the other two. */
 function validTriples(values: readonly number[]): number[][] {
@@ -72,7 +70,7 @@ function puzzleProblems(plan: RoundPlan, node: RoundPlanNode, puzzle: Puzzle): s
  * - a fixed top cell is where the plan says.
  */
 export function roundPlanProblems(plan: RoundPlan, tuning: TuningConfig): string[] {
-  const tiers = TIERS[plan.type];
+  const tiers = typeof plan.type === 'string' && Object.hasOwn(ROUND_TYPES, plan.type) ? ROUND_TYPES[plan.type].tiers : undefined;
   if (tiers === undefined || plan.tiers !== tiers) return [`plan type ${String(plan.type)} with ${String(plan.tiers)} tiers is not a known round type`];
   const { n } = plan;
   const problems: string[] = [];

@@ -4,9 +4,6 @@ export { tracerValue } from './tracer-value';
 export type { DomainError, DomainErrorCode } from './result/domain-error';
 export { err, ok, type Result } from './result/result';
 
-export { type RandomStream, randomStream } from './random/random-stream';
-export { nextInt } from './random/next-int';
-export { nodeSeed, nodeStream } from './random/node-stream';
 export { deriveSeed } from './random/derive-seed';
 
 export { type Rational, rational, serialiseRational } from './numbers/rational';

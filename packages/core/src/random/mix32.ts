@@ -9,7 +9,7 @@ export const GOLDEN = 0x9e3779b9;
  * Low 32 bits of `a * b`, written out in 16-bit halves so it stays exact in
  * doubles.
  */
-export function mul32(a: number, b: number): number {
+function mul32(a: number, b: number): number {
   const al = a & 0xffff;
   const ah = (a >>> 16) & 0xffff;
   const bl = b & 0xffff;

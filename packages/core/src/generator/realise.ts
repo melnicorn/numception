@@ -1,3 +1,5 @@
+import { UINT32_MAX } from '../random/uint32-max';
+import { describeValue } from '../result/describe-value';
 import type { DomainError } from '../result/domain-error';
 import { err, type Result } from '../result/result';
 import { MAX_TUNING_VALUE } from '../tuning/max-tuning-value';
@@ -10,31 +12,8 @@ import type { PuzzleVersions } from './puzzle-versions';
 import { registeredGeneratorVersions } from './registered-generator-versions';
 import { GENERATORS } from './registry';
 
-const UINT32_MAX = 0xffffffff;
-
 function isIntIn(x: unknown, min: number, max: number): x is number {
   return typeof x === 'number' && Number.isInteger(x) && x >= min && x <= max;
-}
-
-/**
- * A short description of an input value for an error message. Never throws: it
- * formats primitives only and names the type of anything else, so no getter,
- * `toString`, `toJSON`, bigint or cycle is ever touched.
- */
-function describeValue(x: unknown): string {
-  switch (typeof x) {
-    case 'number':
-    case 'boolean':
-      return `${x}`;
-    case 'bigint':
-      return `${x}n`;
-    case 'string':
-      return JSON.stringify(x);
-    case 'undefined':
-      return 'undefined';
-    default:
-      return x === null ? 'null' : typeof x;
-  }
 }
 
 function isBand(x: unknown): x is PuzzleBand {

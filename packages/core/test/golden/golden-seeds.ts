@@ -143,6 +143,14 @@ function serialiseBand(b: PuzzleBand): PuzzleBand {
   return { band: b.band, minValue: b.minValue, maxValue: b.maxValue, maxCarries: b.maxCarries };
 }
 
+function serialiseVersions(v: PuzzleVersions): PuzzleVersions {
+  return { generatorVersion: v.generatorVersion, difficultyModelVersion: v.difficultyModelVersion, tuningVersion: v.tuningVersion };
+}
+
+function serialiseClamp(c: PuzzleClamp | undefined): { clamp?: PuzzleClamp } {
+  return c === undefined ? {} : { clamp: { requestedBand: c.requestedBand, servedBand: c.servedBand } };
+}
+
 function serialisePlanPuzzle(p: Puzzle): GoldenPlanPuzzle {
   return {
     seed: p.seed,
@@ -161,9 +169,9 @@ function serialisePlanPuzzle(p: Puzzle): GoldenPlanPuzzle {
     roles: { a: p.roles.a, b: p.roles.b, c: p.roles.c },
     answerIndex: p.answerIndex,
     servedBand: p.servedBand,
-    ...(p.clamp === undefined ? {} : { clamp: { requestedBand: p.clamp.requestedBand, servedBand: p.clamp.servedBand } }),
+    ...serialiseClamp(p.clamp),
     nearMisses: p.nearMisses,
-    versions: { generatorVersion: p.versions.generatorVersion, difficultyModelVersion: p.versions.difficultyModelVersion, tuningVersion: p.versions.tuningVersion },
+    versions: serialiseVersions(p.versions),
   };
 }
 
@@ -179,19 +187,8 @@ export function planCase(
   input: GoldenPlanInput,
   tunings: GoldenTunings,
 ): { ok: true; value: GoldenPlanExpected } | { ok: false; error: string } {
-  const tuning = parseCaseTuning(input, tunings);
+  const tuning = caseTuning(fileVersion, input, tunings);
   if (typeof tuning === 'string') return { ok: false, error: tuning };
-  const versions: unknown = input.versions;
-  if (!isObject(versions)) return { ok: false, error: 'input.versions must be an object' };
-  if (versions.generatorVersion !== fileVersion) {
-    return { ok: false, error: `input generatorVersion ${canonical(versions.generatorVersion)} is not the fixture's v${fileVersion}` };
-  }
-  if (versions.tuningVersion !== tuning.tuningVersion) {
-    return {
-      ok: false,
-      error: `input tuningVersion ${canonical(versions.tuningVersion)} is not tuning fixture "${input.tuning}"'s ${tuning.tuningVersion}`,
-    };
-  }
   const result = planRound(input.request, tuning, deriveSeed(input.rootSeed, input.ordinal), input.versions);
   if (!result.ok) {
     // Only `unplannable` is an outcome worth pinning; any other code means the case itself is wrong.
@@ -214,19 +211,31 @@ export function planCase(
         ...(node.puzzle === undefined ? {} : { puzzle: serialisePlanPuzzle(node.puzzle) }),
       })),
       firstLeaf: { band, ...serialisePlanPuzzle(leaf.value) },
-      versions: {
-        generatorVersion: plan.versions.generatorVersion,
-        difficultyModelVersion: plan.versions.difficultyModelVersion,
-        tuningVersion: plan.versions.tuningVersion,
-      },
+      versions: serialiseVersions(plan.versions),
     },
   };
 }
 
-function parseCaseTuning(input: { readonly tuning: string }, tunings: GoldenTunings): TuningConfig | string {
+/**
+ * A case's tuning fixture, parsed, or a message saying why the case is broken: the
+ * fixture is unknown or invalid, or the case's pinned versions disagree with the
+ * fixture file (`fileVersion`) or the tuning.
+ */
+function caseTuning(
+  fileVersion: number,
+  input: { readonly tuning: string; readonly versions: PuzzleVersions },
+  tunings: GoldenTunings,
+): TuningConfig | string {
   if (!Object.hasOwn(tunings, input.tuning)) return `unknown tuning fixture "${input.tuning}"`;
   const parsed = parseTuning(tunings[input.tuning]);
-  return parsed.ok ? parsed.value : `tuning fixture "${input.tuning}": ${parsed.error.message}`;
+  if (!parsed.ok) return `tuning fixture "${input.tuning}": ${parsed.error.message}`;
+  const versions: unknown = input.versions;
+  if (!isObject(versions)) return 'input.versions must be an object';
+  if (versions.generatorVersion !== fileVersion) return `input generatorVersion ${canonical(versions.generatorVersion)} is not the fixture's v${fileVersion}`;
+  if (versions.tuningVersion !== parsed.value.tuningVersion) {
+    return `input tuningVersion ${canonical(versions.tuningVersion)} is not tuning fixture "${input.tuning}"'s ${parsed.value.tuningVersion}`;
+  }
+  return parsed.value;
 }
 
 /**
@@ -240,19 +249,8 @@ export function realiseCase(
   input: GoldenCaseInput,
   tunings: GoldenTunings,
 ): { ok: true; value: GoldenExpected } | { ok: false; error: string } {
-  const tuning = parseCaseTuning(input, tunings);
+  const tuning = caseTuning(fileVersion, input, tunings);
   if (typeof tuning === 'string') return { ok: false, error: tuning };
-  const versions: unknown = input.versions;
-  if (!isObject(versions)) return { ok: false, error: 'input.versions must be an object' };
-  if (versions.generatorVersion !== fileVersion) {
-    return { ok: false, error: `input generatorVersion ${canonical(versions.generatorVersion)} is not the fixture's v${fileVersion}` };
-  }
-  if (versions.tuningVersion !== tuning.tuningVersion) {
-    return {
-      ok: false,
-      error: `input tuningVersion ${canonical(versions.tuningVersion)} is not tuning fixture "${input.tuning}"'s ${tuning.tuningVersion}`,
-    };
-  }
   if (!isObject(input.request)) return { ok: false, error: 'input.request must be an object' };
   const derived = specFor(tuning, input.request);
   if (!derived.ok) return { ok: false, error: `input request ${canonical(input.request)}: ${derived.error.message}` };
@@ -275,13 +273,9 @@ export function realiseCase(
       roles: { a: p.roles.a, b: p.roles.b, c: p.roles.c },
       answerIndex: p.answerIndex,
       servedBand: p.servedBand,
-      ...(p.clamp === undefined ? {} : { clamp: { requestedBand: p.clamp.requestedBand, servedBand: p.clamp.servedBand } }),
+      ...serialiseClamp(p.clamp),
       nearMisses: p.nearMisses,
-      versions: {
-        generatorVersion: p.versions.generatorVersion,
-        difficultyModelVersion: p.versions.difficultyModelVersion,
-        tuningVersion: p.versions.tuningVersion,
-      },
+      versions: serialiseVersions(p.versions),
     },
   };
 }
@@ -386,8 +380,8 @@ export function checkGoldenCoverage(registered: readonly number[], fixtureFiles:
 
 /**
  * Builds generatorVersion's fixture by realising each puzzle input and planning each
- * plan input. Throws if one can't be realised or planned (an expected planning
- * error, e.g. `unplannable`, is recorded, not thrown).
+ * plan input. Throws if one can't be realised or planned (an `unplannable` plan is
+ * an expected outcome: recorded, not thrown).
  */
 export function buildGoldenSeeds(
   generatorVersion: number,
@@ -413,7 +407,6 @@ export function buildGoldenSeeds(
  * newline), so the same fixture always hashes the same in shipped.lock.json.
  */
 export function formatGoldenSeeds(fixture: GoldenSeeds): string {
-  const band = (b: PuzzleBand) => ({ band: b.band, minValue: b.minValue, maxValue: b.maxValue, maxCarries: b.maxCarries });
   const line = (c: GoldenCase): string =>
     JSON.stringify({
       name: c.name,
@@ -429,34 +422,24 @@ export function formatGoldenSeeds(fixture: GoldenSeeds): string {
         spec: {
           n: c.input.spec.n,
           operator: c.input.spec.operator,
-          band: band(c.input.spec.band),
-          fallbackBands: c.input.spec.fallbackBands.map(band),
+          band: serialiseBand(c.input.spec.band),
+          fallbackBands: c.input.spec.fallbackBands.map(serialiseBand),
           ...(c.input.spec.contract === undefined ? {} : { contract: c.input.spec.contract }),
           nearMissCount: c.input.spec.nearMissCount,
           nearMissDelta: c.input.spec.nearMissDelta,
           maxAttempts: c.input.spec.maxAttempts,
         },
         tuning: c.input.tuning,
-        versions: {
-          generatorVersion: c.input.versions.generatorVersion,
-          difficultyModelVersion: c.input.versions.difficultyModelVersion,
-          tuningVersion: c.input.versions.tuningVersion,
-        },
+        versions: serialiseVersions(c.input.versions),
       },
       expected: {
         cells: c.expected.cells,
         roles: { a: c.expected.roles.a, b: c.expected.roles.b, c: c.expected.roles.c },
         answerIndex: c.expected.answerIndex,
         servedBand: c.expected.servedBand,
-        ...(c.expected.clamp === undefined
-          ? {}
-          : { clamp: { requestedBand: c.expected.clamp.requestedBand, servedBand: c.expected.clamp.servedBand } }),
+        ...serialiseClamp(c.expected.clamp),
         nearMisses: c.expected.nearMisses,
-        versions: {
-          generatorVersion: c.expected.versions.generatorVersion,
-          difficultyModelVersion: c.expected.versions.difficultyModelVersion,
-          tuningVersion: c.expected.versions.tuningVersion,
-        },
+        versions: serialiseVersions(c.expected.versions),
       },
     });
   const planLine = (c: GoldenPlanCase): string => {
@@ -474,11 +457,7 @@ export function formatGoldenSeeds(fixture: GoldenSeeds): string {
           ...(r.fixedTopCell === undefined ? {} : { fixedTopCell: { childIndex: r.fixedTopCell.childIndex, value: r.fixedTopCell.value } }),
         },
         tuning: c.input.tuning,
-        versions: {
-          generatorVersion: c.input.versions.generatorVersion,
-          difficultyModelVersion: c.input.versions.difficultyModelVersion,
-          tuningVersion: c.input.versions.tuningVersion,
-        },
+        versions: serialiseVersions(c.input.versions),
       },
       // Built in a fixed key order by planCase (and kept by JSON.parse), so stable as is.
       expected: c.expected,

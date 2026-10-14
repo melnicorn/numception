@@ -1,9 +1,8 @@
 import { nextInt } from '../../random/next-int';
 import type { RandomStream } from '../../random/random-stream';
 import type { PuzzleBand } from '../puzzle-spec';
-import { completesTriple } from './count-triples';
+import { directChecks, TABLE_RANGE, tableChecks } from './distractor-checks';
 import { absDiff } from './int-math';
-import { isNear, nearsSomePair } from './near-miss';
 
 /** Bands at most this wide try every value for a distractor slot (from a random start). */
 export const DISTRACTOR_ENUM_RANGE = 128;
@@ -49,7 +48,9 @@ export type DistractorRequest = {
  * dead end, at most `TEST_BUDGET` candidates in all. Each candidate keeps the
  * invariants: it completes no triple, it is a near-miss exactly when its slot asks,
  * and it turns no placed plain distractor into a near-miss (a near-miss stays one
- * as cells are added).
+ * as cells are added). Bands at most `TABLE_RANGE` wide test candidates against
+ * lookup tables, wider ones by direct scan (`distractor-checks`); both give the
+ * same answers, so the choice never changes the output.
  *
  * When the band is narrow and the distractor sets few (`EXHAUSTIVE_LIMIT`), the
  * search is exhaustive with no budget, so it fails only when no completion exists.
@@ -69,8 +70,8 @@ export function fillDistractors(
   const enumerate = width <= DISTRACTOR_ENUM_RANGE;
   const firstNear = count - nearMisses;
   const exhaustive = enumerate && binomialAtMost(width - triple.length, count, EXHAUSTIVE_LIMIT) <= EXHAUSTIVE_LIMIT;
-  const cells = [...triple];
-  const plain: number[] = [];
+  const checks = width <= TABLE_RANGE ? tableChecks(triple, band, delta) : directChecks(triple, band, delta);
+  const { cells } = checks;
   let s = stream;
   let tests = 0;
 
@@ -79,26 +80,6 @@ export function fillDistractors(
     s = next;
     return value;
   };
-
-  const turnsPlainNear = (d: number): boolean => {
-    for (const e of plain) {
-      const ev = cells[e] as number;
-      for (let i = 0; i < cells.length; i += 1) {
-        if (i === e) continue;
-        const p = cells[i] as number;
-        if (isNear(ev, d + p, delta) || isNear(ev, absDiff(d, p), delta)) return true;
-      }
-    }
-    return false;
-  };
-
-  const fits = (d: number, wantNear: boolean): boolean =>
-    d >= lo &&
-    d <= hi &&
-    !cells.includes(d) &&
-    !completesTriple(cells, d) &&
-    nearsSomePair(cells, d, delta, -1) === wantNear &&
-    !turnsPlainNear(d);
 
   const drawNear = (): number => {
     const i = draw(0, cells.length - 1);
@@ -112,12 +93,10 @@ export function fillDistractors(
   };
 
   const tryCandidate = (d: number, slot: number, wantNear: boolean, nextFrom: number): boolean => {
-    if (!fits(d, wantNear)) return false;
-    if (!wantNear) plain.push(cells.length);
-    cells.push(d);
+    if (!checks.fits(d, wantNear)) return false;
+    checks.push(d, !wantNear);
     if (place(slot + 1, nextFrom)) return true;
-    cells.pop();
-    if (!wantNear) plain.pop();
+    checks.pop(!wantNear);
     return false;
   };
 
@@ -152,5 +131,5 @@ export function fillDistractors(
     return false;
   }
 
-  return [place(0, 0) ? cells : undefined, s];
+  return [place(0, 0) ? [...cells] : undefined, s];
 }

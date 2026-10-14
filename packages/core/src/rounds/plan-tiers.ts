@@ -24,7 +24,6 @@ export const FIXED_TOP_ATTEMPTS = 64;
 export const LEAF_CHECK_BAND = 1;
 
 type Context = CheckedRequest & {
-  readonly tiers: number;
   readonly tuning: TuningConfig;
   readonly roundSeed: number;
   readonly versions: PuzzleVersions;
@@ -222,7 +221,7 @@ export function planTiers(
 ): Result<RoundPlan, DomainError> {
   const checked = checkPlanRequest(type, request, tuning, roundSeed, versions);
   if ('code' in checked) return err(checked);
-  const ctx: Context = { ...checked, tiers, tuning, roundSeed, versions, memo: new Map() };
+  const ctx: Context = { ...checked, tuning, roundSeed, versions, memo: new Map() };
   const top = topNodeId(tiers);
   const fixed = checked.fixedTopCell;
   const outcome = fixed === undefined ? planFreeTop(ctx, top) : planFixedTop(ctx, top, fixed.childIndex, fixed.value);

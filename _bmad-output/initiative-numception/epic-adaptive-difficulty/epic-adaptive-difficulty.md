@@ -44,3 +44,4 @@ Ratings, selection and the response log. Not full adaptation to target success o
 - Open question: OQ-22 — ratings use correctness only by default; speed-informed ratings are a v1 call.
 - Waits on epic-puzzle-generator because: it needs bucket features and tuning schema.
 - Waits on epic-core-play-loop because: it needs answered-puzzle events from the play loop.
+- Carried over: 2026-10-13 from epic-puzzle-generator 2.5 (via 2.12). To make Classic n ≥ 7 and Tower + rounds plannable under the rule that leaf answers fit band 1, POC band 1 widened from 1..20 (no carries) to 1..99 (one carry), so even the easiest tier-1 puzzles in a round can use numbers up to 99. Decide with the user: per-n band ranges in TuningConfig, gating large n behind higher bands, or accepting larger numbers (see the 2.5 plan's deferred item).
