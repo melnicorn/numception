@@ -14,6 +14,23 @@ export {
 } from './save-writer';
 export { type LoadedSession, loadSave } from './load-save';
 export type { LifecycleCommand, LifecyclePort } from './lifecycle-port';
+export { type AudioChannels, type AudioPort, type CueId, type CueParams, noAudio } from './audio-port';
+export { type HapticKind, type HapticsPort, noHaptics } from './haptics-port';
+export {
+  DEFAULT_FEEDBACK_FLAGS,
+  type FeedbackControls,
+  type FeedbackFlags,
+  type FeedbackFlagStore,
+  parseFeedbackFlags,
+} from './feedback-flags';
+export {
+  type Cue,
+  createFeedbackDirector,
+  cuesFor,
+  type FeedbackDirector,
+  type FeedbackDirectorOptions,
+  solveStep,
+} from './feedback-director';
 export {
   DEMO_NODE_ID,
   DEMO_SEED,

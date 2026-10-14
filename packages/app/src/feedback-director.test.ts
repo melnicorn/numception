@@ -1,0 +1,108 @@
+import type { GameEvent, NodeId } from '@numception/core';
+import { describe, expect, it } from 'vitest';
+import type { AudioChannels, AudioPort, CueId, CueParams } from './audio-port';
+import { createFeedbackDirector, cuesFor, solveStep } from './feedback-director';
+import { DEFAULT_FEEDBACK_FLAGS, parseFeedbackFlags } from './feedback-flags';
+import { noHaptics } from './haptics-port';
+
+type Call =
+  | { readonly fn: 'play'; readonly cue: CueId; readonly params?: CueParams }
+  | { readonly fn: 'setEnabled'; readonly channels: AudioChannels }
+  | { readonly fn: 'unlock' | 'suspend' | 'resume' };
+
+function recordingAudio(): { audio: AudioPort; calls: Call[] } {
+  const calls: Call[] = [];
+  const audio: AudioPort = {
+    unlock: () => calls.push({ fn: 'unlock' }),
+    play: (cue, params) => calls.push(params === undefined ? { fn: 'play', cue } : { fn: 'play', cue, params }),
+    setEnabled: (channels) => calls.push({ fn: 'setEnabled', channels }),
+    suspend: () => calls.push({ fn: 'suspend' }),
+    resume: () => calls.push({ fn: 'resume' }),
+  };
+  return { audio, calls };
+}
+
+const node = (tier: number, index = 0): NodeId => ({ tier, index });
+const tap = { roundId: 'r', cellIndex: 0, responseMs: 100 };
+const solved = (tier: number): GameEvent => ({ type: 'PuzzleSolved', nodeId: node(tier), ...tap });
+const plays = (calls: readonly Call[]) => calls.filter((c) => c.fn === 'play');
+
+describe('cuesFor', () => {
+  it.each<[string, readonly GameEvent[], ReturnType<typeof cuesFor>]>([
+    ['PuzzleSolved at tier 1', [solved(1)], [{ cue: 'solve', params: { step: 0 } }]],
+    ['SoftMiss', [{ type: 'SoftMiss', nodeId: node(1), ...tap }], [{ cue: 'softMiss' }]],
+    ['WrongTap (Zen)', [{ type: 'WrongTap', nodeId: node(1), ...tap }], [{ cue: 'wrongZen' }]],
+    [
+      'a round change',
+      [
+        { type: 'RoundCompleted', roundId: 'r', roundOrdinal: 0 },
+        { type: 'RoundStarted', roundId: 's', roundOrdinal: 1 },
+      ],
+      [{ cue: 'whoosh' }],
+    ],
+    ['a session opening its first round', [{ type: 'ProfileCreated', profileId: 'p' }, { type: 'RoundStarted', roundId: 'r', roundOrdinal: 0 }], []],
+    ['RoundCollapsed', [{ type: 'RoundCollapsed', roundId: 'r', nodeId: node(2) }], []],
+    ['InputDropped', [{ type: 'InputDropped', command: 'TapCell', presentation: 'solve' }], []],
+    [
+      'a lifecycle pause that completes a round change',
+      [
+        { type: 'RoundCompleted', roundId: 'r', roundOrdinal: 0 },
+        { type: 'RoundStarted', roundId: 's', roundOrdinal: 1 },
+        { type: 'Paused', reason: 'lifecycle', pauseReasons: ['lifecycle'] },
+      ],
+      [],
+    ],
+  ])('%s', (_name, events, expected) => {
+    expect(cuesFor(events)).toEqual(expected);
+  });
+
+  it('steps the solve down one scale step per tier', () => {
+    expect([1, 2, 3, 4].map(solveStep)).toEqual([0, 1, 2, 3]);
+    expect(cuesFor([solved(1), solved(2), solved(3)]).map((c) => c.params?.step)).toEqual([0, 1, 2]);
+  });
+});
+
+describe('createFeedbackDirector', () => {
+  it('plays each batch’s cues on the audio port, effects on by default', () => {
+    const { audio, calls } = recordingAudio();
+    const director = createFeedbackDirector({ audio, haptics: noHaptics });
+    expect(director.flags()).toEqual(DEFAULT_FEEDBACK_FLAGS);
+    expect(calls).toEqual([{ fn: 'setEnabled', channels: { effects: true, music: false } }]);
+    director.handle([solved(2)]);
+    director.handle([{ type: 'WrongTap', nodeId: node(1), ...tap }]);
+    expect(plays(calls)).toEqual([
+      { fn: 'play', cue: 'solve', params: { step: 1 } },
+      { fn: 'play', cue: 'wrongZen' },
+    ]);
+  });
+
+  it('plays nothing with effects off, and again once they are back on', () => {
+    const { audio, calls } = recordingAudio();
+    const director = createFeedbackDirector({ audio, haptics: noHaptics, flags: { effects: false, music: false } });
+    director.handle([solved(1), { type: 'SoftMiss', nodeId: node(1), ...tap }]);
+    expect(plays(calls)).toEqual([]);
+    director.setFlags({ effects: true, music: false });
+    expect(calls.at(-1)).toEqual({ fn: 'setEnabled', channels: { effects: true, music: false } });
+    director.handle([solved(1)]);
+    expect(plays(calls)).toHaveLength(1);
+    director.setFlags({ effects: false, music: true });
+    director.handle([solved(1)]);
+    expect(plays(calls)).toHaveLength(1);
+  });
+
+  it('suspends on a lifecycle pause and resumes on its return; other pause reasons leave the audio alone', () => {
+    const { audio, calls } = recordingAudio();
+    const director = createFeedbackDirector({ audio, haptics: noHaptics });
+    director.handle([{ type: 'Paused', reason: 'panel', pauseReasons: ['panel'] }]);
+    director.handle([{ type: 'Paused', reason: 'lifecycle', pauseReasons: ['panel', 'lifecycle'] }]);
+    director.handle([{ type: 'Resumed', reason: 'lifecycle', pauseReasons: ['panel'] }]);
+    director.unlock();
+    expect(calls.slice(1).map((c) => c.fn)).toEqual(['suspend', 'resume', 'unlock']);
+  });
+
+  it('parses stored flags, defaulting what is missing or malformed', () => {
+    expect(parseFeedbackFlags({ effects: false })).toEqual({ effects: false, music: false });
+    expect(parseFeedbackFlags('junk')).toEqual(DEFAULT_FEEDBACK_FLAGS);
+    expect(parseFeedbackFlags({ effects: 'no', music: true })).toEqual({ effects: true, music: true });
+  });
+});

@@ -1,7 +1,8 @@
-import { roundInspectorOptions } from '@numception/app';
+import { type FeedbackControls, roundInspectorOptions } from '@numception/app';
 import { useMemo, useState } from 'preact/hooks';
 import { PuzzleBlock } from './puzzle-block';
 import { RoundInspector } from './round-inspector';
+import { SoundBlock } from './sound-block';
 
 /**
  * Id of the panel region. Also the dev-panel marker that tools/check-flavours.mjs
@@ -43,9 +44,10 @@ const panelStyle = {
  * Dev panel: a toggle that opens the panel region. `tunings` maps every bundled
  * tuning's version to its JSON, as the composition root passed it in (AD-7); the
  * panel never loads tuning itself. The demo Puzzle block uses version 1 (else the
- * lowest); the round inspector can choose any of them.
+ * lowest); the round inspector can choose any of them. `feedback`, when passed,
+ * shows the sound toggles.
  */
-export function DevPanel({ tunings }: { tunings: Readonly<Record<string, unknown>> }) {
+export function DevPanel({ tunings, feedback }: { tunings: Readonly<Record<string, unknown>>; feedback?: FeedbackControls }) {
   const [open, setOpen] = useState(false);
   const options = useMemo(() => roundInspectorOptions(tunings), [tunings]);
   const demoTuning = options.defaultTuningVersion === undefined ? undefined : tunings[String(options.defaultTuningVersion)];
@@ -66,6 +68,7 @@ export function DevPanel({ tunings }: { tunings: Readonly<Record<string, unknown
           <h2 id={`${DEV_PANEL_ID}-heading`} style={{ margin: 0, fontSize: '14px' }}>
             Dev panel
           </h2>
+          {feedback !== undefined && <SoundBlock feedback={feedback} />}
           <PuzzleBlock tuning={demoTuning} />
           <RoundInspector tunings={tunings} options={options} />
         </section>

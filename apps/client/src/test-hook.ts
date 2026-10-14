@@ -3,6 +3,7 @@
 // it; tools/check-flavours.mjs checks the marker below is absent from prod builds.
 import { type Game, type GameEvent, type LayoutPoint, type PauseReason, type PlayVM, puzzleInView, type SaveWriterStats } from '@numception/app';
 import type { Renderer, RendererStats } from '@numception/render';
+import type { CueCall } from './recording-audio';
 
 /** The hook's global name; also the marker tools/check-flavours.mjs looks for. */
 export const TEST_HOOK_NAME = '__numception';
@@ -28,12 +29,18 @@ export type TestHook = {
    * view never carries the answer, so the specs read it here.
    */
   readonly roles: () => PuzzleRolesView | null;
+  /** Every sound cue the feedback director played since boot, oldest first (a copy). */
+  readonly cues: () => readonly CueCall[];
 };
 
 export type PuzzleRolesView = { readonly operator: 'add' | 'sub'; readonly a: number; readonly b: number; readonly c: number; readonly answerIndex: number };
 
 /** What the composition root hands the hook besides the game and renderer. */
-export type TestHookExtras = { readonly mountedView: PlayVM | null; readonly saves: () => SaveWriterStats | null };
+export type TestHookExtras = {
+  readonly mountedView: PlayVM | null;
+  readonly saves: () => SaveWriterStats | null;
+  readonly cues: () => readonly CueCall[];
+};
 
 /** Installs the hook on `window`. */
 export function installTestHook(game: Game, renderer: Renderer, extras: TestHookExtras): void {
@@ -49,6 +56,7 @@ export function installTestHook(game: Game, renderer: Renderer, extras: TestHook
     mountedView: () => structuredClone(extras.mountedView),
     pauseReasons: () => [...game.getState().pauseReasons],
     saves: () => extras.saves(),
+    cues: () => structuredClone([...extras.cues()]),
     roles: () => {
       const puzzle = puzzleInView(game.getState());
       return puzzle === undefined ? null : { operator: puzzle.spec.operator, ...puzzle.roles, answerIndex: puzzle.answerIndex };

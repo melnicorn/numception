@@ -1,10 +1,13 @@
 // Composition root: wires packages together; never imports Preact directly (AD-1).
 import {
+  createFeedbackDirector,
   createGame,
+  type FeedbackControls,
   createSaveWriter,
   createScheduler,
   loadSave,
   loadThemeCatalog,
+  noHaptics,
   parseTuning,
   type ThemeCatalog,
   saveAfterBatches,
@@ -12,14 +15,42 @@ import {
   type TuningConfig,
   type TuningsByVersion,
 } from '@numception/app';
-import { webLifecycle, webStorage } from '@numception/platform-web';
+import { webAudio, webFeedbackFlags, webLifecycle, webStorage } from '@numception/platform-web';
 import { createRenderer } from '@numception/render';
 import { mountGuideLine } from '@numception/ui';
+import { type CueCall, recordingAudio } from './recording-audio';
 import { webEntropy } from './web-entropy';
 
 const root = document.getElementById('app');
 if (!root) {
   throw new Error('Missing #app root element');
+}
+
+// Sound (FR-41, AD-16): procedural Web Audio behind the AudioPort, haptics a no-op
+// until entry 3, and the one FeedbackDirector mapping events to them, gated by the
+// effects and music flags (dev flags in localStorage for now; entry 4 moves them
+// into profile settings). Dev and playtest record every cue the director plays, for
+// the e2e specs (the test hook's `cues`).
+const cueLog: CueCall[] = [];
+const feedbackFlags = webFeedbackFlags(__NUMCEPTION_APP_ID__);
+const director = createFeedbackDirector({
+  audio: __NUMCEPTION_DEV_PANEL__ ? recordingAudio(webAudio(), cueLog) : webAudio(),
+  haptics: noHaptics,
+  flags: feedbackFlags.read(),
+});
+const feedbackControls: FeedbackControls = {
+  get: () => director.flags(),
+  set: (flags) => {
+    feedbackFlags.write(flags);
+    director.setFlags(flags);
+  },
+};
+// The audio output unlocks inside a user gesture: the first press anywhere (captured
+// before the canvas handles it, so a first-tap solve can sound). iOS counts the
+// release (touchend / pointerup) as the activating gesture for touch, so those
+// unlock too; once running, each call is a no-op.
+for (const type of ['pointerdown', 'pointerup', 'touchend'] as const) {
+  window.addEventListener(type, () => director.unlock(), { capture: true, passive: true });
 }
 
 /** How long boot waits for the save before playing in memory (no writes) instead. */
@@ -129,6 +160,8 @@ async function boot(el: HTMLElement, activeTuning: TuningConfig, tunings: Tuning
     },
   });
   game.subscribe((view) => renderer.render(view));
+  // The director hears each dispatch's events, the same synchronous batch the renderer sees (AD-2, AD-16).
+  game.subscribe((_view, events) => director.handle(events));
   // The guide-line slot, a band above the board (DOM, AD-13; index.html): core decides the line; ui shows it.
   const guideSlot = document.getElementById('guide');
   if (guideSlot !== null) mountGuideLine(guideSlot, game);
@@ -142,7 +175,7 @@ async function boot(el: HTMLElement, activeTuning: TuningConfig, tunings: Tuning
   // Test hook: dev and playtest only (the constant is a literal `false` in prod, AD-18).
   if (__NUMCEPTION_DEV_PANEL__) {
     void import('./test-hook').then(({ installTestHook }) =>
-      installTestHook(game, renderer, { mountedView, saves: () => writer?.stats() ?? null }),
+      installTestHook(game, renderer, { mountedView, saves: () => writer?.stats() ?? null, cues: () => cueLog }),
     );
   }
   try {
@@ -175,7 +208,7 @@ if (__NUMCEPTION_DEV_PANEL__) {
     }),
   );
   void Promise.all([import('@numception/ui/dev-panel'), loadTunings])
-    .then(([{ mountDevPanel }, entries]) => mountDevPanel(host, Object.fromEntries(entries)))
+    .then(([{ mountDevPanel }, entries]) => mountDevPanel(host, Object.fromEntries(entries), feedbackControls))
     .catch((error: unknown) => {
       console.warn('Dev panel failed to load', error);
       host.textContent = `Dev panel failed to load: ${error instanceof Error ? error.message : String(error)}`;
