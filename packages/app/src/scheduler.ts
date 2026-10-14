@@ -1,11 +1,7 @@
-import type { Command, GameEvent } from '@numception/core';
+import type { Command, GameEvent, PauseReason } from '@numception/core';
 import type { Game } from './game';
 
-/**
- * Why play time is paused (AD-17). A set, so sources never cancel each other.
- * Entry 4 adds the lifecycle wiring; `panel`, `gate` and `blur` arrive with their surfaces.
- */
-export type PauseReason = 'lifecycle' | 'panel' | 'gate' | 'blur';
+export type { PauseReason } from '@numception/core';
 
 /** The client's frame loop, e.g. `requestAnimationFrame` / `cancelAnimationFrame`. */
 export type FrameLoop = {
@@ -24,8 +20,11 @@ export type SchedulerOptions = {
 export type Scheduler = {
   /** Dispatches `command` after accounting the play time since the last Tick; returns its events. */
   readonly dispatch: (command: Command) => readonly GameEvent[];
-  readonly pause: (reason: PauseReason) => void;
-  readonly resume: (reason: PauseReason) => void;
+  /** Ticks the live time so far, then dispatches `Pause { reason }` (which completes any running beat). */
+  readonly pause: (reason: PauseReason) => readonly GameEvent[];
+  /** Dispatches `Resume { reason }`; play time runs again once core holds no pause reason. */
+  readonly resume: (reason: PauseReason) => readonly GameEvent[];
+  /** Core's `AppState.pauseReasons` (the one set, AD-17). */
   readonly pauseReasons: () => ReadonlySet<PauseReason>;
   /** Whether a frame is requested (a beat is running and nothing pauses). */
   readonly running: () => boolean;
@@ -35,7 +34,10 @@ export type Scheduler = {
 /**
  * Creates the scheduler (AD-17): the only reader of the monotonic clock, which it
  * turns into `Tick { elapsedMs }` commands, whole ms with the fractions carried,
- * while `pauseReasons` is empty. Paused time is never ticked.
+ * while core's `pauseReasons` is empty. Paused time is never ticked: the pause set
+ * lives in core (`Pause` / `Resume` commands), and the scheduler follows it after
+ * every dispatch, restarting its clock when the last reason clears (including
+ * the blur-clearing first tap).
  *
  * Choice (documented per the plan): the frame loop runs only while a beat is
  * running (`PlayVM.inputLocked`), so an idle board costs no frames and no
@@ -47,7 +49,8 @@ export type Scheduler = {
  */
 export function createScheduler(options: SchedulerOptions): Scheduler {
   const { game, now, frames } = options;
-  const pauses = new Set<PauseReason>();
+  const isPaused = () => game.getState().pauseReasons.length > 0;
+  let paused = isPaused();
   let last = now();
   let carry = 0;
   let handle: number | null = null;
@@ -55,7 +58,7 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
 
   /** Ticks the play time since the last flush (nothing while paused). */
   function flush(): void {
-    if (destroyed || pauses.size > 0) return;
+    if (destroyed || paused) return;
     const t = now();
     const elapsed = t - last + carry;
     last = t;
@@ -74,38 +77,41 @@ export function createScheduler(options: SchedulerOptions): Scheduler {
     sync();
   }
 
-  /** Requests a frame while a beat runs and nothing pauses. */
-  function sync(): void {
-    if (destroyed || pauses.size > 0 || handle !== null) return;
-    if (game.getView()?.inputLocked === true) handle = frames.request(frame);
-  }
-
   function stop(): void {
     if (handle !== null) frames.cancel(handle);
     handle = null;
   }
 
+  /** Follows core's pause set, then requests a frame while a beat runs and nothing pauses. */
+  function sync(): void {
+    if (destroyed) return;
+    const nowPaused = isPaused();
+    if (nowPaused !== paused) {
+      paused = nowPaused;
+      if (paused) stop();
+      else {
+        last = now();
+        carry = 0;
+      }
+    }
+    if (paused || handle !== null) return;
+    if (game.getView()?.inputLocked === true) handle = frames.request(frame);
+  }
+
   const unsubscribe = game.subscribe(() => sync());
 
+  function dispatch(command: Command): readonly GameEvent[] {
+    flush();
+    const events = game.dispatch(command);
+    sync();
+    return events;
+  }
+
   return {
-    dispatch(command) {
-      flush();
-      const events = game.dispatch(command);
-      sync();
-      return events;
-    },
-    pause(reason) {
-      if (pauses.size === 0) flush();
-      pauses.add(reason);
-      stop();
-    },
-    resume(reason) {
-      if (!pauses.delete(reason) || pauses.size > 0) return;
-      last = now();
-      carry = 0;
-      sync();
-    },
-    pauseReasons: () => new Set(pauses),
+    dispatch,
+    pause: (reason) => dispatch({ type: 'Pause', reason }),
+    resume: (reason) => dispatch({ type: 'Resume', reason }),
+    pauseReasons: () => new Set(game.getState().pauseReasons),
     running: () => handle !== null,
     destroy() {
       destroyed = true;

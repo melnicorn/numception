@@ -233,6 +233,9 @@ importers:
       '@numception/app':
         specifier: workspace:*
         version: link:../../packages/app
+      '@numception/platform-web':
+        specifier: workspace:*
+        version: link:../../packages/platform-web
       '@numception/render':
         specifier: workspace:*
         version: link:../../packages/render
@@ -277,7 +280,14 @@ importers:
 
   packages/platform-native: {}
 
-  packages/platform-web: {}
+  packages/platform-web:
+    dependencies:
+      '@numception/app':
+        specifier: workspace:*
+        version: link:../app
+      idb:
+        specifier: ~8.0.4
+        version: 8.0.4
 
   packages/render:
     dependencies:
@@ -2592,6 +2602,9 @@ packages:
 
   idb@7.1.1:
     resolution: {integrity: sha512-gchesWBzyvGHRO9W8tzUWFDycow5gwjvFKfyV9FF32Y7F50yZMp7mP+T2mJIWFx49zicqyC4uefHM17o6xKIVQ==}
+
+  idb@8.0.4:
+    resolution: {integrity: sha512-jd0ITCrN+Zah4J7R/Z2jnR3W7A4BXDAjmo62MwWuSjxCiueUAf7X5rbodEdidWzeknwXHmLpdZkoiiCppNi30Q==}
 
   ignore@7.0.11:
     resolution: {integrity: sha512-YChdK5txDjwGUvgR7oCJcLGkwi3LDh8Zx8tS7ndYciLEg/oOCL26VUBSUEtgS7EjiybcBqFxh5j0rAdDX7/bbg==}
@@ -6746,6 +6759,8 @@ snapshots:
       safer-buffer: 2.1.2
 
   idb@7.1.1: {}
+
+  idb@8.0.4: {}
 
   ignore@7.0.11: {}
 

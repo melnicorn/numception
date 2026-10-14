@@ -1,5 +1,15 @@
 // Composition root: wires packages together; never imports Preact directly (AD-1).
-import { createGame, createScheduler, parseTuning, tapCommand } from '@numception/app';
+import {
+  createGame,
+  createSaveWriter,
+  createScheduler,
+  loadSave,
+  parseTuning,
+  saveAfterBatches,
+  tapCommand,
+  type TuningConfig,
+} from '@numception/app';
+import { webLifecycle, webStorage } from '@numception/platform-web';
 import { createRenderer } from '@numception/render';
 import { webEntropy } from './web-entropy';
 
@@ -7,6 +17,9 @@ const root = document.getElementById('app');
 if (!root) {
   throw new Error('Missing #app root element');
 }
+
+/** How long boot waits for the save before playing in memory (no writes) instead. */
+const LOAD_TIMEOUT_MS = 2500;
 
 // The active tuning is bundled (offline works) and passed in explicitly (AD-7).
 const ACTIVE_TUNING_VERSION = '1';
@@ -18,15 +31,40 @@ if (!tuning.ok) {
   // Playtest and dev only in practice: a shipped tuning is validated in CI. Plain text, never a crash loop.
   root.textContent = `Numception could not start: ${tuning.error.message}`;
 } else {
+  void boot(root, tuning.value);
+}
+
+/**
+ * Loads the save (one IndexedDB read, AD-10) before anything is painted, so the
+ * first frame is the restored puzzle, or a new one when nothing is saved (FR-10).
+ */
+async function boot(el: HTMLElement, activeTuning: TuningConfig): Promise<void> {
+  const wait = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
+  // One database per flavour (AD-18); IndexedDB in the Capacitor shell too for the POC.
+  const storage = webStorage(__NUMCEPTION_APP_ID__);
+  const session = await loadSave(storage, wait, LOAD_TIMEOUT_MS);
+
   const now = () => Date.now();
-  const game = createGame({ tuning: tuning.value, entropy: webEntropy(now), now });
+  const game = createGame({ tuning: activeTuning, entropy: webEntropy(now), now });
   // The play clock (AD-17): Ticks from the frame loop while a beat runs, on the
   // monotonic clock; idle time is flushed before each command (see createScheduler).
+  // Its pause set is core's (`Pause` / `Resume`).
   const scheduler = createScheduler({
     game,
     now: () => performance.now(),
     frames: { request: (callback) => requestAnimationFrame(() => callback()), cancel: (handle) => cancelAnimationFrame(handle) },
   });
+  // Saves after every batch with a non-Tick command and on Pause (AD-10); never
+  // when the save came from a newer build or could not be read.
+  const writer = session.writable
+    ? createSaveWriter({
+        storage,
+        generation: session.generation,
+        wait,
+        onError: __NUMCEPTION_FLAVOUR__ === 'dev' ? (error) => console.warn('Save failed; retrying', error) : undefined,
+      })
+    : null;
+  if (writer !== null) saveAfterBatches(game, writer, (fn) => setTimeout(fn, 0));
   // One call stack per tap: render -> app -> core -> app -> render (AD-2). A tap on
   // a puzzle answers it; on an overview it enters the cell's puzzle (FR-9).
   const renderer = createRenderer({
@@ -37,16 +75,25 @@ if (!tuning.ok) {
     },
   });
   game.subscribe((view) => renderer.render(view));
-  scheduler.dispatch({ type: 'StartSession' });
+  scheduler.dispatch(session.restore === null ? { type: 'StartSession' } : { type: 'StartSession', restore: session.restore });
+  // A restore core refused (it never should: it parsed) falls back to a new session.
+  if (game.getView() === null) scheduler.dispatch({ type: 'StartSession' });
   renderer.render(game.getView());
+  // Backgrounding pauses play, completes any beat, saves, and veils the board until the next tap (AD-17).
+  webLifecycle().start((command) => (command.type === 'Pause' ? scheduler.pause(command.reason) : scheduler.resume(command.reason)));
+  const mountedView = game.getView();
   // Test hook: dev and playtest only (the constant is a literal `false` in prod, AD-18).
   if (__NUMCEPTION_DEV_PANEL__) {
-    void import('./test-hook').then(({ installTestHook }) => installTestHook(game, renderer));
+    void import('./test-hook').then(({ installTestHook }) =>
+      installTestHook(game, renderer, { mountedView, saves: () => writer?.stats() ?? null }),
+    );
   }
-  void renderer.mount(root).catch((error: unknown) => {
+  try {
+    await renderer.mount(el);
+  } catch (error: unknown) {
     console.warn('Renderer failed to start', error);
-    root.textContent = `Numception could not start: ${error instanceof Error ? error.message : String(error)}`;
-  });
+    el.textContent = `Numception could not start: ${error instanceof Error ? error.message : String(error)}`;
+  }
 }
 
 // Dev panel: dev and playtest only. The constant is a literal `false` in prod, so

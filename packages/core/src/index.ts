@@ -64,6 +64,7 @@ export { hitTest } from './layout/hit-test';
 export { focusOrder } from './layout/focus-order';
 
 export type { AppState, DeviceState } from './state/app-state';
+export { isPauseReason, PAUSE_REASONS, type PauseReason } from './state/pause-reason';
 export type { GameState, ProfileKind, ProfileSettings } from './state/game-state';
 export type { Round } from './state/round';
 export { type NodeKey, nodeKey } from './state/node-key';
@@ -77,6 +78,18 @@ export { createProfile } from './state/create-profile';
 export { step } from './state/step';
 export { nextRoundRequest } from './state/next-round-request';
 export { completePresentation } from './state/complete-presentation';
+
+export { SAVE_FORMAT_VERSION } from './save/save-format-version';
+export type { SaveDocument, SavePayload } from './save/save-document';
+export type { DeviceSettingsDocument } from './save/device-settings';
+export { canonicalJson } from './save/canonical-json';
+export { saveChecksum } from './save/save-checksum';
+export { MIGRATIONS, type SaveMigration, type SaveMigrations } from './save/migrations';
+export { serializeGame } from './save/serialize-game';
+export { type ParsedSave, parseSave, type SaveFormat } from './save/parse-save';
+export { serializeDeviceSettings } from './save/serialize-device-settings';
+export { parseDeviceSettings } from './save/parse-device-settings';
+export { checkGameState } from './save/check-game-state';
 
 export { KILN_TOKENS, type KilnTokens } from './view/kiln-tokens';
 export type { NodeCellRef } from './view/node-cell-ref';

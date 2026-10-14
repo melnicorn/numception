@@ -14,6 +14,8 @@ export type View = {
   operator: { polygon: Point[]; labelPoint: Point; symbol: string };
   solvedAnswer: number | null;
   inputLocked: boolean;
+  /** The board is veiled after a lifecycle pause (AD-17). */
+  blurred: boolean;
   presentation: {
     kind: string;
     progress: number;

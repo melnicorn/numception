@@ -4,7 +4,8 @@
 // `Math.`, `uniformFloat`, `Date.now`, `performance.now`, `new Date`, `crypto.` or
 // `Intl` in the non-test source of packages/core/src/generator/**,
 // packages/core/src/random/**, packages/core/src/rounds/** (the round planner),
-// packages/core/src/rules/** and packages/core/src/state/** (step and its reducers:
+// packages/core/src/rules/**, packages/core/src/save/** (save documents and checksum)
+// and packages/core/src/state/** (step and its reducers:
 // time and entropy only from the envelope, AD-22), printing file:line for each.
 // core/view and core/presentation are left out: they use float maths (progress,
 // the Calm duration scale) and read no clock either.
@@ -24,6 +25,7 @@ export const PURE_DIRS = [
   'packages/core/src/random',
   'packages/core/src/rounds',
   'packages/core/src/rules',
+  'packages/core/src/save',
   'packages/core/src/state',
 ];
 

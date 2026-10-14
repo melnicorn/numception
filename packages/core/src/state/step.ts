@@ -2,7 +2,10 @@ import type { TuningConfig } from '../tuning/tuning-config';
 import type { AppState } from './app-state';
 import { checkContext } from './check-context';
 import type { Envelope } from './envelope';
+import { gateInput } from './gate-input';
 import { reduceEnterPuzzle } from './reduce-enter-puzzle';
+import { reducePause } from './reduce-pause';
+import { reduceResume } from './reduce-resume';
 import { reduceStartSession } from './reduce-start-session';
 import { reduceTapCell } from './reduce-tap-cell';
 import { reduceTick } from './reduce-tick';
@@ -16,6 +19,9 @@ import type { StepResult } from './step-result';
  * time only from `Tick` (AD-17), and the tuning is passed in (AD-7). Never throws
  * on game input: a malformed envelope or a command that cannot run returns
  * `state` unchanged with a `CommandRejected`.
+ *
+ * While `pauseReasons` holds anything (AD-17), `Tick` is ignored and input goes
+ * through `gateInput` (dropped, or the blur-clearing first tap).
  */
 export function step(state: AppState, envelope: Envelope, tuning: TuningConfig): StepResult {
   const command: unknown = typeof envelope === 'object' && envelope !== null ? envelope.command : undefined;
@@ -27,19 +33,23 @@ export function step(state: AppState, envelope: Envelope, tuning: TuningConfig):
   const { ctx } = envelope;
   switch (type) {
     case 'StartSession':
-      return reduceStartSession(state, ctx, tuning);
+      return reduceStartSession(state, ctx, tuning, fields.restore);
     case 'TapCell': {
       if (typeof fields.nodeId !== 'object' || fields.nodeId === null || typeof fields.cellIndex !== 'number') {
         return reject(state, name, { code: 'invalid-command', message: 'TapCell needs a nodeId and a numeric cellIndex' });
       }
-      return reduceTapCell(state, envelope.command as Extract<Envelope['command'], { type: 'TapCell' }>, ctx, tuning);
+      return gateInput(state, name) ?? reduceTapCell(state, envelope.command as Extract<Envelope['command'], { type: 'TapCell' }>, ctx, tuning);
     }
     case 'EnterPuzzle':
-      return reduceEnterPuzzle(state, fields.nodeId, tuning);
+      return gateInput(state, name) ?? reduceEnterPuzzle(state, fields.nodeId, tuning);
     case 'ZoomOut':
-      return reduceZoomOut(state);
+      return gateInput(state, name) ?? reduceZoomOut(state);
     case 'Tick':
       return reduceTick(state, fields.elapsedMs, tuning);
+    case 'Pause':
+      return reducePause(state, fields.reason, tuning);
+    case 'Resume':
+      return reduceResume(state, fields.reason);
     default:
       return reject(state, name, { code: 'invalid-command', message: `unknown command ${name}` });
   }

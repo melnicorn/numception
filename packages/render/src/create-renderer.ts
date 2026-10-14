@@ -37,6 +37,12 @@ const PRESS_RADIUS_PX = 14;
 const PRESS_ALPHA = 0.35;
 const PRESS_MS = 220;
 
+/**
+ * The veil over a blurred board (AD-17): the surface colour at this alpha, so the
+ * puzzle shows only as a soft ghost until the first tap lifts it.
+ */
+export const BLUR_VEIL_ALPHA = 0.86;
+
 /** The surface drawn before the first view (Kiln surface). */
 const DEFAULT_SURFACE = '#ECE3D7';
 
@@ -191,6 +197,8 @@ export function createRenderer(options: RendererOptions): Renderer {
       paintContext(vm, rest, 1, false);
       paintView(pool, vm, rest, rest, settled(vm, 1), width);
     }
+    // After a lifecycle pause (AD-17): a veil over the whole board until the first tap.
+    if (vm.blurred) pool.takeGraphics().rect(0, 0, width, height).fill({ color: hex(theme.surface), alpha: BLUR_VEIL_ALPHA });
     pool.end();
   }
 

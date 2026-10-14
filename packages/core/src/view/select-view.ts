@@ -21,7 +21,8 @@ function timing(p: Presentation, clockMs: number): NestedPresentation {
  *
  * `inputLocked` and `presentation` come from the round's timeline at the profile's
  * Tick time; `presentation` also carries what the running beat draws (`beatViews`:
- * the tapped answer, `from` / `to` views and the camera). Null before a round
+ * the tapped answer, `from` / `to` views and the camera). `blurred` is the `blur`
+ * pause reason (AD-17). Null before a round
  * exists. `tuning` is the active config (AD-13's signature); this build reads
  * nothing from it yet.
  */
@@ -37,5 +38,5 @@ export function selectView(state: AppState, _tuning: TuningConfig): PlayVM | nul
   if (view === undefined || !shapeId.ok) return null;
   const puzzle = roundPuzzle(round, nodeId);
   const extra = beatViews(round, view, SHAPES[shapeId.value], beat, puzzle?.answerIndex ?? null);
-  return { ...view, presentation: { ...view.presentation, ...extra } };
+  return { ...view, blurred: state.pauseReasons.includes('blur'), presentation: { ...view.presentation, ...extra } };
 }

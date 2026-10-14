@@ -11,6 +11,7 @@ const vm = {
   operator: { polygon: [], labelPoint: [0.5, 0.5], symbol: '+' },
   solvedAnswer: null,
   inputLocked: false,
+  blurred: false,
   presentation: { kind: 'idle', progress: 1, durationMs: 0, transitionId: 'none', cellIndex: null },
   theme: { themeId: 'kiln' },
 } as unknown as PlayVM;
@@ -28,6 +29,8 @@ describe('drawKey', () => {
     expect(drawKey({ ...solving(0.4), presentation: { ...solving(0.4).presentation, transitionId: 'other' } })).not.toBe(drawKey(solving(0.4)));
     expect(drawKey({ ...vm, nodeId: { tier: 1, index: 1 } })).not.toBe(drawKey(vm));
     expect(drawKey({ ...vm, kind: 'overview' })).not.toBe(drawKey(vm));
+    // The blur veil (AD-17) going on or off redraws.
+    expect(drawKey({ ...vm, blurred: true })).not.toBe(drawKey(vm));
     expect(drawKey(null)).not.toBe(drawKey(vm));
   });
 

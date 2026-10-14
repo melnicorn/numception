@@ -1,6 +1,19 @@
 // Imperative shell: store, dispatch, scheduler, pipelines and ports (AD-2).
 export { createGame, type EntropySource, type Game, type GameListener, type GameOptions } from './game';
 export { createScheduler, type FrameLoop, type PauseReason, type Scheduler, type SchedulerOptions } from './scheduler';
+export type { DeviceLoad, ProfileLoad, StorageDriver, StoragePort, StoreName } from './storage-port';
+export { createSlotStorage, DEVICE_KEY, slotKey } from './slot-storage';
+export {
+  createSaveWriter,
+  FIRST_BACKOFF_MS,
+  MAX_BACKOFF_MS,
+  saveAfterBatches,
+  type SaveWriter,
+  type SaveWriterOptions,
+  type SaveWriterStats,
+} from './save-writer';
+export { type LoadedSession, loadSave } from './load-save';
+export type { LifecycleCommand, LifecyclePort } from './lifecycle-port';
 export {
   DEMO_NODE_ID,
   DEMO_SEED,

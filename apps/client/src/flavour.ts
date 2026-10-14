@@ -5,6 +5,8 @@
 declare global {
   /** The flavour this bundle was built for. */
   const __NUMCEPTION_FLAVOUR__: 'dev' | 'playtest' | 'prod';
+  /** The flavour's appId (flavours.ts); namespaces its saves (AD-18). */
+  const __NUMCEPTION_APP_ID__: string;
   /** True in dev and playtest builds; literal `false` in prod. */
   const __NUMCEPTION_DEV_PANEL__: boolean;
   /** True in PWA builds (playtest, prod); literal `false` in dev, which has no service worker. */

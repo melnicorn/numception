@@ -114,21 +114,54 @@ describe('createScheduler', () => {
     h.frame(100);
     expect(h.ticks).toEqual([100]);
     h.advance(50);
-    h.scheduler.pause('lifecycle');
-    expect(h.ticks).toEqual([100, 50]);
     h.scheduler.pause('panel');
-    expect([...h.scheduler.pauseReasons()].sort()).toEqual(['lifecycle', 'panel']);
-    expect(h.hasFrame()).toBe(false);
-    h.advance(60_000);
-    h.scheduler.resume('lifecycle');
+    // The live 50 ms is ticked first; the pause then completes the running beat.
+    expect(h.ticks).toEqual([100, 50]);
+    expect(h.game.getView()?.inputLocked).toBe(false);
+    h.scheduler.pause('gate');
+    expect([...h.scheduler.pauseReasons()]).toEqual(['gate', 'panel']);
     expect(h.hasFrame()).toBe(false);
     h.advance(60_000);
     h.scheduler.resume('panel');
+    h.advance(60_000);
+    h.scheduler.resume('gate');
     expect(h.scheduler.pauseReasons().size).toBe(0);
-    expect(h.hasFrame()).toBe(true);
-    h.frame(20);
+    h.advance(20);
+    const events = h.scheduler.dispatch(tapAnswerOf(h));
     // Only live time was ticked: none of the two paused minutes.
     expect(h.ticks).toEqual([100, 50, 20]);
+    expect(events).toEqual([expect.objectContaining({ type: 'PuzzleSolved', responseMs: 20 })]);
+    expect(h.hasFrame()).toBe(true);
+  });
+
+  it('a lifecycle pause leaves blur after Resume: no Ticks until the first tap clears it, and that tap only unblurs', () => {
+    const h = harness();
+    h.scheduler.dispatch({ type: 'StartSession' });
+    h.advance(300);
+    h.scheduler.pause('lifecycle');
+    expect(h.ticks).toEqual([300]);
+    h.advance(10_000);
+    h.scheduler.resume('lifecycle');
+    expect([...h.scheduler.pauseReasons()]).toEqual(['blur']);
+    expect(h.game.getView()?.blurred).toBe(true);
+    h.advance(5_000);
+    expect(h.scheduler.dispatch(tapAnswerOf(h))).toEqual([{ type: 'BlurCleared' }]);
+    expect(h.ticks).toEqual([300]);
+    expect(h.game.getView()?.blurred).toBe(false);
+    h.advance(40);
+    expect(h.scheduler.dispatch(tapAnswerOf(h))).toEqual([expect.objectContaining({ type: 'PuzzleSolved', responseMs: 340 })]);
+    expect(h.ticks).toEqual([300, 40]);
+  });
+
+  it('a pause mid-beat stops the frames and completes the beat', () => {
+    const h = harness();
+    h.scheduler.dispatch({ type: 'StartSession' });
+    h.scheduler.dispatch(tapAnswerOf(h));
+    expect(h.scheduler.running()).toBe(true);
+    h.scheduler.pause('lifecycle');
+    expect(h.scheduler.running()).toBe(false);
+    expect(h.hasFrame()).toBe(false);
+    expect(h.game.getView()).toMatchObject({ inputLocked: false, nodeId: { tier: 1, index: 1 }, blurred: true });
   });
 
   it('stops after destroy', () => {

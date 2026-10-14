@@ -1,9 +1,12 @@
 import type { TuningConfig } from '../tuning/tuning-config';
 import type { AppState } from './app-state';
 import type { CommandContext } from './command-context';
+import { checkGameState } from '../save/check-game-state';
 import { idleAt } from './beat';
+import { completePresentation } from './complete-presentation';
 import { createProfile } from './create-profile';
 import type { GameEvent } from './game-event';
+import type { GameState } from './game-state';
 import { reject } from './reject';
 import { startRound } from './start-round';
 import type { StepResult } from './step-result';
@@ -15,8 +18,23 @@ import { withGame } from './with-game';
  * profile has no active round (id: the next unused entropy id). A profile with an
  * active round keeps it. A new round opens idle, its first puzzle shown from now
  * (the first interactive frame is a puzzle).
+ *
+ * With `restore` (a game loaded from a save, FR-10), that game is stored as the
+ * active profile first, so its saved round, puzzle, solved cells, tier and view
+ * continue: nothing new is created when it has an active round. A beat it was
+ * saved in is completed to its end state (AD-20), so the first frame is the
+ * puzzle, idle. A `restore` that is not a loadable game is rejected.
  */
-export function reduceStartSession(state: AppState, ctx: CommandContext, tuning: TuningConfig): StepResult {
+export function reduceStartSession(state: AppState, ctx: CommandContext, tuning: TuningConfig, restore?: unknown): StepResult {
+  if (restore !== undefined) {
+    const bad = checkGameState(restore);
+    if (bad !== undefined) return reject(state, 'StartSession', { code: 'invalid-command', message: `restore: ${bad.message}` });
+    const restored = withGame(state, restore as GameState);
+    const completed = completePresentation(restored, tuning);
+    const started = reduceStartSession(completed.state, ctx, tuning);
+    if (started.events.some((e) => e.type === 'CommandRejected')) return { state, events: started.events };
+    return { state: started.state, events: [...completed.events, ...started.events] };
+  }
   const events: GameEvent[] = [];
   const existing = state.activeProfileId === null ? undefined : state.profiles[state.activeProfileId];
   const game = existing ?? createProfile('kid', ctx);

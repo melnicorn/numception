@@ -17,8 +17,8 @@ import { isoDates } from './iso-dates';
 /** Fresh entropy for one dispatch (AD-22): two ULIDs and two uint32 seeds, e.g. backed by `crypto.getRandomValues`. */
 export type EntropySource = () => CommandContext['entropy'];
 
-/** Called synchronously after every dispatch with the new view and the events that produced it. */
-export type GameListener = (view: PlayVM | null, events: readonly GameEvent[]) => void;
+/** Called synchronously after every dispatch with the new view, the events that produced it, and the command dispatched. */
+export type GameListener = (view: PlayVM | null, events: readonly GameEvent[], command: Command) => void;
 
 /** What the composition root injects: the active tuning, the entropy source and the clock (app reads no clock itself). */
 export type GameOptions = {
@@ -32,6 +32,8 @@ export type Game = {
   /** Builds the envelope, runs `step` then `selectView`, and notifies listeners, all in this call stack. Returns the events. */
   readonly dispatch: (command: Command) => readonly GameEvent[];
   readonly getView: () => PlayVM | null;
+  /** The whole state (AD-21), for the save writer and the scheduler's pause reasons. */
+  readonly getState: () => AppState;
   /** Adds a listener; returns its removal. */
   readonly subscribe: (listener: GameListener) => () => void;
   /** The cell under `point` (unit-box coordinates) in the current view, or null (see `hitTestView`). */
@@ -55,10 +57,11 @@ export function createGame(options: GameOptions): Game {
       const result = step(state, { command, ctx: context() }, tuning);
       state = result.state;
       view = selectView(state, tuning);
-      for (const listener of [...listeners]) listener(view, result.events);
+      for (const listener of [...listeners]) listener(view, result.events, command);
       return result.events;
     },
     getView: () => view,
+    getState: () => state,
     subscribe(listener) {
       listeners.add(listener);
       return () => {

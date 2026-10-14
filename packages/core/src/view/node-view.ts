@@ -96,6 +96,7 @@ function baseView(
     operator: { polygon: layout.operator.polygon, labelPoint: layout.operator.labelPoint, symbol: SYMBOLS[round.plan.operator] },
     solvedAnswer: !asContext && isNodeSolved(round, node) ? puzzle.answerIndex : null,
     inputLocked,
+    blurred: false,
     presentation: nested(presentation),
     theme: KILN_TOKENS,
   };
@@ -130,6 +131,7 @@ export function solvedTopView(puzzle: Puzzle, presentation: NestedPresentation):
     operator: { polygon: layout.operator.polygon, labelPoint: layout.operator.labelPoint, symbol: SYMBOLS[puzzle.spec.operator] },
     solvedAnswer: puzzle.answerIndex,
     inputLocked: true,
+    blurred: false,
     presentation: nested(presentation),
     theme: KILN_TOKENS,
   };

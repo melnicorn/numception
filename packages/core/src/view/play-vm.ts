@@ -77,6 +77,8 @@ export type PresentationVM = {
  *   children as cells; tap an enterable one to enter it, `EnterPuzzle`). Both use
  *   the same geometry.
  * - `inputLocked`: a beat is running; taps are dropped, so `hitTest` is null.
+ * - `blurred`: the board is veiled after a lifecycle pause (AD-17); render draws a
+ *   soft veil over it. Taps still hit-test: the first one only lifts the veil.
  */
 export type PlayVM = {
   readonly nodeId: NodeId;
@@ -92,6 +94,7 @@ export type PlayVM = {
    */
   readonly solvedAnswer: number | null;
   readonly inputLocked: boolean;
+  readonly blurred: boolean;
   readonly presentation: PresentationVM;
   readonly theme: KilnTokens;
   /** The parent drawn around the node in view (`PlayContextVM`); absent for the round's top. */

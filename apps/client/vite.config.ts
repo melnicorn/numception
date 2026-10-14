@@ -91,6 +91,7 @@ export default defineConfig({
   // literal `false` in prod, so the guarded dev-panel import is dropped entirely.
   define: {
     __NUMCEPTION_FLAVOUR__: JSON.stringify(flavour.name),
+    __NUMCEPTION_APP_ID__: JSON.stringify(flavour.appId),
     __NUMCEPTION_DEV_PANEL__: JSON.stringify(flavour.devPanel),
     __NUMCEPTION_PWA__: JSON.stringify(flavour.pwa),
   },

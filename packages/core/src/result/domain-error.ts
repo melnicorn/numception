@@ -14,7 +14,10 @@ export type DomainError =
   | { readonly code: 'invalid-bucket-id'; readonly message: string }
   | { readonly code: 'unsupported-version'; readonly message: string }
   | { readonly code: 'invalid-shape'; readonly message: string }
-  | { readonly code: 'invalid-command'; readonly message: string };
+  | { readonly code: 'invalid-command'; readonly message: string }
+  | { readonly code: 'invalid-save'; readonly message: string }
+  | { readonly code: 'save-checksum-mismatch'; readonly message: string }
+  | { readonly code: 'save-too-new'; readonly message: string };
 
 /** Every `DomainError` code. */
 export type DomainErrorCode = DomainError['code'];
