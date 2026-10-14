@@ -45,3 +45,10 @@ export type { BucketFeatures } from './difficulty/bucket-features';
 export { bucketOf } from './difficulty/bucket-of';
 export { formatBucketId } from './difficulty/format-bucket-id';
 export { parseBucketId } from './difficulty/parse-bucket-id';
+
+export { SHAPE_IDS, type ShapeId } from './layout/shape-id';
+export type { CellGeometry, LayoutPoint, LayoutPolygon, OperatorGeometry, ShapeLayout } from './layout/shape-layout';
+export { SHAPES } from './layout/shapes/shapes';
+export { defaultShapeFor } from './layout/default-shape-for';
+export { hitTest } from './layout/hit-test';
+export { focusOrder } from './layout/focus-order';
