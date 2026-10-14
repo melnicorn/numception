@@ -8,7 +8,17 @@ export { type Rational, rational, serialiseRational } from './numbers/rational';
 export { displayValue } from './numbers/display-value';
 
 export { MAX_TUNING_VALUE } from './tuning/max-tuning-value';
-export { MAX_ATTEMPTS, MAX_N, MIN_N, type TuningBand, type TuningBandRange, type TuningConfig, TuningConfigSchema } from './tuning/tuning-config';
+export {
+  MAX_ATTEMPTS,
+  MAX_N,
+  MAX_PRESENTATION_MS,
+  MIN_N,
+  type TuningBand,
+  type TuningBandRange,
+  type TuningConfig,
+  TuningConfigSchema,
+  type TuningPresentation,
+} from './tuning/tuning-config';
 export { parseTuning } from './tuning/parse-tuning';
 
 export type { NodeId } from './generator/node-id';
@@ -31,7 +41,12 @@ export {
   type RoundTypeName,
 } from './rounds/round-plan';
 export { childrenOf, nodeCount, parentOf, tierWidth, topNodeId } from './rounds/round-node-id';
-export { planRound, realiseRoundNode, ROUND_TYPES, type RoundType } from './rounds/round-types';
+export { type IsSolved, planRound, realiseRoundNode, ROUND_TYPES, type RoundType, roundTypeOf, type SolveOutcome } from './rounds/round-types';
+export { playOrder } from './rounds/play-order';
+export { pathFromTop } from './rounds/path-from-top';
+
+export type { Presentation, PresentationKind } from './presentation/presentation';
+export { beatDuration } from './presentation/beat-duration';
 
 export type { TapOutcome } from './rules/tap-outcome';
 export { classifyTap } from './rules/classify-tap';
@@ -60,9 +75,12 @@ export type { StepResult } from './state/step-result';
 export { initialAppState } from './state/initial-app-state';
 export { createProfile } from './state/create-profile';
 export { step } from './state/step';
+export { nextRoundRequest } from './state/next-round-request';
+export { completePresentation } from './state/complete-presentation';
 
 export { KILN_TOKENS, type KilnTokens } from './view/kiln-tokens';
 export type { NodeCellRef } from './view/node-cell-ref';
-export type { PlayCellVM, PlayVM } from './view/play-vm';
+export type { PlayCellVM, PlayVM, PresentationVM } from './view/play-vm';
+export { tapCommand } from './view/tap-command';
 export { selectView } from './view/select-view';
 export { hitTestView } from './view/hit-test-view';

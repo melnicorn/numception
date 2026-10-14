@@ -5,6 +5,7 @@ import { hitTestView, type LayoutPoint, type NodeCellRef, type PlayVM } from '@n
 // environment loader would each fetch one).
 import 'pixi.js/browser';
 import { Container, Graphics, Text, Ticker, WebGLRenderer } from 'pixi.js';
+import { drawKey } from './draw-key';
 import { isPrimaryPress } from './is-primary-press';
 import { numeralSize } from './numeral-size';
 import type { RenderPort } from './render-port';
@@ -50,6 +51,7 @@ export function createRenderer(options: RendererOptions): Renderer {
   let vm: PlayVM | null = null;
   let transform: ViewTransform | undefined;
   let destroyed = false;
+  let drawnKey: string | undefined;
   const activePointers = new Set<number>();
 
   function size(): { width: number; height: number } {
@@ -134,7 +136,8 @@ export function createRenderer(options: RendererOptions): Renderer {
   }
 
   function hitTest(point: LayoutPoint): NodeCellRef | null {
-    if (vm === null || transform === undefined) return null;
+    // While a beat runs (AD-14) taps resolve to nothing; the press acknowledgement still draws.
+    if (vm === null || vm.inputLocked || transform === undefined) return null;
     return hitTestView(vm, toUnit(transform, point), EDGE_TOLERANCE_PX / transform.scale);
   }
 
@@ -204,7 +207,12 @@ export function createRenderer(options: RendererOptions): Renderer {
       ticker.start();
     },
     render(next) {
+      const key = drawKey(next);
       vm = next;
+      // Beats re-render every frame with a new progress; until transitions are drawn
+      // (entry 3) the scene only changes when what is drawn does.
+      if (key === drawnKey) return;
+      drawnKey = key;
       draw();
     },
     hitTest,

@@ -16,6 +16,8 @@ export function createProfile(kind: ProfileKind, ctx: CommandContext): GameState
     rootSeed: ctx.entropy.seed32[0] >>> 0,
     settings: { ...KID_DEFAULTS },
     roundOrdinal: 0,
+    clockMs: 0,
+    firstCollapseSeen: false,
     rounds: { activeRoundId: null, byId: {} },
   };
 }

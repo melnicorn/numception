@@ -32,6 +32,7 @@ const tunings = {
       distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
       retries: { maxAttempts: 20 },
     },
+    presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25 },
   },
 };
 

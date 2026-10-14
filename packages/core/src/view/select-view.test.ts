@@ -3,6 +3,8 @@ import type { Puzzle } from '../generator/puzzle';
 import { SHAPES } from '../layout/shapes/shapes';
 import type { AppState } from '../state/app-state';
 import type { CommandContext } from '../state/command-context';
+import type { Command } from '../state/command';
+import { completePresentation } from '../state/complete-presentation';
 import { initialAppState } from '../state/initial-app-state';
 import type { Round } from '../state/round';
 import { roundPuzzle } from '../state/round-puzzle';
@@ -11,6 +13,7 @@ import { parseTuning } from '../tuning/parse-tuning';
 import { hitTestView } from './hit-test-view';
 import { KILN_TOKENS } from './kiln-tokens';
 import { selectView } from './select-view';
+import { tapCommand } from './tap-command';
 
 const parsed = parseTuning({
   kind: 'TuningConfig',
@@ -23,6 +26,7 @@ const parsed = parseTuning({
     distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
     retries: { maxAttempts: 100 },
   },
+  presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25 },
 });
 if (!parsed.ok) throw new Error(parsed.error.message);
 const tuning = parsed.value;
@@ -47,6 +51,18 @@ function puzzleInView(state: AppState): Puzzle {
 
 const start = step(initialAppState(), { command: { type: 'StartSession' }, ctx: ctx(0) }, tuning).state;
 
+function run(state: AppState, command: Command, k: number): AppState {
+  return step(state, { command, ctx: ctx(k) }, tuning).state;
+}
+
+/** Taps the answer in view, then ticks through every beat. */
+function solveAndSettle(state: AppState, k: number): AppState {
+  const p = puzzleInView(state);
+  let s = run(state, { type: 'TapCell', nodeId: p.nodeId, cellIndex: p.answerIndex }, k);
+  s = completePresentation(s, tuning).state;
+  return s;
+}
+
 describe('selectView', () => {
   it('is null before a round exists', () => {
     expect(selectView(initialAppState(), tuning)).toBeNull();
@@ -60,7 +76,9 @@ describe('selectView', () => {
     expect(vm.nodeId).toEqual({ tier: 1, index: 0 });
     expect(vm.shapeId).toBe('3A');
     expect(vm.aspect).toBe(SHAPES['3A'].aspect);
+    expect(vm.kind).toBe('puzzle');
     expect(vm.inputLocked).toBe(false);
+    expect(vm.presentation).toEqual({ kind: 'idle', progress: 1, durationMs: 0, transitionId: 'none' });
     expect(vm.theme).toBe(KILN_TOKENS);
     expect(vm.operator.symbol).toBe('+');
     expect(vm.operator.polygon).toEqual(SHAPES['3A'].operator.polygon);
@@ -74,24 +92,73 @@ describe('selectView', () => {
         inscribedRadius: geometry?.inscribedRadius,
         text: String(puzzle.cells[i]?.n),
         state: 'unsolved',
+        enters: null,
       });
     });
   });
 
   it("shows the tier-2 puzzle with each solved child's answer, as solved cells", () => {
     let state = start;
-    for (let k = 1; k <= 3; k += 1) {
-      const p = puzzleInView(state);
-      state = step(state, { command: { type: 'TapCell', nodeId: p.nodeId, cellIndex: p.answerIndex }, ctx: ctx(k) }, tuning).state;
-    }
+    for (let k = 1; k <= 3; k += 1) state = solveAndSettle(state, k);
     const vm = selectView(state, tuning);
     expect(vm?.nodeId).toEqual({ tier: 2, index: 0 });
+    expect(vm?.kind).toBe('puzzle');
     const r = round(state);
     vm?.cells.forEach((cell, j) => {
       const leaf = r.puzzles[`1.${j}`] as Puzzle;
       expect(cell.text).toBe(String(leaf.cells[leaf.answerIndex]?.n));
       expect(cell.state).toBe('solved');
     });
+  });
+});
+
+describe('selectView: overview and presentation', () => {
+  it('shows the parent as an overview after ZoomOut: solved cells show answers, unsolved ones no numeral and enter their leaf', () => {
+    const solvedOne = solveAndSettle(start, 1);
+    const state = run(solvedOne, { type: 'ZoomOut' }, 2);
+    const vm = selectView(state, tuning);
+    expect(vm?.kind).toBe('overview');
+    expect(vm?.nodeId).toEqual({ tier: 2, index: 0 });
+    const leaf = round(state).puzzles['1.0'] as Puzzle;
+    expect(vm?.cells.map((c) => ({ text: c.text, state: c.state, enters: c.enters }))).toEqual([
+      { text: String(leaf.cells[leaf.answerIndex]?.n), state: 'solved', enters: null },
+      { text: '', state: 'unsolved', enters: { tier: 1, index: 1 } },
+      { text: '', state: 'unsolved', enters: { tier: 1, index: 2 } },
+    ]);
+    // Same geometry as the puzzle view.
+    expect(vm?.cells.map((c) => c.polygon)).toEqual(SHAPES['3A'].cells.map((c) => c.polygon));
+  });
+
+  it('locks input during a beat and reports its progress from Tick time', () => {
+    const p = puzzleInView(start);
+    let state = run(start, { type: 'TapCell', nodeId: p.nodeId, cellIndex: p.answerIndex }, 1);
+    let vm = selectView(state, tuning);
+    expect(vm?.inputLocked).toBe(true);
+    expect(vm?.presentation).toEqual({ kind: 'solve', progress: 0, durationMs: 475, transitionId: 'default' });
+    state = run(state, { type: 'Tick', elapsedMs: 190 }, 2);
+    vm = selectView(state, tuning);
+    expect(vm?.presentation.progress).toBeCloseTo(0.4);
+    if (vm === null) throw new Error('no view');
+    expect(hitTestView(vm, vm.cells[0]?.labelPoint ?? [0, 0], 0.01)).toBeNull();
+    state = run(state, { type: 'Tick', elapsedMs: 285 }, 3);
+    vm = selectView(state, tuning);
+    expect(vm?.presentation).toMatchObject({ kind: 'advance', progress: 0, durationMs: 500 });
+    expect(vm?.nodeId).toEqual({ tier: 1, index: 1 });
+  });
+});
+
+describe('tapCommand', () => {
+  it('maps a puzzle cell to TapCell and an enterable overview cell to EnterPuzzle; nothing while locked or for another view', () => {
+    const vm = selectView(start, tuning);
+    if (vm === null) throw new Error('no view');
+    expect(tapCommand(vm, { nodeId: vm.nodeId, cellIndex: 2 })).toEqual({ type: 'TapCell', nodeId: vm.nodeId, cellIndex: 2 });
+    expect(tapCommand({ ...vm, inputLocked: true }, { nodeId: vm.nodeId, cellIndex: 2 })).toBeNull();
+    expect(tapCommand(vm, { nodeId: { tier: 1, index: 1 }, cellIndex: 2 })).toBeNull();
+
+    const overview = selectView(run(solveAndSettle(start, 1), { type: 'ZoomOut' }, 2), tuning);
+    if (overview === null) throw new Error('no view');
+    expect(tapCommand(overview, { nodeId: overview.nodeId, cellIndex: 0 })).toBeNull();
+    expect(tapCommand(overview, { nodeId: overview.nodeId, cellIndex: 2 })).toEqual({ type: 'EnterPuzzle', nodeId: { tier: 1, index: 2 } });
   });
 });
 

@@ -4,15 +4,26 @@ import { expect, type Page } from '@playwright/test';
 // the hook is absent from prod (tools/check-flavours.mjs).
 
 export type Point = [number, number];
-export type CellView = { index: number; labelPoint: Point; text: string; state: 'unsolved' | 'solved' };
+export type NodeId = { tier: number; index: number };
+export type CellView = { index: number; labelPoint: Point; text: string; state: 'unsolved' | 'solved'; enters: NodeId | null };
 export type View = {
-  nodeId: { tier: number; index: number };
+  nodeId: NodeId;
+  kind: 'puzzle' | 'overview';
   shapeId: string;
   cells: CellView[];
   operator: { labelPoint: Point; symbol: string };
+  inputLocked: boolean;
+  presentation: { kind: string; progress: number; durationMs: number };
 };
 
-type Hook = { view(): View | null; pagePoint(p: Point): Point | null; events(): { type: string }[] };
+export type HookEvent = { type: string; nodeId?: NodeId; roundOrdinal?: number };
+
+type Hook = { view(): View | null; pagePoint(p: Point): Point | null; events(): HookEvent[] };
+
+/** Every event the hook has seen, in full. */
+export async function eventLog(page: Page): Promise<HookEvent[]> {
+  return page.evaluate(() => (window as unknown as { __numception: Hook }).__numception.events());
+}
 
 /** Waits until the canvas is mounted and the hook shows a puzzle; returns its view. */
 export async function waitForPuzzle(page: Page): Promise<View> {
@@ -55,10 +66,23 @@ export async function solvedCount(page: Page): Promise<number> {
   return (await events(page)).filter((t) => t === 'PuzzleSolved').length;
 }
 
-/** Taps the answer of the puzzle in view, waits for core's `PuzzleSolved`, and returns the next view. */
-export async function solve(page: Page): Promise<View> {
-  const before = await solvedCount(page);
-  await clickUnit(page, answerCell(await view(page)).labelPoint);
-  await expect.poll(() => solvedCount(page)).toBe(before + 1);
+/** Waits out the running presentation beats (the scheduler's Ticks end them) and returns the idle view. */
+export async function waitIdle(page: Page): Promise<View> {
+  await page.waitForFunction(() => (window as unknown as { __numception: Hook }).__numception.view()?.inputLocked === false, undefined, {
+    timeout: 15_000,
+  });
   return view(page);
+}
+
+/**
+ * Taps the answer of the puzzle in view, waits for core's `PuzzleSolved`, waits out
+ * the solve, collapse, advance and round-start beats, and returns the next idle view.
+ */
+export async function solve(page: Page): Promise<View> {
+  const v = await waitIdle(page);
+  expect(v.kind).toBe('puzzle');
+  const before = await solvedCount(page);
+  await clickUnit(page, answerCell(v).labelPoint);
+  await expect.poll(() => solvedCount(page)).toBe(before + 1);
+  return waitIdle(page);
 }

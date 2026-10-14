@@ -13,6 +13,7 @@ const parsed = parseTuning({
     distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
     retries: { maxAttempts: 100 },
   },
+  presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25 },
 });
 if (!parsed.ok) throw new Error(parsed.error.message);
 const tuning = parsed.value;
@@ -59,8 +60,13 @@ describe('createGame', () => {
       expect(game.getView()).toEqual(view);
     }
     expect(solved).toBe(true);
+    // The solve beat runs first: input is locked on the solved puzzle until Ticks end it.
+    expect(game.getView()?.nodeId).toEqual({ tier: 1, index: 0 });
+    expect(game.getView()?.inputLocked).toBe(true);
+    expect(seen.at(-1)).toEqual({ node: { tier: 1, index: 0 }, types: ['PuzzleSolved'] });
+    game.dispatch({ type: 'Tick', elapsedMs: 10_000 });
     expect(game.getView()?.nodeId).toEqual({ tier: 1, index: 1 });
-    expect(seen.at(-1)).toEqual({ node: { tier: 1, index: 1 }, types: ['PuzzleSolved'] });
+    expect(game.getView()?.inputLocked).toBe(false);
 
     unsubscribe();
     const count = seen.length;

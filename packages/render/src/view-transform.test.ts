@@ -19,6 +19,7 @@ const vm3A: Pick<PlayVM, 'aspect' | 'cells' | 'operator'> = {
       inscribedRadius: 0.125,
       text: '1',
       state: 'unsolved',
+      enters: null,
     },
   ],
   operator: { polygon: [], labelPoint: [0.5, 0.5], symbol: '+' },

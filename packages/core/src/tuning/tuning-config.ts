@@ -127,9 +127,36 @@ const GenerationSchema = v.pipe(
   ),
 );
 
+/** The longest presentation beat a tuning may set, ms (one minute). */
+export const MAX_PRESENTATION_MS = 60_000;
+
+const durationMs = () => int(0, MAX_PRESENTATION_MS);
+
 /**
- * TuningConfig schema, schemaVersion 1 (AD-7). For now only the generation section;
- * scoring, ratings and durations arrive with the epics that consume them. v1 is
+ * The presentation section (AD-7, AD-20): the durations of the play view's beats,
+ * in Tick ms at Full motion (epic Notes, 2026-10-14; EXPERIENCE OQ-6).
+ *
+ * - `solveMs`: the solve beat after a correct tap.
+ * - `advanceMs`: the move to the next unsolved puzzle.
+ * - `firstCollapseMs`: the profile's first-ever collapse (FR-9: at most 3 s).
+ * - `collapseMs`: every later collapse (FR-9: at most 1.2 s).
+ * - `roundTransitionMs`: the crossfade into the next round.
+ * - `calmMotionScale`: the multiplier applied at Calm motion to every beat except
+ *   collapses (which keep FR-9's caps at every Motion level). A float because it's
+ *   a tuning weight; durations are rounded to integer ms.
+ */
+const PresentationSchema = v.strictObject({
+  solveMs: durationMs(),
+  advanceMs: durationMs(),
+  firstCollapseMs: durationMs(),
+  collapseMs: durationMs(),
+  roundTransitionMs: durationMs(),
+  calmMotionScale: v.pipe(v.number(), v.minValue(0.25), v.maxValue(4)),
+});
+
+/**
+ * TuningConfig schema, schemaVersion 1 (AD-7): the generation and presentation
+ * sections; scoring and ratings arrive with the epics that consume them. v1 is
  * unshipped, so it is still extended in place. Unknown keys are rejected anywhere.
  */
 export const TuningConfigSchema = v.strictObject({
@@ -137,6 +164,7 @@ export const TuningConfigSchema = v.strictObject({
   schemaVersion: v.literal(1),
   tuningVersion: int(1, Number.MAX_SAFE_INTEGER),
   generation: GenerationSchema,
+  presentation: PresentationSchema,
 });
 
 /** A validated tuning config. Obtain one with `parseTuning`. */
@@ -147,3 +175,6 @@ export type TuningBand = TuningConfig['generation']['bands'][number];
 
 /** One validated per-n range of a band. */
 export type TuningBandRange = TuningBand['ranges'][number];
+
+/** The validated presentation section. */
+export type TuningPresentation = TuningConfig['presentation'];

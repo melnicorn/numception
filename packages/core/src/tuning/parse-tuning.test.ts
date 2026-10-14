@@ -18,7 +18,13 @@ const generation = {
   retries: { maxAttempts: 100 },
 };
 
-const valid = { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 1, generation };
+const presentation = { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25 };
+
+const valid = { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 1, generation, presentation };
+
+function withPresentation(patch: Record<string, unknown>): unknown {
+  return { ...valid, presentation: { ...presentation, ...patch } };
+}
 
 function withGeneration(patch: Record<string, unknown>): unknown {
   return { ...valid, generation: { ...generation, ...patch } };
@@ -62,13 +68,16 @@ describe('parseTuning', () => {
     ['nearMissShare 0', withGeneration({ distractors: { nearMissDelta: 1, nearMissShare: 0 } })],
     ['nearMissShare 1', withGeneration({ distractors: { nearMissDelta: 1, nearMissShare: 1 } })],
     ['maxAttempts 1000', withGeneration({ retries: { maxAttempts: 1000 } })],
+    ['zero-length beats', withPresentation({ solveMs: 0, advanceMs: 0, roundTransitionMs: 0 })],
+    ['calmMotionScale 1', withPresentation({ calmMotionScale: 1 })],
   ])('accepts %s', (_name, input) => {
     expect(issuesOf(input)).toEqual(['<parsed ok>']);
   });
 
   // [name, input, the dot path the first issue must name]
   const bad: [string, unknown, string][] = [
-    ['missing generation', { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 1 }, 'generation'],
+    ['missing generation', { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 1, presentation }, 'generation'],
+    ['missing presentation', { kind: 'TuningConfig', schemaVersion: 1, tuningVersion: 1, generation }, 'presentation'],
     ['wrong kind', { ...valid, kind: 'Theme' }, 'kind'],
     ['wrong schemaVersion', { ...valid, schemaVersion: 2 }, 'schemaVersion'],
     ['tuningVersion 0', { ...valid, tuningVersion: 0 }, 'tuningVersion'],
@@ -125,6 +134,13 @@ describe('parseTuning', () => {
     ['maxAttempts 0', withGeneration({ retries: { maxAttempts: 0 } }), 'generation.retries.maxAttempts'],
     ['maxAttempts 1001', withGeneration({ retries: { maxAttempts: 1001 } }), 'generation.retries.maxAttempts'],
     ['unknown retries key', withGeneration({ retries: { maxAttempts: 10, backoff: 2 } }), 'generation.retries.backoff'],
+    // presentation
+    ['negative solveMs', withPresentation({ solveMs: -1 }), 'presentation.solveMs'],
+    ['fractional collapseMs', withPresentation({ collapseMs: 1200.5 }), 'presentation.collapseMs'],
+    ['firstCollapseMs over a minute', withPresentation({ firstCollapseMs: 60_001 }), 'presentation.firstCollapseMs'],
+    ['calmMotionScale 0', withPresentation({ calmMotionScale: 0 }), 'presentation.calmMotionScale'],
+    ['missing advanceMs', { ...valid, presentation: { ...presentation, advanceMs: undefined } }, 'presentation.advanceMs'],
+    ['unknown presentation key', withPresentation({ zoomMs: 1 }), 'presentation.zoomMs'],
   ];
 
   it.each(bad)('rejects %s, naming the failing path', (_name, input, path) => {

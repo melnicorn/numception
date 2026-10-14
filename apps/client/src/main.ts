@@ -1,5 +1,5 @@
 // Composition root: wires packages together; never imports Preact directly (AD-1).
-import { createGame, parseTuning } from '@numception/app';
+import { createGame, createScheduler, parseTuning, tapCommand } from '@numception/app';
 import { createRenderer } from '@numception/render';
 import { webEntropy } from './web-entropy';
 
@@ -20,10 +20,24 @@ if (!tuning.ok) {
 } else {
   const now = () => Date.now();
   const game = createGame({ tuning: tuning.value, entropy: webEntropy(now), now });
-  // One call stack per tap: render -> app -> core -> app -> render (AD-2).
-  const renderer = createRenderer({ onTap: (ref) => game.dispatch({ type: 'TapCell', ...ref }) });
+  // The play clock (AD-17): Ticks from the frame loop while a beat runs, on the
+  // monotonic clock; idle time is flushed before each command (see createScheduler).
+  const scheduler = createScheduler({
+    game,
+    now: () => performance.now(),
+    frames: { request: (callback) => requestAnimationFrame(() => callback()), cancel: (handle) => cancelAnimationFrame(handle) },
+  });
+  // One call stack per tap: render -> app -> core -> app -> render (AD-2). A tap on
+  // a puzzle answers it; on an overview it enters the cell's puzzle (FR-9).
+  const renderer = createRenderer({
+    onTap: (ref) => {
+      const view = game.getView();
+      const command = view === null ? null : tapCommand(view, ref);
+      if (command !== null) scheduler.dispatch(command);
+    },
+  });
   game.subscribe((view) => renderer.render(view));
-  game.dispatch({ type: 'StartSession' });
+  scheduler.dispatch({ type: 'StartSession' });
   renderer.render(game.getView());
   // Test hook: dev and playtest only (the constant is a literal `false` in prod, AD-18).
   if (__NUMCEPTION_DEV_PANEL__) {

@@ -7,6 +7,8 @@ import { parseTuning } from '../tuning/parse-tuning';
 import type { TuningConfig } from '../tuning/tuning-config';
 import { attemptSeed } from './attempt-seed';
 import { roundPlanProblems } from './plan-problems';
+import { pathFromTop } from './path-from-top';
+import { playOrder } from './play-order';
 import type { PlanRequest, RoundPlan } from './round-plan';
 import { planRound, realiseRoundNode, ROUND_TYPES } from './round-types';
 
@@ -56,6 +58,7 @@ const TUNING_JSON = {
     distractors: { nearMissDelta: 2, nearMissShare: 0.5 },
     retries: { maxAttempts: 100 },
   },
+  presentation: { solveMs: 380, advanceMs: 400, firstCollapseMs: 3000, collapseMs: 1200, roundTransitionMs: 400, calmMotionScale: 1.25 },
 };
 
 function tuningOf(json: unknown): TuningConfig {
@@ -370,5 +373,48 @@ describe('ROUND_TYPES registry', () => {
   it('plans through the registry entry the same as through planRound', () => {
     const request = { type: 'tower', n: 3, operator: 'sub' } as const;
     expect(ROUND_TYPES.tower.plan(request, tuning, 77, versions)).toEqual(planRound(request, tuning, 77, versions));
+  });
+
+  it('onSolve collapses a group into its parent once its last child is solved, and isComplete is the top', () => {
+    for (const type of TYPES) {
+      const p = plan({ type, n: 3, operator: 'add' });
+      const solved = new Set<string>();
+      const isSolved = (node: { tier: number; index: number }) => solved.has(`${node.tier}.${node.index}`);
+      const collapses: string[] = [];
+      for (const node of playOrder(p.tiers, p.n)) {
+        expect(ROUND_TYPES[type].isComplete(p, isSolved)).toBe(false);
+        solved.add(`${node.tier}.${node.index}`);
+        const into = ROUND_TYPES[type].onSolve(p, node, isSolved).collapsesInto;
+        if (into !== null) collapses.push(`${into.tier}.${into.index}`);
+      }
+      expect(ROUND_TYPES[type].isComplete(p, isSolved)).toBe(true);
+      expect(collapses).toEqual(type === 'classic' ? ['2.0'] : ['2.0', '2.1', '2.2', '3.0']);
+    }
+  });
+
+  it('onSolve does not collapse while a sibling is unsolved, whatever order the group is solved in', () => {
+    const p = plan({ type: 'tower', n: 3, operator: 'add' });
+    const solved = new Set(['1.2', '1.0']);
+    const isSolved = (node: { tier: number; index: number }) => solved.has(`${node.tier}.${node.index}`);
+    expect(ROUND_TYPES.tower.onSolve(p, { tier: 1, index: 0 }, isSolved).collapsesInto).toBeNull();
+    solved.add('1.1');
+    expect(ROUND_TYPES.tower.onSolve(p, { tier: 1, index: 1 }, isSolved).collapsesInto).toEqual({ tier: 2, index: 0 });
+  });
+});
+
+describe('playOrder and pathFromTop', () => {
+  it('orders a round breadth-first, leaves first, top last', () => {
+    const keys = (tiers: number) => playOrder(tiers, 3).map((x) => `${x.tier}.${x.index}`);
+    expect(keys(2)).toEqual(['1.0', '1.1', '1.2', '2.0']);
+    expect(keys(3)).toEqual(['1.0', '1.1', '1.2', '1.3', '1.4', '1.5', '1.6', '1.7', '1.8', '2.0', '2.1', '2.2', '3.0']);
+  });
+
+  it('builds the viewPath from the top down to a node', () => {
+    expect(pathFromTop({ tier: 1, index: 7 }, 3, 3)).toEqual([
+      { tier: 3, index: 0 },
+      { tier: 2, index: 2 },
+      { tier: 1, index: 7 },
+    ]);
+    expect(pathFromTop({ tier: 2, index: 0 }, 2, 3)).toEqual([{ tier: 2, index: 0 }]);
   });
 });

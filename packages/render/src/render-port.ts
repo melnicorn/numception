@@ -1,8 +1,8 @@
 import type { LayoutPoint, NodeCellRef, PlayVM } from '@numception/app';
 
 /**
- * The renderer port (AD-14), minus `play(events)`, which arrives with the
- * presentation timeline (entry 3). Points are CSS px relative to the mount element.
+ * The renderer port (AD-14), minus `play(events)`, which arrives when transitions
+ * are drawn (entry 3). Points are CSS px relative to the mount element.
  */
 export type RenderPort = {
   /** Creates the canvas inside `el`; resolves once the first frame can be drawn. */

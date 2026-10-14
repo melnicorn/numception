@@ -8,5 +8,6 @@
     "bands": [{ "band": 1, "ranges": [{ "nMin": 3, "nMax": 3, "minValue": 1, "maxValue": 3, "maxCarries": 0 }] }],
     "distractors": { "nearMissDelta": 1, "nearMissShare": 0 },
     "retries": { "maxAttempts": 1 }
-  }
+  },
+  "presentation": { "solveMs": 380, "advanceMs": 400, "firstCollapseMs": 3000, "collapseMs": 1200, "roundTransitionMs": 400, "calmMotionScale": 1.25 }
 }

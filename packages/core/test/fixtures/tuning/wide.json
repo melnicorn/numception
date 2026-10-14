@@ -11,5 +11,6 @@
     ],
     "distractors": { "nearMissDelta": 3, "nearMissShare": 1 },
     "retries": { "maxAttempts": 50 }
-  }
+  },
+  "presentation": { "solveMs": 380, "advanceMs": 400, "firstCollapseMs": 3000, "collapseMs": 1200, "roundTransitionMs": 400, "calmMotionScale": 1.25 }
 }

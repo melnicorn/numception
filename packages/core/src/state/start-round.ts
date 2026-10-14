@@ -1,40 +1,48 @@
 import { versionsFor } from '../generator/versions-for';
+import type { Presentation } from '../presentation/presentation';
 import { deriveSeed } from '../random/derive-seed';
 import type { DomainError } from '../result/domain-error';
-import { ok, type Result } from '../result/result';
-import { childrenOf, topNodeId } from '../rounds/round-node-id';
-import { planRound, realiseRoundNode } from '../rounds/round-types';
+import { err, type Result } from '../result/result';
+import { pathFromTop } from '../rounds/path-from-top';
+import { playOrder } from '../rounds/play-order';
+import { planRound } from '../rounds/round-types';
 import type { TuningConfig } from '../tuning/tuning-config';
-import { CLASSIC_REQUEST } from './classic-request';
-import { nodeKey } from './node-key';
+import type { GameState } from './game-state';
+import { nextRoundRequest } from './next-round-request';
 import type { Round } from './round';
-
-/** The band leaves are realised in until the selector arrives (epic-adaptive-difficulty). */
-export const LEAF_BAND = 1;
+import { serveNode } from './serve-node';
 
 /**
- * Plans round `roundOrdinal` of a profile seeded `rootSeed` (AD-4: seed
- * `deriveSeed(rootSeed, roundOrdinal)`), realises its first leaf in `LEAF_BAND` and
- * views it: `viewPath` is `[top, firstLeaf]` (AD-25).
+ * Plans round `game.roundOrdinal` (`nextRoundRequest`; AD-4 seed
+ * `deriveSeed(rootSeed, roundOrdinal)`), realises its first leaf and views it:
+ * `viewPath` runs from the top to that leaf (AD-25). The round opens on
+ * `presentation`; the leaf counts as shown from `shownAtMs` (null while a beat runs).
  */
-export function startRound(roundId: string, rootSeed: number, roundOrdinal: number, tuning: TuningConfig): Result<Round, DomainError> {
-  const seed = deriveSeed(rootSeed, roundOrdinal);
-  const plan = planRound(CLASSIC_REQUEST, tuning, seed, versionsFor(tuning));
+export function startRound(
+  roundId: string,
+  game: GameState,
+  tuning: TuningConfig,
+  presentation: Presentation,
+  shownAtMs: number | null,
+): Result<Round, DomainError> {
+  const seed = deriveSeed(game.rootSeed, game.roundOrdinal);
+  const plan = planRound(nextRoundRequest(game), tuning, seed, versionsFor(tuning));
   if (!plan.ok) return plan;
-  const top = topNodeId(plan.value.tiers);
-  const [first] = childrenOf(top, plan.value.n);
-  if (first === undefined) return { ok: false, error: { code: 'invalid-request', message: 'plan has no leaves' } };
-  const leaf = realiseRoundNode(plan.value, first, LEAF_BAND, tuning);
-  if (!leaf.ok) return leaf;
-  return ok({
+  const [first] = playOrder(plan.value.tiers, plan.value.n);
+  if (first === undefined) return err({ code: 'invalid-request', message: 'plan has no leaves' });
+  const round: Round = {
     roundId,
-    type: 'classic',
+    type: plan.value.type,
     seed,
     mode: 'zen',
     tuningVersion: tuning.tuningVersion,
     plan: plan.value,
-    puzzles: { [nodeKey(first)]: leaf.value },
+    puzzles: {},
     solved: [],
-    viewPath: [top, first],
-  });
+    viewPath: pathFromTop(first, plan.value.tiers, plan.value.n),
+    presentation,
+    shownAtMs,
+    nextRoundId: null,
+  };
+  return serveNode(round, first, tuning);
 }

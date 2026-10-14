@@ -1,5 +1,6 @@
 // Imperative shell: store, dispatch, scheduler, pipelines and ports (AD-2).
 export { createGame, type EntropySource, type Game, type GameListener, type GameOptions } from './game';
+export { createScheduler, type FrameLoop, type PauseReason, type Scheduler, type SchedulerOptions } from './scheduler';
 export {
   DEMO_NODE_ID,
   DEMO_SEED,
@@ -33,6 +34,8 @@ export {
   type NodeId,
   type PlayCellVM,
   type PlayVM,
+  type PresentationVM,
   parseTuning,
+  tapCommand,
   type TuningConfig,
 } from '@numception/core';
